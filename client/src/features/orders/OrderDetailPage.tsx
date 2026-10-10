@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { useApi } from '../../lib/useApi';
 import { useToast } from '../../components/ui/Toast';
@@ -17,11 +17,7 @@ import { formatCurrency, formatDate } from '../../lib/format';
 import {
   ArrowLeftIcon,
   PlayIcon,
-  ClipboardDocumentIcon,
-  CheckIcon,
-  ArrowTopRightOnSquareIcon,
   ClockIcon,
-  SparklesIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
@@ -50,7 +46,6 @@ export function OrderDetailPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
 
-  const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [actionError, setActionError] = useState('');
@@ -65,19 +60,6 @@ export function OrderDetailPage() {
     order?.status === 'PENDING';
 
   const hasShortfall = order?.yarnRequirements.some((y) => (y.shortfallKg ?? 0) > 0);
-
-  async function handleCopyTrackingLink() {
-    if (!order) return;
-    const trackingUrl = `${window.location.origin}/track/${order.trackingToken}`;
-    try {
-      await navigator.clipboard.writeText(trackingUrl);
-      setCopied(true);
-      showToast('Tracking link copied to clipboard', 'info');
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      showToast('Failed to copy link', 'error');
-    }
-  }
 
   async function handleConfirmStartProduction() {
     if (!order) return;
@@ -199,54 +181,6 @@ export function OrderDetailPage() {
           </div>
         )}
       </div>
-
-      {/* Public Tracking Link Banner */}
-      <Card className="p-4 bg-gradient-to-r from-orange-50/50 via-white to-orange-50/30 border-(--color-accent)/20">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <SparklesIcon className="w-5 h-5 text-(--color-accent) shrink-0" />
-            <div>
-              <p className="text-xs font-bold text-(--color-text)">Buyer Public Tracking Link</p>
-              <p className="text-xs text-(--color-text-muted)">
-                Share this secure tokenized link with the buyer to view live production progress without logging in.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="bg-white border border-(--color-border) rounded-lg px-3 py-1.5 text-xs text-(--color-text-muted) font-mono select-all truncate max-w-[220px]">
-              /track/{order.trackingToken}
-            </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleCopyTrackingLink}
-              className="text-xs shrink-0"
-            >
-              {copied ? (
-                <>
-                  <CheckIcon className="w-3.5 h-3.5 mr-1 text-(--color-success)" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <ClipboardDocumentIcon className="w-3.5 h-3.5 mr-1" />
-                  Copy Link
-                </>
-              )}
-            </Button>
-            <Link
-              to={`/track/${order.trackingToken}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center p-2 rounded-lg border border-(--color-border) bg-white text-(--color-text-muted) hover:text-(--color-accent) hover:border-(--color-accent)/30 transition-colors"
-              title="Open Public Tracking Page"
-            >
-              <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Specs + Yarn BOM + Stages */}

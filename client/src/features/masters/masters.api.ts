@@ -43,16 +43,6 @@ export interface Machine {
   createdAt?: string;
 }
 
-export interface Worker {
-  id: string;
-  code?: string;
-  name: string;
-  phone?: string;
-  role: string;
-  dailyWage: number;
-  active?: boolean;
-  createdAt?: string;
-}
 
 export let MOCK_BUYERS: Buyer[] = [
   { id: 'b_1', name: 'Nimesh Pathak Textiles', contactName: 'Nimesh Pathak', phone: '9876543210', email: 'nimesh@pathaktextiles.in' },
@@ -86,13 +76,9 @@ export let MOCK_MACHINES: Machine[] = [
   { id: 'm_7', code: 'DYE-02', name: 'Jigger Dyeing Machine 2', stage: 'DYEING', status: 'IDLE', ratePerMetre: 38.0 },
 ];
 
-export let MOCK_WORKERS: Worker[] = [
-  { id: 'w_1', code: 'W-01', name: 'Ramesh Kumar', phone: '9871122334', role: 'Master Weaver', dailyWage: 850, active: true },
-  { id: 'w_2', code: 'W-02', name: 'Suresh Patil', phone: '9872233445', role: 'Spinning Operator', dailyWage: 650, active: true },
-  { id: 'w_3', code: 'W-03', name: 'Mahesh Sharma', phone: '9873344556', role: 'Dyeing Technician', dailyWage: 750, active: true },
-  { id: 'w_4', code: 'W-04', name: 'Vijay Verma', phone: '9874455667', role: 'Quality Inspector', dailyWage: 800, active: true },
-  { id: 'w_5', code: 'W-05', name: 'Gopal Yadav', phone: '9875566778', role: 'Material Handler', dailyWage: 550, active: true },
-];
+
+// Rows from the MOCK_* fallbacks have local ids (e.g. "b_1"), not database UUIDs.
+const isMockId = (id: string) => !/^[0-9a-f-]{36}$/i.test(id);
 
 // --- Buyers ---
 export async function listBuyers(): Promise<Buyer[]> {
@@ -131,6 +117,14 @@ export async function createBuyer(input: {
   return created;
 }
 
+export async function deleteBuyer(id: string): Promise<void> {
+  if (isMockId(id)) {
+    MOCK_BUYERS = MOCK_BUYERS.filter((r) => r.id !== id);
+    return;
+  }
+  await api(`/masters/buyers/${id}`, { method: 'DELETE' });
+}
+
 // --- Suppliers ---
 export async function listSuppliers(): Promise<Supplier[]> {
   try {
@@ -165,6 +159,14 @@ export async function createSupplier(input: {
   };
   MOCK_SUPPLIERS = [created, ...MOCK_SUPPLIERS];
   return created;
+}
+
+export async function deleteSupplier(id: string): Promise<void> {
+  if (isMockId(id)) {
+    MOCK_SUPPLIERS = MOCK_SUPPLIERS.filter((r) => r.id !== id);
+    return;
+  }
+  await api(`/masters/suppliers/${id}`, { method: 'DELETE' });
 }
 
 // --- Yarn Types ---
@@ -203,6 +205,14 @@ export async function createYarnType(input: {
   };
   MOCK_YARN_TYPES = [created, ...MOCK_YARN_TYPES];
   return created;
+}
+
+export async function deleteYarnType(id: string): Promise<void> {
+  if (isMockId(id)) {
+    MOCK_YARN_TYPES = MOCK_YARN_TYPES.filter((r) => r.id !== id);
+    return;
+  }
+  await api(`/masters/yarn-types/${id}`, { method: 'DELETE' });
 }
 
 // --- Machines ---
@@ -246,44 +256,3 @@ export async function createMachine(input: {
   return created;
 }
 
-// --- Workers ---
-export async function listWorkers(): Promise<Worker[]> {
-  try {
-    const res = await api<Worker[]>('/masters/workers');
-    if (Array.isArray(res) && res.length > 0) return res;
-    return MOCK_WORKERS;
-  } catch {
-    return MOCK_WORKERS;
-  }
-}
-
-export async function createWorker(input: {
-  code?: string;
-  name: string;
-  phone?: string;
-  role: string;
-  dailyWage: number;
-}): Promise<Worker> {
-  try {
-    const res = await api<Worker>('/masters/workers', {
-      method: 'POST',
-      body: JSON.stringify(input),
-    });
-    if (res && res.id) return res;
-  } catch (err) {
-    console.warn('API create worker error, updating mock store:', err);
-  }
-
-  const created: Worker = {
-    id: `w_${Date.now()}`,
-    code: input.code || `W-${String(MOCK_WORKERS.length + 1).padStart(2, '0')}`,
-    name: input.name,
-    phone: input.phone,
-    role: input.role,
-    dailyWage: input.dailyWage,
-    active: true,
-    createdAt: new Date().toISOString(),
-  };
-  MOCK_WORKERS = [created, ...MOCK_WORKERS];
-  return created;
-}

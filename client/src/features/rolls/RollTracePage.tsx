@@ -21,7 +21,6 @@ import {
   ShieldCheckIcon,
   DocumentTextIcon,
   MagnifyingGlassIcon,
-  ArrowTopRightOnSquareIcon,
   TagIcon,
   UserIcon,
   PrinterIcon,
@@ -225,11 +224,6 @@ export function RollTracePage() {
             <MagnifyingGlassIcon className="w-4 h-4 text-slate-400 absolute left-2.5 top-2" />
           </form>
 
-          <Link to={`/track/${order.trackingToken}`} target="_blank">
-            <Button variant="secondary" size="sm">
-              <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-1.5" /> Buyer Tracking
-            </Button>
-          </Link>
           <Link to={`/orders/${order.id}`}>
             <Button variant="secondary" size="sm">
               <DocumentTextIcon className="w-4 h-4 mr-1.5" /> Order View

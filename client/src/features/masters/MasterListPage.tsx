@@ -6,19 +6,19 @@ import { useToast } from '../../components/ui/Toast';
 import {
   listBuyers,
   createBuyer,
+  deleteBuyer,
   listSuppliers,
   createSupplier,
+  deleteSupplier,
   listYarnTypes,
   createYarnType,
+  deleteYarnType,
   listMachines,
   createMachine,
-  listWorkers,
-  createWorker,
   type Buyer,
   type Supplier,
   type YarnType,
   type Machine,
-  type Worker,
 } from './masters.api';
 import { Card } from '../../components/ui/Card';
 import { Table, type Column } from '../../components/ui/Table';
@@ -35,13 +35,23 @@ import {
   TruckIcon,
   CubeIcon,
   WrenchScrewdriverIcon,
-  UserGroupIcon,
   PlusIcon,
   MagnifyingGlassIcon,
   ArrowPathIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
-type MasterType = 'buyers' | 'suppliers' | 'yarns' | 'machines' | 'workers';
+// Workers are managed in Staff Management (people) and Attendance (daily wages).
+type MasterType = 'buyers' | 'suppliers' | 'yarns' | 'machines';
+
+// Master types that can be deleted from this page.
+type DeletableType = 'buyers' | 'suppliers' | 'yarns';
+
+interface DeleteTarget {
+  type: DeletableType;
+  id: string;
+  label: string;
+}
 
 interface TabItem {
   id: MasterType;
@@ -55,7 +65,6 @@ const TABS: TabItem[] = [
   { id: 'suppliers', label: 'Suppliers', icon: TruckIcon, description: 'Raw cotton and synthetic yarn spinning vendors' },
   { id: 'yarns', label: 'Yarn Types', icon: CubeIcon, description: 'Material catalogue, counts, colours and minimum reorder thresholds' },
   { id: 'machines', label: 'Machines', icon: WrenchScrewdriverIcon, description: 'Spinning frames, looms and dyeing vats with operational cost rates' },
-  { id: 'workers', label: 'Workers', icon: UserGroupIcon, description: 'Floor operators, masters and inspectors with daily wage rates' },
 ];
 
 export function MasterListPage() {
@@ -69,19 +78,20 @@ export function MasterListPage() {
   if (type === 'suppliers') currentType = 'suppliers';
   else if (type === 'yarns' || type === 'yarn-types') currentType = 'yarns';
   else if (type === 'machines') currentType = 'machines';
-  else if (type === 'workers') currentType = 'workers';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleteError, setDeleteError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form states for creation
   const [buyerForm, setBuyerForm] = useState({ name: '', contactName: '', phone: '', email: '', address: '' });
   const [supplierForm, setSupplierForm] = useState({ name: '', contactName: '', phone: '', email: '' });
   const [yarnForm, setYarnForm] = useState({ code: '', name: '', colour: '', countLabel: '', reorderLevelKg: '' });
   const [machineForm, setMachineForm] = useState({ code: '', name: '', stage: 'WEAVING' as 'SPINNING' | 'WEAVING' | 'DYEING', ratePerMetre: '' });
-  const [workerForm, setWorkerForm] = useState({ code: '', name: '', phone: '', role: 'Operator', dailyWage: '' });
 
   // Permissions
   const canCreate = (() => {
@@ -90,6 +100,7 @@ export function MasterListPage() {
     if (currentType === 'suppliers' && user.role === 'SUPERVISOR') return true;
     return false;
   })();
+  const canDelete = user?.role === 'OWNER' || user?.role === 'OFFICE';
 
   // Data fetching
   const { data: buyers, loading: loadingBuyers, error: errorBuyers, reload: reloadBuyers } =
@@ -100,8 +111,6 @@ export function MasterListPage() {
     useApi(listYarnTypes, [currentType]);
   const { data: machines, loading: loadingMachines, error: errorMachines, reload: reloadMachines } =
     useApi(listMachines, [currentType]);
-  const { data: workers, loading: loadingWorkers, error: errorWorkers, reload: reloadWorkers } =
-    useApi(listWorkers, [currentType]);
 
   const handleTabChange = (t: MasterType) => {
     navigate(`/masters/${t}`);
@@ -115,8 +124,62 @@ export function MasterListPage() {
     if (currentType === 'suppliers') reloadSuppliers();
     if (currentType === 'yarns') reloadYarns();
     if (currentType === 'machines') reloadMachines();
-    if (currentType === 'workers') reloadWorkers();
   };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    setDeleteError('');
+    try {
+      if (deleteTarget.type === 'buyers') {
+        await deleteBuyer(deleteTarget.id);
+        reloadBuyers();
+      } else if (deleteTarget.type === 'suppliers') {
+        await deleteSupplier(deleteTarget.id);
+        reloadSuppliers();
+      } else {
+        await deleteYarnType(deleteTarget.id);
+        reloadYarns();
+      }
+      showToast(`"${deleteTarget.label}" deleted.`, 'success');
+      setDeleteTarget(null);
+    } catch (err: any) {
+      setDeleteError(err.message || 'Failed to delete record.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Trailing trash-button column for deletable master tables (OWNER / OFFICE only).
+  function deleteColumn<T extends { id: string }>(
+    type: DeletableType,
+    getLabel: (row: T) => string
+  ): Column<T>[] {
+    if (!canDelete) return [];
+    return [
+      {
+        key: 'actions',
+        header: '',
+        align: 'right',
+        render: (r) => (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteError('');
+                setDeleteTarget({ type, id: r.id, label: getLabel(r) });
+              }}
+              className="p-1 text-(--color-text-muted) hover:text-(--color-danger) rounded hover:bg-(--color-danger-light) transition-colors"
+              title="Delete"
+              aria-label={`Delete ${getLabel(r)}`}
+            >
+              <TrashIcon className="w-4 h-4" />
+            </button>
+          </div>
+        ),
+      },
+    ];
+  }
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,19 +238,6 @@ export function MasterListPage() {
         showToast(`Machine "${machineForm.code}" registered!`, 'success');
         setMachineForm({ code: '', name: '', stage: 'WEAVING', ratePerMetre: '' });
         reloadMachines();
-      } else if (currentType === 'workers') {
-        if (!workerForm.name.trim()) throw new Error('Worker name is required.');
-        const wageVal = parseFloat(workerForm.dailyWage) || 0;
-        await createWorker({
-          code: workerForm.code.trim() || undefined,
-          name: workerForm.name.trim(),
-          phone: workerForm.phone.trim() || undefined,
-          role: workerForm.role.trim(),
-          dailyWage: wageVal,
-        });
-        showToast(`Worker "${workerForm.name}" registered!`, 'success');
-        setWorkerForm({ code: '', name: '', phone: '', role: 'Operator', dailyWage: '' });
-        reloadWorkers();
       }
 
       setDialogOpen(false);
@@ -226,6 +276,7 @@ export function MasterListPage() {
       header: 'Email',
       render: (r) => <span className="text-xs text-(--color-text-muted)">{r.email || '—'}</span>,
     },
+    ...deleteColumn<Buyer>('buyers', (r) => r.name),
   ];
 
   // --- Supplier Table Columns ---
@@ -250,6 +301,7 @@ export function MasterListPage() {
       header: 'Email',
       render: (r) => <span className="text-xs text-(--color-text-muted)">{r.email || '—'}</span>,
     },
+    ...deleteColumn<Supplier>('suppliers', (r) => r.name),
   ];
 
   // --- Yarn Table Columns ---
@@ -296,6 +348,7 @@ export function MasterListPage() {
         </span>
       ),
     },
+    ...deleteColumn<YarnType>('yarns', (r) => r.code),
   ];
 
   // --- Machine Table Columns ---
@@ -347,44 +400,6 @@ export function MasterListPage() {
     },
   ];
 
-  // --- Worker Table Columns ---
-  const workerCols: Column<Worker>[] = [
-    {
-      key: 'code',
-      header: 'Worker ID',
-      render: (r) => (
-        <span className="font-mono text-xs font-semibold bg-(--color-surface-sunken) px-2 py-0.5 rounded border border-(--color-border) text-(--color-text)">
-          {r.code || 'EMP'}
-        </span>
-      ),
-    },
-    {
-      key: 'name',
-      header: 'Worker Name',
-      render: (r) => <span className="font-semibold text-(--color-text)">{r.name}</span>,
-    },
-    {
-      key: 'role',
-      header: 'Role / Designation',
-      render: (r) => <span className="text-sm text-(--color-text-muted)">{r.role}</span>,
-    },
-    {
-      key: 'phone',
-      header: 'Phone Number',
-      render: (r) => <span className="font-mono text-xs text-(--color-text)">{r.phone || '—'}</span>,
-    },
-    {
-      key: 'wage',
-      header: 'Daily Wage Rate',
-      align: 'right',
-      render: (r) => (
-        <span className="font-semibold text-sm text-(--color-text) block text-right">
-          {formatCurrency(r.dailyWage)} / day
-        </span>
-      ),
-    },
-  ];
-
   const currentTabInfo = TABS.find((t) => t.id === currentType)!;
 
   // Filter lists by search query
@@ -410,11 +425,6 @@ export function MasterListPage() {
       if (!q) return list;
       return list.filter((m) => m.code.toLowerCase().includes(q) || m.name.toLowerCase().includes(q) || m.stage.toLowerCase().includes(q));
     }
-    if (currentType === 'workers') {
-      const list = workers || [];
-      if (!q) return list;
-      return list.filter((w) => w.name.toLowerCase().includes(q) || w.role.toLowerCase().includes(q) || (w.code && w.code.toLowerCase().includes(q)));
-    }
     return [];
   })();
 
@@ -422,13 +432,13 @@ export function MasterListPage() {
     currentType === 'buyers' ? loadingBuyers :
     currentType === 'suppliers' ? loadingSuppliers :
     currentType === 'yarns' ? loadingYarns :
-    currentType === 'machines' ? loadingMachines : loadingWorkers;
+    loadingMachines;
 
   const activeError =
     currentType === 'buyers' ? errorBuyers :
     currentType === 'suppliers' ? errorSuppliers :
     currentType === 'yarns' ? errorYarns :
-    currentType === 'machines' ? errorMachines : errorWorkers;
+    errorMachines;
 
   return (
     <div className="space-y-6">
@@ -437,7 +447,7 @@ export function MasterListPage() {
         <div>
           <h1 className="text-2xl font-bold text-(--color-text)">Masters Management</h1>
           <p className="text-sm text-(--color-text-muted) mt-0.5">
-            Everest Textile Mills core master data for entities, inventory catalogs, machines and workforce.
+            Everest Textile Mills core master data for entities, inventory catalogs and machines.
           </p>
         </div>
 
@@ -553,17 +563,6 @@ export function MasterListPage() {
               rowKey={(r) => r.id}
               emptyTitle="No machines registered"
               emptyDescription="Register spinning frames, looms and dyeing equipment."
-            />
-          )}
-
-          {currentType === 'workers' && (
-            <Table
-              columns={workerCols}
-              rows={filteredData as Worker[]}
-              loading={activeLoading}
-              rowKey={(r) => r.id}
-              emptyTitle="No workers registered"
-              emptyDescription="Register factory staff and technicians for attendance and wages."
             />
           )}
         </Card>
@@ -743,53 +742,6 @@ export function MasterListPage() {
             </>
           )}
 
-          {/* Form for Workers */}
-          {currentType === 'workers' && (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  label="Worker ID (Optional)"
-                  placeholder="e.g. W-06"
-                  value={workerForm.code}
-                  onChange={(e) => setWorkerForm({ ...workerForm, code: e.target.value })}
-                />
-                <Input
-                  label="Full Name"
-                  required
-                  placeholder="e.g. Ramdev Yadav"
-                  value={workerForm.name}
-                  onChange={(e) => setWorkerForm({ ...workerForm, name: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  label="Role / Designation"
-                  required
-                  placeholder="e.g. Master Weaver"
-                  value={workerForm.role}
-                  onChange={(e) => setWorkerForm({ ...workerForm, role: e.target.value })}
-                />
-                <Input
-                  label="Phone Number"
-                  placeholder="e.g. 9876543210"
-                  value={workerForm.phone}
-                  onChange={(e) => setWorkerForm({ ...workerForm, phone: e.target.value })}
-                />
-              </div>
-              <Input
-                label="Daily Wage (₹ / day)"
-                required
-                type="number"
-                min="0"
-                step="10"
-                placeholder="e.g. 750"
-                value={workerForm.dailyWage}
-                onChange={(e) => setWorkerForm({ ...workerForm, dailyWage: e.target.value })}
-                hint="Daily remuneration used for month-end payroll calculation"
-              />
-            </>
-          )}
-
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-(--color-border)">
             <Button
               type="button"
@@ -808,6 +760,43 @@ export function MasterListPage() {
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <Dialog
+        open={deleteTarget !== null}
+        onClose={() => !isDeleting && setDeleteTarget(null)}
+        title={`Delete ${currentTabInfo.label.replace(/s$/, '')}`}
+        width="max-w-md"
+      >
+        {deleteTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-(--color-text-muted)">
+              Are you sure you want to delete{' '}
+              <strong className="text-(--color-text)">&quot;{deleteTarget.label}&quot;</strong>?
+              This action cannot be undone.
+            </p>
+            {deleteError && <Callout tone="danger">{deleteError}</Callout>}
+            <div className="pt-3 border-t border-(--color-border) flex justify-end gap-2.5">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setDeleteTarget(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                loading={isDeleting}
+                onClick={handleDelete}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        )}
       </Dialog>
     </div>
   );

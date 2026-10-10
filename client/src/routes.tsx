@@ -17,7 +17,6 @@ import {
 import { LandingPage }     from './features/landing/LandingPage';
 import { DashboardPage }    from './features/reports/DashboardPage';
 import { LoginPage }        from './features/auth/LoginPage';
-import { TrackPage }        from './features/track/TrackPage';
 import { OrdersPage }       from './features/orders/OrdersPage';
 import { NewOrderPage }     from './features/orders/NewOrderPage';
 import { OrderDetailPage }  from './features/orders/OrderDetailPage';
@@ -211,5 +210,4 @@ export const ROUTES: RouteConfig[] = [
 export const PUBLIC_ROUTES = [
   { path: '/',                element: <LandingPage /> },
   { path: '/login',           element: <LoginPage /> },
-  { path: '/track/:token',    element: <TrackPage /> },
 ];
