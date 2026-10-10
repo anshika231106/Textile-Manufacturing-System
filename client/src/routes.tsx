@@ -16,6 +16,9 @@ import {
 import { HomePage }         from './features/reports/HomePage';
 import { LoginPage }        from './features/auth/LoginPage';
 import { TrackPage }        from './features/track/TrackPage';
+import { OrdersPage }       from './features/orders/OrdersPage';
+import { NewOrderPage }     from './features/orders/NewOrderPage';
+import { OrderDetailPage }  from './features/orders/OrderDetailPage';
 import { Placeholder }      from './components/ui/Placeholder';
 
 export interface RouteConfig {
@@ -70,15 +73,15 @@ export const ROUTES: RouteConfig[] = [
     icon: ShoppingBagIcon,
     roles: 'all',
     nav: true,
-    element: <Placeholder title="Orders" description="Order list and status filters — coming in Phase 3." />,
+    element: <OrdersPage />,
   },
   {
     path: '/orders/new',
     label: 'New Order',
     icon: ShoppingBagIcon,
-    roles: ['OWNER', 'OFFICE'],
+    roles: 'all',
     nav: false,
-    element: <Placeholder title="New Order" description="Order creation with yarn feasibility — coming in Phase 3." />,
+    element: <NewOrderPage />,
   },
   {
     path: '/orders/:id',
@@ -86,7 +89,7 @@ export const ROUTES: RouteConfig[] = [
     icon: ShoppingBagIcon,
     roles: 'all',
     nav: false,
-    element: <Placeholder title="Order Detail" description="Order details and production actions — coming in Phase 3." />,
+    element: <OrderDetailPage />,
   },
   {
     path: '/floor',
