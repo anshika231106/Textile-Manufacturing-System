@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '../../components/ui/Toast';
 import { Button } from '../../components/ui/Button';
+import { Select } from '../../components/ui/Select';
+import { Input } from '../../components/ui/Input';
+import { Callout } from '../../components/ui/Callout';
 import { listOrders, type Order } from '../orders/orders.api';
 import { getBoard, type FloorMachine } from '../floor/floor.api';
 import { createRoll, type QcRollItem } from './qc.api';
@@ -105,47 +108,40 @@ export function CreateRollForm({ onRollCreated, onCancel }: CreateRollFormProps)
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Order selector */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
-          Target Customer Order <span className="text-rose-500">*</span>
-        </label>
-        <select
-          value={selectedOrderId}
-          onChange={(e) => setSelectedOrderId(e.target.value)}
-          className="w-full rounded-lg border border-[#E8E4DF] bg-white py-2.5 px-3 text-sm text-[#1A1714] focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
-          required
-        >
-          <option value="">-- Choose Order --</option>
-          {orders.map((ord) => (
-            <option key={ord.id} value={ord.id}>
-              {ord.orderNumber} — {ord.buyerName} ({ord.fabricType}, {ord.metres}m)
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        label="Target Customer Order"
+        required
+        value={selectedOrderId}
+        onChange={(e) => setSelectedOrderId(e.target.value)}
+        placeholder="-- Choose Order --"
+        options={orders.map((ord) => ({
+          value: ord.id,
+          label: `${ord.orderNumber} — ${ord.buyerName} (${ord.fabricType}, ${ord.metres}m)`,
+        }))}
+      />
 
       {/* Selected Order Summary Banner */}
       {selectedOrder && (
-        <div className="p-3 bg-[#F5F4F2] rounded-xl border border-[#E8E4DF] text-xs space-y-1 text-[#44403C]">
-          <div className="flex justify-between font-medium">
+        <Callout tone="neutral">
+          <div className="flex justify-between font-medium mb-1">
             <span>Fabric Specification:</span>
-            <span className="font-semibold text-[#1A1714]">{selectedOrder.fabricType}</span>
+            <span className="font-semibold text-(--color-text)">{selectedOrder.fabricType}</span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between mb-1">
             <span>Colour:</span>
-            <span className="text-[#1A1714] font-medium">{selectedOrder.colour}</span>
+            <span className="text-(--color-text) font-medium">{selectedOrder.colour}</span>
           </div>
           <div className="flex justify-between">
             <span>Total Order Metres:</span>
-            <span className="font-mono text-[#1A1714]">{selectedOrder.metres} m</span>
+            <span className="font-mono text-(--color-text)">{selectedOrder.metres} m</span>
           </div>
-        </div>
+        </Callout>
       )}
 
       {/* Metres input */}
       <div className="space-y-1.5">
-        <label className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
-          Roll Metres Length <span className="text-rose-500">*</span>
+        <label className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted)">
+          Roll Metres Length <span className="text-(--color-danger)">*</span>
         </label>
         <div className="relative">
           <input
@@ -155,10 +151,10 @@ export function CreateRollForm({ onRollCreated, onCancel }: CreateRollFormProps)
             value={metres}
             onChange={(e) => setMetres(e.target.value)}
             placeholder="e.g. 100"
-            className="w-full rounded-lg border border-[#E8E4DF] bg-white py-2.5 pl-3.5 pr-12 text-sm text-[#1A1714] font-mono focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
+            className="w-full rounded-lg border border-(--color-border) bg-white py-2.5 pl-3.5 pr-12 text-sm text-(--color-text) font-mono focus:outline-none focus:ring-2 focus:ring-(--color-accent)"
             required
           />
-          <span className="absolute right-3.5 top-2.5 text-xs font-semibold text-[#78716C]">
+          <span className="absolute right-3.5 top-2.5 text-xs font-semibold text-(--color-text-muted)">
             metres
           </span>
         </div>
@@ -166,58 +162,34 @@ export function CreateRollForm({ onRollCreated, onCancel }: CreateRollFormProps)
 
       {/* Machine selectors */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
-            Weaving Loom Used <span className="text-rose-500">*</span>
-          </label>
-          <select
-            value={selectedWeavingMachineId}
-            onChange={(e) => setSelectedWeavingMachineId(e.target.value)}
-            className="w-full rounded-lg border border-[#E8E4DF] bg-white py-2 px-3 text-xs text-[#1A1714] focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
-            required
-          >
-            {weavingMachines.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.code} - {m.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Weaving Loom Used"
+          required
+          value={selectedWeavingMachineId}
+          onChange={(e) => setSelectedWeavingMachineId(e.target.value)}
+          options={weavingMachines.map((m) => ({ value: m.id, label: `${m.code} - ${m.name}` }))}
+        />
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
-            Dyeing Vessel Used <span className="text-rose-500">*</span>
-          </label>
-          <select
-            value={selectedDyeingMachineId}
-            onChange={(e) => setSelectedDyeingMachineId(e.target.value)}
-            className="w-full rounded-lg border border-[#E8E4DF] bg-white py-2 px-3 text-xs text-[#1A1714] focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
-            required
-          >
-            {dyeingMachines.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.code} - {m.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Optional custom roll identifier */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
-          Roll Serial No. (Optional / Auto-generated)
-        </label>
-        <input
-          type="text"
-          value={rollNoCustom}
-          onChange={(e) => setRollNoCustom(e.target.value)}
-          placeholder="Leave blank for automatic sequential code (e.g. ROLL-0005)"
-          className="w-full rounded-lg border border-[#E8E4DF] bg-white py-2 px-3 text-xs text-[#1A1714] font-mono focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
+        <Select
+          label="Dyeing Vessel Used"
+          required
+          value={selectedDyeingMachineId}
+          onChange={(e) => setSelectedDyeingMachineId(e.target.value)}
+          options={dyeingMachines.map((m) => ({ value: m.id, label: `${m.code} - ${m.name}` }))}
         />
       </div>
 
-      <div className="flex justify-end gap-2.5 pt-3 border-t border-[#E8E4DF]">
+      {/* Optional custom roll identifier */}
+      <Input
+        label="Roll Serial No. (Optional / Auto-generated)"
+        type="text"
+        value={rollNoCustom}
+        onChange={(e) => setRollNoCustom(e.target.value)}
+        placeholder="Leave blank for automatic sequential code (e.g. ROLL-0005)"
+        className="font-mono"
+      />
+
+      <div className="flex justify-end gap-2.5 pt-3 border-t border-(--color-border)">
         {onCancel && (
           <Button
             type="button"

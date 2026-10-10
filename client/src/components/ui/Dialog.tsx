@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { transitionSnappy } from '../../lib/motion';
 
 interface DialogProps {
   open: boolean;
@@ -33,36 +35,45 @@ export function Dialog({ open, onClose, title, children, width = 'max-w-md' }: D
     return () => { document.body.style.overflow = ''; };
   }, [open]);
 
-  if (!open) return null;
-
   return (
-    <div
-      ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
-      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
-    >
-      <div
-        className={[
-          'relative w-full bg-white rounded-2xl shadow-xl overflow-hidden',
-          width,
-        ].join(' ')}
-        style={{ animation: 'fadeInScale 180ms ease both' }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E8E4DF]">
-          <h2 className="text-base font-semibold text-[#1A1714]">{title}</h2>
-          <button
-            onClick={onClose}
-            className="text-[#78716C] hover:text-[#1A1714] transition-colors rounded-md p-1"
-            aria-label="Close dialog"
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          ref={overlayRef}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
+          onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={transitionSnappy}
+        >
+          <motion.div
+            className={[
+              'relative w-full bg-white rounded-2xl shadow-xl overflow-hidden',
+              width,
+            ].join(' ')}
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={transitionSnappy}
           >
-            <XMarkIcon className="w-5 h-5" />
-          </button>
-        </div>
-        {/* Body */}
-        <div className="px-6 py-5">{children}</div>
-      </div>
-    </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-(--color-border)">
+              <h2 className="text-base font-semibold text-(--color-text)">{title}</h2>
+              <button
+                onClick={onClose}
+                className="text-(--color-text-muted) hover:text-(--color-text) hover:bg-(--color-surface-sunken) transition-colors rounded-md p-1"
+                aria-label="Close dialog"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Body */}
+            <div className="px-6 py-5">{children}</div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

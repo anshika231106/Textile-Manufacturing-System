@@ -5,6 +5,11 @@ import { useToast } from '../../components/ui/Toast';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
+import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
+import { StatCard, StatGrid } from '../../components/ui/StatCard';
+import { Table, type Column } from '../../components/ui/Table';
+import { RestrictedAccess } from '../../components/ui/RestrictedAccess';
 import { formatCurrency, formatDate } from '../../lib/format';
 import { getInvoice, recordPayment, type Invoice } from './dispatch.api';
 import {
@@ -13,8 +18,15 @@ import {
   CheckCircleIcon,
   CreditCardIcon,
   PlusIcon,
-  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
+
+const PAYMENT_METHODS = [
+  'NEFT / Bank Transfer',
+  'RTGS',
+  'Cheque Deposit',
+  'UPI / Instant Transfer',
+  'Cash Receipt',
+].map((v) => ({ value: v, label: v }));
 
 export function InvoicePage() {
   const { id } = useParams<{ id: string }>();
@@ -94,7 +106,7 @@ export function InvoicePage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-[#78716C]">
+      <div className="flex flex-col items-center justify-center py-24 text-(--color-text-muted)">
         <Spinner size="lg" />
         <p className="text-sm mt-3 font-medium">Loading invoice record...</p>
       </div>
@@ -103,8 +115,8 @@ export function InvoicePage() {
 
   if (!invoice) {
     return (
-      <div className="p-12 text-center text-[#78716C] space-y-3">
-        <p className="text-base font-semibold text-[#1A1714]">Invoice record not found</p>
+      <div className="p-12 text-center text-(--color-text-muted) space-y-3">
+        <p className="text-base font-semibold text-(--color-text)">Invoice record not found</p>
         <Link to="/invoices">
           <Button variant="secondary" size="sm">Back to Invoices</Button>
         </Link>
@@ -112,27 +124,49 @@ export function InvoicePage() {
     );
   }
 
+  const rollColumns: Column<Invoice['rolls'][number]>[] = [
+    { key: 'rollNo', header: 'Roll Serial No.', render: (r) => <span className="font-mono font-medium text-(--color-text)">{r.rollNo}</span> },
+    { key: 'spec', header: 'Fabric Spec', render: () => <span className="text-(--color-text-muted)">{invoice.fabricType} ({invoice.colour})</span> },
+    { key: 'metres', header: 'Length (Metres)', align: 'right', render: (r) => <span className="font-mono font-bold text-(--color-text)">{r.metres} m</span> },
+  ];
+
+  const paymentColumns: Column<Invoice['payments'][number]>[] = [
+    { key: 'date', header: 'Date', render: (p) => <span className="text-(--color-text-muted) whitespace-nowrap">{formatDate(p.paidOn)}</span> },
+    {
+      key: 'method',
+      header: 'Method / Ref',
+      render: (p) => (
+        <div>
+          <div className="font-semibold text-(--color-text)">{p.method}</div>
+          {p.reference && <div className="text-[11px] font-mono text-(--color-text-muted)">{p.reference}</div>}
+        </div>
+      ),
+    },
+    { key: 'amount', header: 'Amount', align: 'right', render: (p) => <span className="font-mono font-bold text-emerald-800 whitespace-nowrap">{formatCurrency(p.amount)}</span> },
+    { key: 'receivedBy', header: 'Received By', render: (p) => <span className="text-(--color-text-muted)">{p.createdByName || 'Office Staff'}</span> },
+  ];
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Top Navigation */}
-      <div className="flex items-center justify-between pb-3 border-b border-[#E8E4DF]">
+      <div className="flex items-center justify-between pb-3 border-b border-(--color-border)">
         <div className="flex items-center gap-3">
           <Link
             to="/invoices"
-            className="p-2 rounded-lg border border-[#E8E4DF] bg-white text-[#78716C] hover:text-[#1A1714] hover:bg-[#F5F4F2] transition-colors"
+            className="p-2 rounded-lg border border-(--color-border) bg-white text-(--color-text-muted) hover:text-(--color-text) hover:bg-(--color-surface-sunken) transition-colors"
           >
             <ArrowLeftIcon className="w-4 h-4" />
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold font-mono text-[#1A1714]">
+              <h1 className="text-2xl font-bold font-mono text-(--color-text)">
                 {invoice.invoiceNo}
               </h1>
               {invoice.status === 'PAID' && <Badge variant="success" label="PAID" dot />}
               {invoice.status === 'PARTIAL' && <Badge variant="warning" label="PARTIAL" dot />}
               {invoice.status === 'UNPAID' && <Badge variant="danger" label="UNPAID" dot />}
             </div>
-            <p className="text-xs text-[#78716C] mt-0.5">
+            <p className="text-xs text-(--color-text-muted) mt-0.5">
               Issued on {formatDate(invoice.issuedAt)} • Linked to {invoice.dispatchNo}
             </p>
           </div>
@@ -151,169 +185,93 @@ export function InvoicePage() {
       </div>
 
       {/* Invoice Overview Card */}
-      <div className="bg-white rounded-2xl border border-[#E8E4DF] p-6 shadow-xs space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pb-6 border-b border-[#F5F4F2]">
+      <div className="bg-white rounded-2xl border border-(--color-border) p-6 shadow-xs space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pb-6 border-b border-(--color-surface-sunken)">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Billed Buyer</span>
-            <div className="text-base font-bold text-[#1A1714] mt-1">{invoice.buyerName}</div>
-            <div className="text-xs text-[#78716C]">Order: {invoice.orderNumber}</div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted)">Billed Buyer</span>
+            <div className="text-base font-bold text-(--color-text) mt-1">{invoice.buyerName}</div>
+            <div className="text-xs text-(--color-text-muted)">Order: {invoice.orderNumber}</div>
           </div>
 
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Fabric Specification</span>
-            <div className="text-sm font-semibold text-[#1A1714] mt-1">{invoice.fabricType}</div>
-            <div className="text-xs text-[#78716C]">Colour: {invoice.colour}</div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted)">Fabric Specification</span>
+            <div className="text-sm font-semibold text-(--color-text) mt-1">{invoice.fabricType}</div>
+            <div className="text-xs text-(--color-text-muted)">Colour: {invoice.colour}</div>
           </div>
 
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Dispatched Quantity</span>
-            <div className="text-base font-bold text-[#1A1714] font-mono mt-1">
-              {invoice.totalMetres.toLocaleString()} <span className="text-xs font-sans font-normal text-[#78716C]">metres</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted)">Dispatched Quantity</span>
+            <div className="text-base font-bold text-(--color-text) font-mono mt-1">
+              {invoice.totalMetres.toLocaleString()} <span className="text-xs font-sans font-normal text-(--color-text-muted)">metres</span>
             </div>
-            <div className="text-xs text-[#78716C]">Rate: ₹{invoice.ratePerMetre}/m</div>
+            <div className="text-xs text-(--color-text-muted)">Rate: ₹{invoice.ratePerMetre}/m</div>
           </div>
 
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Transport Gate Ref</span>
-            <div className="text-sm font-mono font-medium text-[#1A1714] mt-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted)">Transport Gate Ref</span>
+            <div className="text-sm font-mono font-medium text-(--color-text) mt-1">
               {invoice.vehicleNo || 'Self Pick-up'}
             </div>
-            <div className="text-xs text-[#78716C]">Gate: {invoice.dispatchNo}</div>
+            <div className="text-xs text-(--color-text-muted)">Gate: {invoice.dispatchNo}</div>
           </div>
         </div>
 
         {/* Balance KPI Banner */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-[#FBFBFA] rounded-xl border border-[#E8E4DF]">
-          <div>
-            <div className="text-xs text-[#78716C]">Invoice Total</div>
-            <div className="text-xl font-bold font-mono text-[#1A1714] mt-0.5">
-              {formatCurrency(invoice.amount)}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-xs text-emerald-700">Amount Received</div>
-            <div className="text-xl font-bold font-mono text-emerald-800 mt-0.5">
-              {formatCurrency(invoice.paidAmount)}
-            </div>
-          </div>
-
-          <div>
-            <div className={`text-xs ${invoice.outstandingAmount > 0 ? 'text-amber-700 font-semibold' : 'text-[#78716C]'}`}>
-              Outstanding Balance
-            </div>
-            <div className={`text-xl font-bold font-mono mt-0.5 ${
-              invoice.outstandingAmount > 0 ? 'text-amber-800' : 'text-[#78716C]'
-            }`}>
-              {formatCurrency(invoice.outstandingAmount)}
-            </div>
-          </div>
-        </div>
+        <StatGrid columns={3}>
+          <StatCard label="Invoice Total" value={formatCurrency(invoice.amount)} tone="neutral" />
+          <StatCard label="Amount Received" value={formatCurrency(invoice.paidAmount)} tone="success" />
+          <StatCard
+            label="Outstanding Balance"
+            value={formatCurrency(invoice.outstandingAmount)}
+            tone={invoice.outstandingAmount > 0 ? 'warning' : 'neutral'}
+          />
+        </StatGrid>
 
         {/* Dispatched Rolls Table */}
         <div className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted)">
             Dispatched Fabric Rolls ({invoice.rolls.length} items)
           </h3>
-          <div className="border border-[#E8E4DF] rounded-xl overflow-hidden">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#F5F4F2] text-[#78716C] font-semibold border-b border-[#E8E4DF]">
-                <tr>
-                  <th className="py-2.5 px-3">Roll Serial No.</th>
-                  <th className="py-2.5 px-3">Fabric Spec</th>
-                  <th className="py-2.5 px-3 text-right">Length (Metres)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F5F4F2]">
-                {invoice.rolls.map((r) => (
-                  <tr key={r.rollId}>
-                    <td className="py-2.5 px-3 font-mono font-medium text-[#1A1714]">{r.rollNo}</td>
-                    <td className="py-2.5 px-3 text-[#78716C]">{invoice.fabricType} ({invoice.colour})</td>
-                    <td className="py-2.5 px-3 text-right font-mono font-bold text-[#1A1714]">{r.metres} m</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table columns={rollColumns} rows={invoice.rolls} rowKey={(r) => r.rollId} />
         </div>
       </div>
 
       {/* Financial Section: Payments Ledger & Record Form */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Payments History Table */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-[#E8E4DF] p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-[#F5F4F2]">
+        <div className="lg:col-span-7 bg-white rounded-2xl border border-(--color-border) p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-(--color-surface-sunken)">
             <div className="flex items-center gap-2">
-              <CreditCardIcon className="w-5 h-5 text-[#EA580C]" />
-              <h2 className="text-base font-semibold text-[#1A1714]">
+              <CreditCardIcon className="w-5 h-5 text-(--color-accent)" />
+              <h2 className="text-base font-semibold text-(--color-text)">
                 Recorded Payments
               </h2>
             </div>
-            <span className="text-xs text-[#78716C]">
+            <span className="text-xs text-(--color-text-muted)">
               {invoice.payments.length} transaction{invoice.payments.length === 1 ? '' : 's'}
             </span>
           </div>
 
-          {invoice.payments.length === 0 ? (
-            <div className="p-8 text-center text-xs text-[#78716C] border border-dashed border-[#E8E4DF] rounded-xl">
-              No payments recorded against this invoice yet.
-            </div>
-          ) : (
-            <div className="border border-[#E8E4DF] rounded-xl overflow-hidden">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#F5F4F2] text-[#78716C] font-semibold border-b border-[#E8E4DF]">
-                  <tr>
-                    <th className="py-2.5 px-3">Date</th>
-                    <th className="py-2.5 px-3">Method / Ref</th>
-                    <th className="py-2.5 px-3 text-right">Amount</th>
-                    <th className="py-2.5 px-3">Received By</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#F5F4F2]">
-                  {invoice.payments.map((p) => (
-                    <tr key={p.id}>
-                      <td className="py-2.5 px-3 whitespace-nowrap text-[#78716C]">
-                        {formatDate(p.paidOn)}
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <div className="font-semibold text-[#1A1714]">{p.method}</div>
-                        {p.reference && (
-                          <div className="text-[11px] font-mono text-[#78716C]">{p.reference}</div>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-800 whitespace-nowrap">
-                        {formatCurrency(p.amount)}
-                      </td>
-                      <td className="py-2.5 px-3 text-[#78716C]">
-                        {p.createdByName || 'Office Staff'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <Table
+            columns={paymentColumns}
+            rows={invoice.payments}
+            rowKey={(p) => p.id}
+            emptyTitle="No payments yet"
+            emptyDescription="No payments recorded against this invoice yet."
+          />
         </div>
 
         {/* Record Payment Form */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-[#E8E4DF] p-6 shadow-xs space-y-4">
-          <div className="flex items-center gap-2 pb-3 border-b border-[#F5F4F2]">
+        <div className="lg:col-span-5 bg-white rounded-2xl border border-(--color-border) p-6 shadow-xs space-y-4">
+          <div className="flex items-center gap-2 pb-3 border-b border-(--color-surface-sunken)">
             <BanknotesIcon className="w-5 h-5 text-emerald-600" />
-            <h2 className="text-base font-semibold text-[#1A1714]">
+            <h2 className="text-base font-semibold text-(--color-text)">
               Record Payment
             </h2>
           </div>
 
           {!isFinancePermitted ? (
-            <div className="p-4 bg-[#F5F4F2] rounded-xl border border-[#E8E4DF] text-xs text-[#78716C] space-y-1">
-              <div className="flex items-center gap-1.5 font-semibold text-[#44403C]">
-                <ShieldCheckIcon className="w-4 h-4 text-[#A8A29E]" />
-                Access Restricted
-              </div>
-              <p>
-                Only Owner and Office staff roles have permission to record commercial financial payments.
-              </p>
-            </div>
+            <RestrictedAccess message="Only Owner and Office staff roles have permission to record commercial financial payments." />
           ) : invoice.outstandingAmount <= 0 ? (
             <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-900 text-center space-y-1">
               <CheckCircleIcon className="w-8 h-8 text-emerald-600 mx-auto" />
@@ -323,70 +281,49 @@ export function InvoicePage() {
           ) : (
             <form onSubmit={handleRecordPayment} className="space-y-3.5">
               {/* Payment Amount */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
-                  Payment Amount (₹) <span className="text-rose-500">*</span>
-                </label>
-                <input
+              <div>
+                <Input
+                  label="Payment Amount (₹)"
+                  required
                   type="number"
                   step="0.01"
                   min="1"
                   max={invoice.outstandingAmount}
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
-                  className="w-full rounded-lg border border-[#E8E4DF] bg-white py-2 px-3 text-sm font-mono text-[#1A1714] focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
-                  required
+                  className="font-mono"
                 />
-                <span className="text-[11px] text-[#78716C]">
+                <span className="text-[11px] text-(--color-text-muted)">
                   Max payable: {formatCurrency(invoice.outstandingAmount)}
                 </span>
               </div>
 
               {/* Payment Date */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
-                  Payment Date <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={payDate}
-                  onChange={(e) => setPayDate(e.target.value)}
-                  className="w-full rounded-lg border border-[#E8E4DF] bg-white py-2 px-3 text-xs text-[#1A1714] focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
-                  required
-                />
-              </div>
+              <Input
+                label="Payment Date"
+                required
+                type="date"
+                value={payDate}
+                onChange={(e) => setPayDate(e.target.value)}
+              />
 
               {/* Payment Method */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
-                  Payment Mode
-                </label>
-                <select
-                  value={payMethod}
-                  onChange={(e) => setPayMethod(e.target.value)}
-                  className="w-full rounded-lg border border-[#E8E4DF] bg-white py-2 px-3 text-xs text-[#1A1714] focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
-                >
-                  <option value="NEFT / Bank Transfer">NEFT / Bank Transfer</option>
-                  <option value="RTGS">RTGS</option>
-                  <option value="Cheque Deposit">Cheque Deposit</option>
-                  <option value="UPI / Instant Transfer">UPI / Instant Transfer</option>
-                  <option value="Cash Receipt">Cash Receipt</option>
-                </select>
-              </div>
+              <Select
+                label="Payment Mode"
+                value={payMethod}
+                onChange={(e) => setPayMethod(e.target.value)}
+                options={PAYMENT_METHODS}
+              />
 
               {/* Reference */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
-                  Transaction Ref / Cheque No
-                </label>
-                <input
-                  type="text"
-                  value={payRef}
-                  onChange={(e) => setPayRef(e.target.value)}
-                  placeholder="e.g. UTR-123456 or Cheque #8899"
-                  className="w-full rounded-lg border border-[#E8E4DF] bg-white py-2 px-3 text-xs font-mono text-[#1A1714] focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
-                />
-              </div>
+              <Input
+                label="Transaction Ref / Cheque No"
+                type="text"
+                value={payRef}
+                onChange={(e) => setPayRef(e.target.value)}
+                placeholder="e.g. UTR-123456 or Cheque #8899"
+                className="font-mono"
+              />
 
               <div className="pt-2">
                 <Button

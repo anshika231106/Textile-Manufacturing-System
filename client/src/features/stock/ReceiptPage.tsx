@@ -11,6 +11,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
+import { Callout } from '../../components/ui/Callout';
+import { RestrictedAccess } from '../../components/ui/RestrictedAccess';
 import { formatCurrency } from '../../lib/format';
 import {
   CubeIcon,
@@ -67,7 +69,6 @@ export function ReceiptPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
-
     if (!supplierId) newErrors.supplierId = 'Supplier is required.';
     if (!yarnTypeId) newErrors.yarnTypeId = 'Yarn type is required.';
     if (!kgStr || kgVal <= 0) newErrors.kg = 'Quantity must be greater than 0 kg.';
@@ -145,17 +146,16 @@ export function ReceiptPage() {
 
   if (!canRecord) {
     return (
-      <div className="max-w-xl mx-auto py-12">
-        <Card className="text-center p-8">
-          <CubeIcon className="w-12 h-12 text-[#78716C] mx-auto mb-3" />
-          <h2 className="text-lg font-semibold text-[#1A1714]">Access Restricted</h2>
-          <p className="text-sm text-[#78716C] mt-1 mb-6">
-            Only supervisors and mill owners have permission to record raw material yarn receipts.
-          </p>
+      <div className="max-w-xl mx-auto py-12 space-y-4">
+        <RestrictedAccess
+          icon={CubeIcon}
+          message="Only supervisors and mill owners have permission to record raw material yarn receipts."
+        />
+        <div className="text-center">
           <Button variant="secondary" onClick={() => navigate('/stock')}>
             Return to Stock Overview
           </Button>
-        </Card>
+        </div>
       </div>
     );
   }
@@ -167,14 +167,14 @@ export function ReceiptPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/stock')}
-            className="p-2 text-[#78716C] hover:text-[#1A1714] hover:bg-[#F5F4F2] rounded-lg transition-colors"
+            className="p-2 text-(--color-text-muted) hover:text-(--color-text) hover:bg-(--color-surface-sunken) rounded-lg transition-colors"
             title="Back to Stock"
           >
             <ArrowLeftIcon className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-[#1A1714]">Record Yarn Receipt</h1>
-            <p className="text-sm text-[#78716C] mt-0.5">
+            <h1 className="text-2xl font-bold text-(--color-text)">Record Yarn Receipt</h1>
+            <p className="text-sm text-(--color-text-muted) mt-0.5">
               Enter incoming yarn stock at factory gate with supplier invoice details.
             </p>
           </div>
@@ -187,21 +187,21 @@ export function ReceiptPage() {
 
       {/* Success banner after submission */}
       {successReceipt && (
-        <Card className="p-6 border-l-4 border-l-[#16A34A] bg-[#F0FDF4] border-[#BBF7D0]">
+        <Card className="p-6 border-l-4 border-l-(--color-success) bg-(--color-success-light) border-(--color-success-border)">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3">
-              <CheckCircleIcon className="w-6 h-6 text-[#16A34A] shrink-0 mt-0.5" />
+              <CheckCircleIcon className="w-6 h-6 text-(--color-success) shrink-0 mt-0.5" />
               <div>
-                <h3 className="text-base font-semibold text-[#166534]">
+                <h3 className="text-base font-semibold text-(--color-success-dark)">
                   Yarn Inward Recorded Successfully!
                 </h3>
-                <p className="text-sm text-[#14532D] mt-1">
+                <p className="text-sm text-(--color-success-dark) mt-1">
                   Received <span className="font-bold">{successReceipt.kg} kg</span> of{' '}
                   <span className="font-semibold">{successReceipt.yarnName}</span> at{' '}
                   <span className="font-bold">{formatCurrency(successReceipt.ratePerKg)}/kg</span>.
-                  Reference: <span className="font-mono text-xs bg-white px-2 py-0.5 rounded border border-[#86EFAC]">{successReceipt.reference}</span>
+                  Reference: <span className="font-mono text-xs bg-white px-2 py-0.5 rounded border border-(--color-success-border)">{successReceipt.reference}</span>
                 </p>
-                <p className="text-xs text-[#15803D] mt-2 font-medium">
+                <p className="text-xs text-(--color-success-dark) mt-2 font-medium">
                   Updated on-hand stock for this yarn: {successReceipt.newOnHand.toLocaleString('en-IN')} kg
                 </p>
               </div>
@@ -220,22 +220,18 @@ export function ReceiptPage() {
 
       {/* Receipt Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Card className="p-6 border border-[#E8E4DF] shadow-xs space-y-6">
-          <div className="border-b border-[#E8E4DF] pb-4">
-            <h2 className="text-base font-semibold text-[#1A1714] flex items-center gap-2">
-              <TruckIcon className="w-5 h-5 text-[#EA580C]" />
+        <Card className="p-6 border border-(--color-border) shadow-xs space-y-6">
+          <div className="border-b border-(--color-border) pb-4">
+            <h2 className="text-base font-semibold text-(--color-text) flex items-center gap-2">
+              <TruckIcon className="w-5 h-5 text-(--color-accent)" />
               Gate Inward & Material Details
             </h2>
-            <p className="text-xs text-[#78716C] mt-0.5">
+            <p className="text-xs text-(--color-text-muted) mt-0.5">
               Accurate rates ensure correct cost-of-production calculation during weaving and dyeing.
             </p>
           </div>
 
-          {errors.form && (
-            <div className="p-3.5 rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] text-sm text-[#991B1B]">
-              {errors.form}
-            </div>
-          )}
+          {errors.form && <Callout tone="danger">{errors.form}</Callout>}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Supplier */}
@@ -249,7 +245,7 @@ export function ReceiptPage() {
                 onChange={(e) => setSupplierId(e.target.value)}
                 error={errors.supplierId}
               />
-              <p className="text-xs text-[#78716C] mt-1">
+              <p className="text-xs text-(--color-text-muted) mt-1">
                 From approved vendor master list.
               </p>
             </div>
@@ -266,7 +262,7 @@ export function ReceiptPage() {
                 error={errors.yarnTypeId}
               />
               {selectedYarn && (
-                <p className="text-xs text-[#EA580C] mt-1 font-medium">
+                <p className="text-xs text-(--color-accent) mt-1 font-medium">
                   Current on-hand: {selectedYarn.availableKg ?? 0} kg available | Reorder level: {selectedYarn.reorderLevelKg} kg
                 </p>
               )}
@@ -313,7 +309,7 @@ export function ReceiptPage() {
                 value={orderId}
                 onChange={(e) => setOrderId(e.target.value)}
               />
-              <p className="text-xs text-[#78716C] mt-1">
+              <p className="text-xs text-(--color-text-muted) mt-1">
                 Link if purchased specifically to fulfill a pending customer order.
               </p>
             </div>
@@ -333,13 +329,13 @@ export function ReceiptPage() {
           </div>
 
           {/* Live Valuation Box */}
-          <div className="rounded-xl p-4 bg-[#FFF7ED] border border-[#FDBA74]/50 flex items-center justify-between">
+          <div className="rounded-xl p-4 bg-(--color-accent-light) border border-[#FDBA74]/50 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-[#EA580C]/10 text-[#EA580C]">
+              <div className="p-2.5 rounded-lg bg-(--color-accent)/10 text-(--color-accent)">
                 <CalculatorIcon className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-[#C2410C]">
+                <p className="text-xs font-semibold uppercase tracking-wider text-(--color-accent-hover)">
                   Total Inward Valuation
                 </p>
                 <p className="text-xs text-[#9A3412] mt-0.5">
@@ -350,14 +346,14 @@ export function ReceiptPage() {
               </div>
             </div>
             <div className="text-right">
-              <span className="text-2xl font-bold text-[#1A1714]">
+              <span className="text-2xl font-bold text-(--color-text)">
                 {formatCurrency(totalValue)}
               </span>
             </div>
           </div>
 
           {/* Form Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E8E4DF]">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-(--color-border)">
             <Button
               type="button"
               variant="secondary"

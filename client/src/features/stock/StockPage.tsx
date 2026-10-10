@@ -5,11 +5,11 @@ import { useApi } from '../../lib/useApi';
 import { getStockSummary, type YarnStockSummary } from './stock.api';
 import { listYarnTypes } from '../masters/masters.api';
 import { LedgerPanel } from './LedgerPanel';
-import { Card } from '../../components/ui/Card';
 import { Table, type Column } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { ErrorState } from '../../components/ui/ErrorState';
+import { StatCard, StatGrid } from '../../components/ui/StatCard';
 import {
   CubeIcon,
   PlusIcon,
@@ -88,15 +88,15 @@ export function StockPage() {
       render: (row) => (
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-[#1A1714] font-mono text-xs bg-[#F5F4F2] px-2 py-0.5 rounded border border-[#E8E4DF]">
+            <span className="font-semibold text-(--color-text) font-mono text-xs bg-(--color-surface-sunken) px-2 py-0.5 rounded border border-(--color-border)">
               {row.code}
             </span>
             {row.countLabel && (
-              <span className="text-xs text-[#78716C] font-medium">({row.countLabel})</span>
+              <span className="text-xs text-(--color-text-muted) font-medium">({row.countLabel})</span>
             )}
           </div>
-          <p className="text-sm font-medium text-[#1A1714] mt-1">{row.name}</p>
-          <p className="text-xs text-[#78716C]">Colour: {row.colour}</p>
+          <p className="text-sm font-medium text-(--color-text) mt-1">{row.name}</p>
+          <p className="text-xs text-(--color-text-muted)">Colour: {row.colour}</p>
         </div>
       ),
     },
@@ -105,7 +105,7 @@ export function StockPage() {
       header: 'On-Hand (kg)',
       align: 'right',
       render: (row) => (
-        <span className="font-bold text-sm text-[#1A1714] block text-right">
+        <span className="font-bold text-sm text-(--color-text) block text-right">
           {row.onHandKg.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 3 })} kg
         </span>
       ),
@@ -118,7 +118,7 @@ export function StockPage() {
         <div className="text-right">
           <span
             className={`font-medium text-xs block ${
-              row.reservedKg > 0 ? 'text-[#EA580C]' : 'text-[#78716C]'
+              row.reservedKg > 0 ? 'text-(--color-accent)' : 'text-(--color-text-muted)'
             }`}
           >
             {row.reservedKg > 0
@@ -126,7 +126,7 @@ export function StockPage() {
               : '—'}
           </span>
           {row.shortfallKg > 0 && (
-            <span className="text-[11px] font-semibold text-[#DC2626] block">
+            <span className="text-[11px] font-semibold text-(--color-danger) block">
               Shortfall: {row.shortfallKg.toLocaleString('en-IN')} kg
             </span>
           )}
@@ -141,12 +141,12 @@ export function StockPage() {
         <div className="text-right">
           <span
             className={`font-semibold text-sm block ${
-              row.availableKg <= 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'
+              row.availableKg <= 0 ? 'text-(--color-danger)' : 'text-(--color-success)'
             }`}
           >
             {row.availableKg.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 3 })} kg
           </span>
-          <span className="text-[11px] text-[#78716C] block">
+          <span className="text-[11px] text-(--color-text-muted) block">
             Reorder at: {row.reorderLevelKg.toLocaleString('en-IN')} kg
           </span>
         </div>
@@ -178,7 +178,7 @@ export function StockPage() {
         <div className="flex items-center justify-end gap-2">
           <button
             onClick={() => handleViewLedger(row.yarnTypeId)}
-            className="text-xs text-[#78716C] hover:text-[#EA580C] font-medium px-2.5 py-1 rounded-md hover:bg-[#FFF7ED] transition-colors"
+            className="text-xs text-(--color-text-muted) hover:text-(--color-accent) font-medium px-2.5 py-1 rounded-md hover:bg-(--color-accent-light) transition-colors"
             title="View ledger history"
           >
             Ledger
@@ -204,8 +204,8 @@ export function StockPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A1714]">Yarn Stock Management</h1>
-          <p className="text-sm text-[#78716C] mt-0.5">
+          <h1 className="text-2xl font-bold text-(--color-text)">Yarn Stock Management</h1>
+          <p className="text-sm text-(--color-text-muted) mt-0.5">
             Raw material inventory, real-time availability, reorder alerts and gate movement history.
           </p>
         </div>
@@ -217,7 +217,7 @@ export function StockPage() {
             onClick={reloadStock}
             title="Refresh Stock Data"
           >
-            <ArrowPathIcon className="w-4 h-4 text-[#78716C]" />
+            <ArrowPathIcon className="w-4 h-4 text-(--color-text-muted)" />
           </Button>
 
           {canRecord && (
@@ -234,105 +234,50 @@ export function StockPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4 border border-[#E8E4DF] shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#78716C] uppercase tracking-wider">
-              Total On-Hand
-            </span>
-            <div className="p-2 rounded-lg bg-[#F5F4F2] text-[#78716C]">
-              <CubeIcon className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <span className="text-2xl font-bold text-[#1A1714]">
-              {kpis.totalOnHand.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
-            </span>
-            <span className="text-xs text-[#78716C] ml-1">kg</span>
-          </div>
-          <p className="text-xs text-[#78716C] mt-1">Physical stock inside store</p>
-        </Card>
-
-        <Card className="p-4 border border-[#E8E4DF] shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#78716C] uppercase tracking-wider">
-              Available
-            </span>
-            <div className="p-2 rounded-lg bg-[#F0FDF4] text-[#16A34A]">
-              <CheckCircleIcon className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <span className="text-2xl font-bold text-[#16A34A]">
-              {kpis.totalAvailable.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
-            </span>
-            <span className="text-xs text-[#78716C] ml-1">kg</span>
-          </div>
-          <p className="text-xs text-[#78716C] mt-1">Unallocated for new orders</p>
-        </Card>
-
-        <Card className="p-4 border border-[#E8E4DF] shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#78716C] uppercase tracking-wider">
-              Reserved
-            </span>
-            <div className="p-2 rounded-lg bg-[#FFF7ED] text-[#EA580C]">
-              <ClockIcon className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <span className="text-2xl font-bold text-[#EA580C]">
-              {kpis.totalReserved.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
-            </span>
-            <span className="text-xs text-[#78716C] ml-1">kg</span>
-          </div>
-          <p className="text-xs text-[#78716C] mt-1">Committed to active orders</p>
-        </Card>
-
-        <Card className="p-4 border border-[#E8E4DF] shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#78716C] uppercase tracking-wider">
-              Low Stock Alerts
-            </span>
-            <div
-              className={`p-2 rounded-lg ${
-                kpis.lowStockCount > 0 ? 'bg-[#FEF2F2] text-[#DC2626]' : 'bg-[#F0FDF4] text-[#16A34A]'
-              }`}
-            >
-              {kpis.lowStockCount > 0 ? (
-                <ShieldExclamationIcon className="w-5 h-5" />
-              ) : (
-                <CheckCircleIcon className="w-5 h-5" />
-              )}
-            </div>
-          </div>
-          <div className="mt-2">
-            <span
-              className={`text-2xl font-bold ${
-                kpis.lowStockCount > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'
-              }`}
-            >
-              {kpis.lowStockCount}
-            </span>
-            <span className="text-xs text-[#78716C] ml-1">materials</span>
-          </div>
-          <p className="text-xs text-[#78716C] mt-1">Below minimum reorder level</p>
-        </Card>
-      </div>
+      <StatGrid columns={4}>
+        <StatCard
+          icon={CubeIcon}
+          label="Total On-Hand"
+          value={`${kpis.totalOnHand.toLocaleString('en-IN', { maximumFractionDigits: 1 })} kg`}
+          sub="Physical stock inside store"
+          tone="neutral"
+        />
+        <StatCard
+          icon={CheckCircleIcon}
+          label="Available"
+          value={`${kpis.totalAvailable.toLocaleString('en-IN', { maximumFractionDigits: 1 })} kg`}
+          sub="Unallocated for new orders"
+          tone="success"
+        />
+        <StatCard
+          icon={ClockIcon}
+          label="Reserved"
+          value={`${kpis.totalReserved.toLocaleString('en-IN', { maximumFractionDigits: 1 })} kg`}
+          sub="Committed to active orders"
+          tone="accent"
+        />
+        <StatCard
+          icon={kpis.lowStockCount > 0 ? ShieldExclamationIcon : CheckCircleIcon}
+          label="Low Stock Alerts"
+          value={`${kpis.lowStockCount} materials`}
+          sub="Below minimum reorder level"
+          tone={kpis.lowStockCount > 0 ? 'danger' : 'success'}
+        />
+      </StatGrid>
 
       {/* Tabs */}
-      <div className="flex items-center border-b border-[#E8E4DF]">
+      <div className="flex items-center border-b border-(--color-border)">
         <button
           onClick={() => setActiveTab('inventory')}
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
             activeTab === 'inventory'
-              ? 'border-[#EA580C] text-[#EA580C]'
-              : 'border-transparent text-[#78716C] hover:text-[#1A1714]'
+              ? 'border-(--color-accent) text-(--color-accent)'
+              : 'border-transparent text-(--color-text-muted) hover:text-(--color-text)'
           }`}
         >
           <ScaleIcon className="w-4 h-4" />
           Yarn Inventory Overview
-          <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-[#F5F4F2] text-[#78716C]">
+          <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-(--color-surface-sunken) text-(--color-text-muted)">
             {stockData?.length ?? 0}
           </span>
         </button>
@@ -341,8 +286,8 @@ export function StockPage() {
           onClick={() => setActiveTab('ledger')}
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
             activeTab === 'ledger'
-              ? 'border-[#EA580C] text-[#EA580C]'
-              : 'border-transparent text-[#78716C] hover:text-[#1A1714]'
+              ? 'border-(--color-accent) text-(--color-accent)'
+              : 'border-transparent text-(--color-text-muted) hover:text-(--color-text)'
           }`}
         >
           <DocumentTextIcon className="w-4 h-4" />
@@ -356,25 +301,25 @@ export function StockPage() {
           {/* Filters Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="relative max-w-sm w-full">
-              <MagnifyingGlassIcon className="w-4 h-4 text-[#78716C] absolute left-3 top-1/2 -translate-y-1/2" />
+              <MagnifyingGlassIcon className="w-4 h-4 text-(--color-text-muted) absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search by code, yarn name, or colour..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-[#E8E4DF] bg-white placeholder:text-[#A8A29E] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20 focus:border-[#EA580C]"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-(--color-border) bg-white placeholder:text-(--color-text-subtle) focus:outline-none focus:ring-2 focus:ring-(--color-accent)/20 focus:border-(--color-accent)"
               />
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-[#1A1714]">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-(--color-text)">
                 <input
                   type="checkbox"
                   checked={showLowOnly}
                   onChange={(e) => setShowLowOnly(e.target.checked)}
-                  className="rounded border-[#E8E4DF] text-[#EA580C] focus:ring-[#EA580C]"
+                  className="rounded border-(--color-border) text-(--color-accent) focus:ring-(--color-accent)"
                 />
-                <span className="inline-flex items-center gap-1 text-[#DC2626]">
+                <span className="inline-flex items-center gap-1 text-(--color-danger)">
                   <ExclamationTriangleIcon className="w-4 h-4" />
                   Show Low Stock Only ({kpis.lowStockCount})
                 </span>

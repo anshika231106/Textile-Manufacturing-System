@@ -7,6 +7,12 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Dialog } from '../../components/ui/Dialog';
 import { Spinner } from '../../components/ui/Spinner';
+import { Callout } from '../../components/ui/Callout';
+import { ProgressBar } from '../../components/ui/ProgressBar';
+import { StatCard, StatGrid } from '../../components/ui/StatCard';
+import { SegmentedControl } from '../../components/ui/SegmentedControl';
+import { Select } from '../../components/ui/Select';
+import { Input } from '../../components/ui/Input';
 import {
   getBoard,
   startJob,
@@ -49,6 +55,24 @@ const STAGE_COLORS: Record<Stage, { border: string; bg: string; text: string }> 
   WEAVING: { border: 'border-amber-200', bg: 'bg-amber-50/60', text: 'text-amber-700' },
   DYEING: { border: 'border-purple-200', bg: 'bg-purple-50/60', text: 'text-purple-700' },
 };
+
+const STAGE_FILTER_OPTIONS: { value: 'ALL' | Stage; label: string }[] = [
+  { value: 'ALL', label: 'All Stages' },
+  ...STAGES.map((st) => ({ value: st, label: st })),
+];
+
+const STATUS_FILTER_OPTIONS = [
+  { value: 'ALL', label: 'All Statuses' },
+  { value: 'RUNNING', label: 'Running' },
+  { value: 'IDLE', label: 'Idle' },
+  { value: 'BREAKDOWN', label: 'Damaged' },
+];
+
+const SELF_STATUS_OPTIONS: { value: MachineStatus; label: string; tone: 'neutral' | 'success' | 'danger' }[] = [
+  { value: 'IDLE', label: 'IDLE', tone: 'neutral' },
+  { value: 'RUNNING', label: 'RUNNING', tone: 'success' },
+  { value: 'BREAKDOWN', label: 'Damaged', tone: 'danger' },
+];
 
 export function BoardPage() {
   const { user } = useAuth();
@@ -264,7 +288,7 @@ export function BoardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-[#1A1714]">
+            <h1 className="text-2xl font-bold tracking-tight text-(--color-text)">
               Production Floor Live Board
             </h1>
             {/* Live Polling Badge */}
@@ -276,11 +300,11 @@ export function BoardPage() {
               Live Polling (5s)
             </span>
           </div>
-          <p className="text-sm text-[#78716C] mt-1">
+          <p className="text-sm text-(--color-text-muted) mt-1">
             {isStaff
               ? 'Update the status of machines assigned to you. Supervisors can see changes live.'
               : 'Monitor machine status, active orders, production output, and staff assignments.'}
-            <span className="ml-2 text-xs text-[#A8A29E]">
+            <span className="ml-2 text-xs text-(--color-text-subtle)">
               Last sync: {lastRefreshed.toLocaleTimeString()}
             </span>
           </p>
@@ -295,7 +319,7 @@ export function BoardPage() {
             className="text-xs"
             title="Manual Refresh"
           >
-            <ArrowPathIcon className="w-4 h-4 text-[#78716C]" />
+            <ArrowPathIcon className="w-4 h-4 text-(--color-text-muted)" />
             Refresh
           </Button>
 
@@ -311,8 +335,8 @@ export function BoardPage() {
               Your Assigned Machines
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#F5F4F2] border border-[#E8E4DF] text-xs font-medium text-[#78716C]">
-              <ShieldExclamationIcon className="w-4 h-4 text-[#A8A29E]" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-(--color-surface-sunken) border border-(--color-border) text-xs font-medium text-(--color-text-muted)">
+              <ShieldExclamationIcon className="w-4 h-4 text-(--color-text-subtle)" />
               View Only ({user?.role || 'Guest'})
             </div>
           )}
@@ -320,123 +344,81 @@ export function BoardPage() {
       </div>
 
       {/* Stats Summary Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
-        <div className="bg-white rounded-xl border border-[#E8E4DF] p-4 shadow-2xs hover:shadow-xs transition-shadow">
-          <div className="flex items-center justify-between text-[#78716C] mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Total Units</span>
-            <CpuChipIcon className="w-4 h-4 text-[#A8A29E]" />
-          </div>
-          <div className="text-2xl font-bold text-[#1A1714]">{stats.totalMachines}</div>
-          <div className="text-xs text-[#78716C] mt-1">Installed plant machines</div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-emerald-100 p-4 shadow-2xs hover:shadow-xs transition-shadow bg-gradient-to-br from-white to-emerald-50/30">
-          <div className="flex items-center justify-between text-emerald-700 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Running</span>
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
-            </span>
-          </div>
-          <div className="text-2xl font-bold text-emerald-800">{stats.running}</div>
-          <div className="text-xs text-emerald-600 mt-1 font-medium">
-            {stats.utilizationRate}% Utilization
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-[#E8E4DF] p-4 shadow-2xs hover:shadow-xs transition-shadow">
-          <div className="flex items-center justify-between text-[#78716C] mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Idle Units</span>
-            <span className="w-2 h-2 rounded-full bg-slate-300"></span>
-          </div>
-          <div className="text-2xl font-bold text-[#44403C]">{stats.idle}</div>
-          <div className="text-xs text-[#78716C] mt-1">Ready for assignment</div>
-        </div>
-
-        <div className={`bg-white rounded-xl border p-4 shadow-2xs hover:shadow-xs transition-shadow ${stats.breakdown > 0 ? 'border-rose-200 bg-rose-50/40 text-rose-900' : 'border-[#E8E4DF]'}`}>
-          <div className="flex items-center justify-between text-[#78716C] mb-1">
-            <span className={`text-xs font-medium uppercase tracking-wider ${stats.breakdown > 0 ? 'text-rose-700' : ''}`}>
-              Damaged
-            </span>
-            <ExclamationTriangleIcon className={`w-4 h-4 ${stats.breakdown > 0 ? 'text-rose-600' : 'text-[#A8A29E]'}`} />
-          </div>
-          <div className={`text-2xl font-bold ${stats.breakdown > 0 ? 'text-rose-700' : 'text-[#1A1714]'}`}>
-            {stats.breakdown}
-          </div>
-          <div className={`text-xs mt-1 ${stats.breakdown > 0 ? 'text-rose-600 font-medium' : 'text-[#78716C]'}`}>
-            {stats.breakdown > 0 ? 'Requires attention' : 'No damaged machines'}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-amber-200/80 p-4 shadow-2xs hover:shadow-xs transition-shadow bg-gradient-to-br from-white to-amber-50/30 col-span-2 md:col-span-1">
-          <div className="flex items-center justify-between text-amber-800 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Output Today</span>
-            <BoltIcon className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className="text-2xl font-bold text-amber-900 font-mono">
-            {stats.totalMetresToday.toLocaleString()} <span className="text-sm font-sans font-medium text-amber-700">m</span>
-          </div>
-          <div className="text-xs text-amber-700 mt-1">Aggregated shift total</div>
-        </div>
-      </div>
+      <StatGrid columns={5}>
+        <StatCard
+          icon={CpuChipIcon}
+          label="Total Units"
+          value={stats.totalMachines}
+          sub="Installed plant machines"
+          tone="neutral"
+        />
+        <StatCard
+          icon={BoltIcon}
+          label="Running"
+          value={stats.running}
+          sub={`${stats.utilizationRate}% Utilization`}
+          tone="success"
+          live
+        />
+        <StatCard
+          icon={CpuChipIcon}
+          label="Idle Units"
+          value={stats.idle}
+          sub="Ready for assignment"
+          tone="neutral"
+        />
+        <StatCard
+          icon={ExclamationTriangleIcon}
+          label="Damaged"
+          value={stats.breakdown}
+          sub={stats.breakdown > 0 ? 'Requires attention' : 'No damaged machines'}
+          tone={stats.breakdown > 0 ? 'danger' : 'neutral'}
+        />
+        <StatCard
+          icon={BoltIcon}
+          label="Output Today"
+          value={`${stats.totalMetresToday.toLocaleString()} m`}
+          sub="Aggregated shift total"
+          tone="warning"
+        />
+      </StatGrid>
 
       {/* Filter and Control Bar */}
-      <div className="bg-white rounded-xl border border-[#E8E4DF] p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between shadow-2xs">
+      <div className="bg-white rounded-xl border border-(--color-border) p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between shadow-2xs">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-[#78716C] mr-1 flex items-center gap-1">
+          <span className="text-xs font-medium text-(--color-text-muted) mr-1 flex items-center gap-1">
             <AdjustmentsHorizontalIcon className="w-4 h-4" />
             Stage:
           </span>
-          <button
-            onClick={() => setSelectedStageFilter('ALL')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              selectedStageFilter === 'ALL'
-                ? 'bg-[#1A1714] text-white shadow-2xs'
-                : 'bg-[#F5F4F2] text-[#78716C] hover:bg-[#E8E4DF] hover:text-[#1A1714]'
-            }`}
-          >
-            All Stages
-          </button>
-          {STAGES.map((st) => (
-            <button
-              key={st}
-              onClick={() => setSelectedStageFilter(st)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                selectedStageFilter === st
-                  ? 'bg-[#EA580C] text-white shadow-2xs'
-                  : 'bg-[#F5F4F2] text-[#78716C] hover:bg-[#E8E4DF] hover:text-[#1A1714]'
-              }`}
-            >
-              {st}
-            </button>
-          ))}
+          <SegmentedControl
+            value={selectedStageFilter}
+            onChange={setSelectedStageFilter}
+            options={STAGE_FILTER_OPTIONS}
+            size="sm"
+          />
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           {/* Status Filter */}
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-medium text-[#78716C]">Status:</span>
-            <select
+            <span className="text-xs font-medium text-(--color-text-muted)">Status:</span>
+            <Select
               value={selectedStatusFilter}
               onChange={(e) => setSelectedStatusFilter(e.target.value as any)}
               aria-label="Filter machines by status"
-              className="text-xs rounded-lg border border-[#E8E4DF] bg-white py-1.5 px-2.5 text-[#1A1714] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="RUNNING">Running</option>
-              <option value="IDLE">Idle</option>
-              <option value="BREAKDOWN">Damaged</option>
-            </select>
+              options={STATUS_FILTER_OPTIONS}
+              className="text-xs py-1.5"
+            />
           </div>
 
           {/* Search Input */}
           <div className="w-full sm:w-48">
-            <input
+            <Input
               type="text"
               placeholder="Search machine/order..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs rounded-lg border border-[#E8E4DF] bg-white py-1.5 px-3 text-[#1A1714] placeholder-[#A8A29E] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
+              className="text-xs py-1.5"
             />
           </div>
         </div>
@@ -444,14 +426,12 @@ export function BoardPage() {
 
       {/* Main Floor Columns or Grouped Grid */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-[#78716C]">
+        <div className="flex flex-col items-center justify-center py-20 text-(--color-text-muted)">
           <Spinner />
           <p className="text-sm mt-3 font-medium">Connecting to machine floor sensors...</p>
         </div>
       ) : boardError ? (
-        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800">
-          {boardError}
-        </div>
+        <Callout tone="danger">{boardError}</Callout>
       ) : (
         <div className="space-y-8">
           {STAGES.filter(
@@ -463,22 +443,22 @@ export function BoardPage() {
             return (
               <section key={stage} className="space-y-3.5">
                 {/* Stage Header */}
-                <div className="flex items-center justify-between border-b border-[#E8E4DF] pb-2">
+                <div className="flex items-center justify-between border-b border-(--color-border) pb-2">
                   <div className="flex items-center gap-2.5">
                     <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wider ${style.bg} ${style.text} border ${style.border}`}>
                       {stage}
                     </span>
-                    <h2 className="text-base font-semibold text-[#1A1714]">
+                    <h2 className="text-base font-semibold text-(--color-text)">
                       {STAGE_LABELS[stage]}
                     </h2>
                   </div>
-                  <span className="text-xs text-[#78716C] font-medium">
+                  <span className="text-xs text-(--color-text-muted) font-medium">
                     {stageMachines.length} {stageMachines.length === 1 ? 'unit' : 'units'}
                   </span>
                 </div>
 
                 {stageMachines.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-[#E8E4DF] p-8 text-center text-[#78716C] text-sm">
+                  <div className="rounded-xl border border-dashed border-(--color-border) p-8 text-center text-(--color-text-muted) text-sm">
                     No machines match current filter criteria in this stage.
                   </div>
                 ) : (
@@ -500,22 +480,22 @@ export function BoardPage() {
                               ? 'border-emerald-200/90 ring-1 ring-emerald-500/10'
                               : isBreakdown
                               ? 'border-rose-300 bg-rose-50/20'
-                              : 'border-[#E8E4DF]'
+                              : 'border-(--color-border)'
                           }`}
                         >
                           {/* Machine Card Top */}
-                          <div className="p-4.5 border-b border-[#F5F4F2]">
+                          <div className="p-4.5 border-b border-(--color-surface-sunken)">
                             <div className="flex items-start justify-between gap-2">
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-[#F5F4F2] text-[#44403C] border border-[#E8E4DF]">
+                                  <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-(--color-surface-sunken) text-(--color-text-dark) border border-(--color-border)">
                                     {machine.code}
                                   </span>
-                                  <span className="text-xs text-[#78716C]">
+                                  <span className="text-xs text-(--color-text-muted)">
                                     ₹{machine.ratePerMetre}/m
                                   </span>
                                 </div>
-                                <h3 className="text-sm font-semibold text-[#1A1714] mt-1.5 leading-snug">
+                                <h3 className="text-sm font-semibold text-(--color-text) mt-1.5 leading-snug">
                                   {machine.name}
                                 </h3>
                               </div>
@@ -545,33 +525,28 @@ export function BoardPage() {
                                       {machine.currentJob.orderNumber}
                                     </span>
                                   </div>
-                                  <div className="text-xs text-[#44403C] font-medium truncate">
+                                  <div className="text-xs text-(--color-text-dark) font-medium truncate">
                                     {machine.currentJob.buyerName}
                                   </div>
-                                  <div className="text-xs text-[#78716C] mt-0.5 truncate">
+                                  <div className="text-xs text-(--color-text-muted) mt-0.5 truncate">
                                     {machine.currentJob.fabricType} • {machine.currentJob.colour}
                                   </div>
 
                                   {/* Progress bar */}
                                   <div className="mt-2.5">
                                     <div className="flex items-center justify-between text-xs mb-1">
-                                      <span className="text-[#78716C]">Job Progress</span>
+                                      <span className="text-(--color-text-muted)">Job Progress</span>
                                       <span className="font-mono font-semibold text-emerald-800">
                                         {machine.currentJob.producedMetres} / {machine.currentJob.targetMetres} m ({progressPercent}%)
                                       </span>
                                     </div>
-                                    <div className="w-full bg-emerald-100/70 rounded-full h-1.5 overflow-hidden">
-                                      <div
-                                        className="bg-emerald-600 h-1.5 rounded-full transition-all duration-300"
-                                        style={{ width: `${progressPercent}%` }}
-                                      />
-                                    </div>
+                                    <ProgressBar value={progressPercent} tone="success" size="sm" />
                                   </div>
                                 </div>
 
-                                <div className="flex items-center justify-between text-xs text-[#78716C] px-1">
-                                  <span>Shift: <strong className="text-[#1A1714]">{machine.currentJob.shift || 'MORNING'}</strong></span>
-                                  <span>Output Today: <strong className="text-[#1A1714] font-mono">{machine.metresToday} m</strong></span>
+                                <div className="flex items-center justify-between text-xs text-(--color-text-muted) px-1">
+                                  <span>Shift: <strong className="text-(--color-text)">{machine.currentJob.shift || 'MORNING'}</strong></span>
+                                  <span>Output Today: <strong className="text-(--color-text) font-mono">{machine.metresToday} m</strong></span>
                                 </div>
                               </div>
                             ) : isBreakdown ? (
@@ -588,45 +563,35 @@ export function BoardPage() {
                                 </div>
                               </div>
                             ) : (
-                              <div className="rounded-lg border border-dashed border-[#E8E4DF] bg-[#FBFBFA] p-4 text-center">
-                                <p className="text-xs text-[#78716C] font-medium">Machine ready for assignment</p>
-                                <p className="text-[11px] text-[#A8A29E] mt-0.5">No active order currently loaded</p>
-                                <div className="text-xs text-[#78716C] mt-2">
-                                  Output Today: <span className="font-mono font-semibold text-[#1A1714]">{machine.metresToday} m</span>
+                              <div className="rounded-lg border border-dashed border-(--color-border) bg-(--color-surface-alt) p-4 text-center">
+                                <p className="text-xs text-(--color-text-muted) font-medium">Machine ready for assignment</p>
+                                <p className="text-[11px] text-(--color-text-subtle) mt-0.5">No active order currently loaded</p>
+                                <div className="text-xs text-(--color-text-muted) mt-2">
+                                  Output Today: <span className="font-mono font-semibold text-(--color-text)">{machine.metresToday} m</span>
                                 </div>
                               </div>
                             )}
                           </div>
 
                           {/* Machine Card Actions */}
-                          <div className="p-3 bg-[#FBFBFA] border-t border-[#E8E4DF] space-y-3">
+                          <div className="p-3 bg-(--color-surface-alt) border-t border-(--color-border) space-y-3">
                             {isStaff ? (
                               <>
-                                <div className="text-xs text-[#78716C]">
-                                  Assigned to <span className="font-semibold text-[#1A1714]">{machine.assignedStaff?.name || user?.name}</span>
+                                <div className="text-xs text-(--color-text-muted)">
+                                  Assigned to <span className="font-semibold text-(--color-text)">{machine.assignedStaff?.name || user?.name}</span>
                                 </div>
-                                <div className="grid grid-cols-3 gap-1.5">
-                                  {(['IDLE', 'RUNNING', 'BREAKDOWN'] as MachineStatus[]).map((status) => (
-                                    <button
-                                      key={status}
-                                      type="button"
-                                      aria-pressed={machine.status === status}
-                                      disabled={savingMachineId === machine.id || machine.status === status}
-                                      onClick={() => handleStaffStatusChange(machine, status)}
-                                      className={`rounded-lg border px-2 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${
-                                        machine.status === status
-                                          ? status === 'BREAKDOWN'
-                                            ? 'border-rose-300 bg-rose-100 text-rose-800'
-                                            : status === 'RUNNING'
-                                              ? 'border-emerald-300 bg-emerald-100 text-emerald-800'
-                                              : 'border-slate-300 bg-slate-100 text-slate-800'
-                                          : 'border-[#E8E4DF] bg-white text-[#78716C] hover:border-[#EA580C]/50'
-                                      }`}
-                                    >
-                                      {status === 'BREAKDOWN' ? 'Damaged' : status}
-                                    </button>
-                                  ))}
-                                </div>
+                                <SegmentedControl
+                                  value={machine.status}
+                                  onChange={(status) => handleStaffStatusChange(machine, status)}
+                                  options={SELF_STATUS_OPTIONS}
+                                  size="sm"
+                                  fullWidth
+                                  disabledOptions={
+                                    savingMachineId === machine.id
+                                      ? ['IDLE', 'RUNNING', 'BREAKDOWN']
+                                      : [machine.status]
+                                  }
+                                />
                               </>
                             ) : (
                               <div className="flex items-center justify-between gap-2">
@@ -708,25 +673,24 @@ export function BoardPage() {
                             )}
 
                             {isSupervisorOrOwner && (
-                              <label className="block border-t border-[#E8E4DF] pt-3">
-                                <span className="block text-xs font-medium text-[#78716C] mb-1.5">Assigned Staff</span>
-                                <select
+                              <div className="border-t border-(--color-border) pt-3">
+                                <Select
+                                  label="Assigned Staff"
                                   value={machine.assignedStaff?.id ?? ''}
                                   disabled={savingMachineId === machine.id}
                                   onChange={(event) => handleAssignMachine(machine.id, event.target.value)}
-                                  className="w-full rounded-lg border border-[#E8E4DF] bg-white py-2 px-2.5 text-xs text-[#1A1714] focus:outline-none focus:ring-1 focus:ring-[#EA580C] disabled:opacity-60"
-                                >
-                                  <option value="">Unassigned</option>
-                                  {staffMembers.map((staff) => (
-                                    <option key={staff.id} value={staff.id}>{staff.name}</option>
-                                  ))}
-                                </select>
-                              </label>
+                                  options={[
+                                    { value: '', label: 'Unassigned' },
+                                    ...staffMembers.map((staff) => ({ value: staff.id, label: staff.name })),
+                                  ]}
+                                  className="text-xs py-2"
+                                />
+                              </div>
                             )}
 
                             {machine.statusUpdatedBy && (
-                              <p className="text-[11px] text-[#78716C]">
-                                Last status update by <span className="font-medium text-[#44403C]">{machine.statusUpdatedBy.name}</span>
+                              <p className="text-[11px] text-(--color-text-muted)">
+                                Last status update by <span className="font-medium text-(--color-text-dark)">{machine.statusUpdatedBy.name}</span>
                                 {machine.statusUpdatedAt && ` · ${new Date(machine.statusUpdatedAt).toLocaleString()}`}
                               </p>
                             )}
@@ -749,49 +713,33 @@ export function BoardPage() {
         title={`Assign Order to ${startJobMachine?.name || 'Machine'}`}
       >
         <div className="space-y-4">
-          <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-900">
+          <Callout tone="warning">
             <strong>Target Stage:</strong> {startJobMachine?.stage} (Rate: ₹{startJobMachine?.ratePerMetre}/m)
-          </div>
+          </Callout>
+
+          <Select
+            label="Select Active Order"
+            required
+            value={selectedOrderId}
+            onChange={(e) => setSelectedOrderId(e.target.value)}
+            placeholder="-- Choose an order --"
+            options={availableOrders.map((ord) => ({
+              value: ord.id,
+              label: `${ord.orderNumber} — ${ord.buyerName} (${ord.fabricType}, ${ord.metres}m)`,
+            }))}
+          />
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-[#1A1714]">
-              Select Active Order <span className="text-rose-500">*</span>
-            </label>
-            <select
-              value={selectedOrderId}
-              onChange={(e) => setSelectedOrderId(e.target.value)}
-              className="w-full rounded-lg border border-[#E8E4DF] bg-white py-2 px-3 text-sm text-[#1A1714] focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
-            >
-              <option value="">-- Choose an order --</option>
-              {availableOrders.map((ord) => (
-                <option key={ord.id} value={ord.id}>
-                  {ord.orderNumber} — {ord.buyerName} ({ord.fabricType}, {ord.metres}m)
-                </option>
-              ))}
-            </select>
+            <label className="text-sm font-medium text-(--color-text)">Working Shift</label>
+            <SegmentedControl
+              value={selectedShift}
+              onChange={setSelectedShift}
+              options={(['MORNING', 'EVENING', 'NIGHT'] as Shift[]).map((sh) => ({ value: sh, label: sh }))}
+              fullWidth
+            />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-[#1A1714]">Working Shift</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['MORNING', 'EVENING', 'NIGHT'] as Shift[]).map((sh) => (
-                <button
-                  key={sh}
-                  type="button"
-                  onClick={() => setSelectedShift(sh)}
-                  className={`py-2 px-3 rounded-lg text-xs font-semibold border transition-all ${
-                    selectedShift === sh
-                      ? 'bg-[#EA580C] text-white border-[#EA580C] shadow-2xs'
-                      : 'bg-white text-[#78716C] border-[#E8E4DF] hover:border-[#A8A29E]'
-                  }`}
-                >
-                  {sh}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-[#E8E4DF]">
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-(--color-border)">
             <Button
               variant="secondary"
               onClick={() => setStartJobMachine(null)}
@@ -817,27 +765,27 @@ export function BoardPage() {
         title="Complete Machine Stage Job"
       >
         <div className="space-y-4">
-          <p className="text-sm text-[#44403C]">
+          <p className="text-sm text-(--color-text-dark)">
             Are you sure you want to mark the current job on{' '}
             <strong>{completeJobMachine?.name}</strong> as completed?
           </p>
 
           {completeJobMachine?.currentJob && (
-            <div className="bg-[#F5F4F2] rounded-lg p-3.5 space-y-2 text-xs border border-[#E8E4DF]">
+            <div className="bg-(--color-surface-sunken) rounded-lg p-3.5 space-y-2 text-xs border border-(--color-border)">
               <div className="flex justify-between">
-                <span className="text-[#78716C]">Order:</span>
-                <span className="font-mono font-bold text-[#1A1714]">
+                <span className="text-(--color-text-muted)">Order:</span>
+                <span className="font-mono font-bold text-(--color-text)">
                   {completeJobMachine.currentJob.orderNumber}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#78716C]">Client:</span>
-                <span className="font-medium text-[#1A1714]">
+                <span className="text-(--color-text-muted)">Client:</span>
+                <span className="font-medium text-(--color-text)">
                   {completeJobMachine.currentJob.buyerName}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#78716C]">Metres Produced:</span>
+                <span className="text-(--color-text-muted)">Metres Produced:</span>
                 <span className="font-mono font-semibold text-emerald-700">
                   {completeJobMachine.currentJob.producedMetres} / {completeJobMachine.currentJob.targetMetres} m
                 </span>
@@ -845,11 +793,11 @@ export function BoardPage() {
             </div>
           )}
 
-          <p className="text-xs text-[#78716C]">
+          <p className="text-xs text-(--color-text-muted)">
             Completing this stage job frees up the unit back to IDLE status and enables the order to advance to the next manufacturing stage or Quality Control.
           </p>
 
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-[#E8E4DF]">
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-(--color-border)">
             <Button
               variant="secondary"
               onClick={() => setCompleteJobMachine(null)}
@@ -876,12 +824,12 @@ export function BoardPage() {
         title={`Report Breakdown — ${breakdownMachine?.name}`}
       >
         <div className="space-y-4">
-          <div className="p-3 bg-rose-50 rounded-lg border border-rose-200 text-xs text-rose-800">
+          <Callout tone="danger">
             Reporting a breakdown pauses running work on this unit and alerts plant floor maintenance staff.
-          </div>
+          </Callout>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-[#1A1714]">
+            <label className="text-sm font-medium text-(--color-text)">
               Reason / Observed Issue
             </label>
             <textarea
@@ -889,11 +837,11 @@ export function BoardPage() {
               value={breakdownReason}
               onChange={(e) => setBreakdownReason(e.target.value)}
               placeholder="e.g. Warp yarn tension sensor error, motor heating, heald frame misalignment..."
-              className="w-full rounded-lg border border-[#E8E4DF] bg-white py-2 px-3 text-sm text-[#1A1714] focus:outline-none focus:ring-2 focus:ring-rose-500"
+              className="w-full rounded-lg border border-(--color-border) bg-white py-2 px-3 text-sm text-(--color-text) focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
           </div>
 
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-[#E8E4DF]">
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-(--color-border)">
             <Button
               variant="secondary"
               onClick={() => setBreakdownMachine(null)}

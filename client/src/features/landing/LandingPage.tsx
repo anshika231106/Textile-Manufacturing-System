@@ -108,37 +108,37 @@ export function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] text-[#1A1714] selection:bg-[#EA580C]/20 flex flex-col font-sans">
+    <div className="min-h-screen bg-(--color-bg) text-(--color-text) selection:bg-(--color-accent)/20 flex flex-col font-sans">
       {/* ─── Top Navigation Bar ─── */}
-      <header className="sticky top-0 z-40 bg-[#FAFAF8]/85 backdrop-blur-md border-b border-[#E8E4DF] px-4 sm:px-8 py-3.5 transition-all">
+      <header className="sticky top-0 z-40 bg-(--color-bg)/85 backdrop-blur-md border-b border-(--color-border) px-4 sm:px-8 py-3.5 transition-all">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* Brand */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-xl bg-[#EA580C] flex items-center justify-center shadow-sm shadow-[#EA580C]/25 group-hover:scale-105 transition-transform duration-200">
+            <div className="w-9 h-9 rounded-xl bg-(--color-accent) flex items-center justify-center shadow-sm shadow-(--color-accent)/25 group-hover:scale-105 transition-transform duration-200">
               <span className="text-white text-sm font-bold tracking-tight">MT</span>
             </div>
             <div>
-              <span className="text-base font-bold tracking-tight text-[#1A1714] block leading-none">
+              <span className="text-base font-bold tracking-tight text-(--color-text) block leading-none">
                 MillTrace
               </span>
-              <span className="text-[11px] text-[#78716C] tracking-wide font-normal">
+              <span className="text-[11px] text-(--color-text-muted) tracking-wide font-normal">
                 Everest Textile Mills
               </span>
             </div>
           </Link>
 
           {/* Navigation Links (Desktop) */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-[#78716C]">
-            <a href="#tracker" className="hover:text-[#EA580C] transition-colors">
+          <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-(--color-text-muted)">
+            <a href="#tracker" className="hover:text-(--color-accent) transition-colors">
               Live Tracker
             </a>
-            <a href="#pipeline" className="hover:text-[#EA580C] transition-colors">
+            <a href="#pipeline" className="hover:text-(--color-accent) transition-colors">
               Manufacturing Pipeline
             </a>
-            <a href="#capabilities" className="hover:text-[#EA580C] transition-colors">
+            <a href="#capabilities" className="hover:text-(--color-accent) transition-colors">
               Mill Capabilities
             </a>
-            <a href="#quality" className="hover:text-[#EA580C] transition-colors">
+            <a href="#quality" className="hover:text-(--color-accent) transition-colors">
               Quality Protocol
             </a>
           </nav>
@@ -160,7 +160,7 @@ export function LandingPage() {
                 variant="secondary"
                 size="sm"
                 onClick={() => navigate('/login')}
-                className="text-xs font-semibold bg-white border-[#E8E4DF] hover:border-[#EA580C]/40 hover:bg-[#FFF7ED]"
+                className="text-xs font-semibold bg-white border-(--color-border) hover:border-(--color-accent)/40 hover:bg-(--color-accent-light)"
               >
                 Staff Sign In
                 <ArrowRightIcon className="w-3.5 h-3.5 ml-1" />
@@ -173,7 +173,7 @@ export function LandingPage() {
       {/* ─── Hero Section with Live Search ─── */}
       <section className="relative pt-12 pb-16 sm:pt-20 sm:pb-24 px-4 sm:px-8 textile-grid overflow-hidden">
         {/* Subtle radial glow in warm orange */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-[#EA580C]/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-(--color-accent)/5 rounded-full blur-3xl pointer-events-none" />
 
         {/* ─── Background: Textile Mill Facility (Half-Height Ambient Backdrop) ─── */}
         <div className="absolute inset-x-0 top-0 h-[460px] sm:h-[520px] overflow-hidden pointer-events-none select-none z-0">
@@ -183,45 +183,45 @@ export function LandingPage() {
             className="w-full h-full object-cover object-center opacity-30"
           />
           {/* Subtle gradient overlays so cards and text remain crystal clear while background is visible */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#FAFAF8]/30 via-[#FAFAF8]/65 to-[#FAFAF8]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#FAFAF8]/80 via-transparent to-[#FAFAF8]/80" />
+          <div className="absolute inset-0 bg-gradient-to-b from-(--color-bg)/30 via-(--color-bg)/65 to-(--color-bg)" />
+          <div className="absolute inset-0 bg-gradient-to-r from-(--color-bg)/80 via-transparent to-(--color-bg)/80" />
         </div>
 
         <div className="max-w-5xl mx-auto text-center relative z-10">
           {/* Eyebrow badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFF7ED] border border-[#EA580C]/25 text-[#EA580C] text-xs font-semibold mb-6 shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-[#EA580C] animate-pulse-subtle" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-(--color-accent-light) border border-(--color-accent)/25 text-(--color-accent) text-xs font-semibold mb-6 shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-(--color-accent) animate-pulse-subtle" />
             Live Fabric Lifecycle & Order Intelligence
           </div>
 
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[#1A1714] leading-[1.15]">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-(--color-text) leading-[1.15]">
             From Yarn Gate to Dispatched Roll,{' '}
-            <span className="text-[#EA580C]">Tracked Live.</span>
+            <span className="text-(--color-accent)">Tracked Live.</span>
           </h1>
 
-          <p className="mt-4 sm:mt-6 text-sm sm:text-lg text-[#78716C] max-w-2xl mx-auto leading-relaxed">
+          <p className="mt-4 sm:mt-6 text-sm sm:text-lg text-(--color-text-muted) max-w-2xl mx-auto leading-relaxed">
             Real-time stage visibility for buyers and production heads. Monitor spinning, weaving,
             continuous dyeing, and individual roll QC inspection with zero delay.
           </p>
 
           {/* Live Mill Real-Time Metrics Pills */}
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 text-xs text-[#78716C]">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-[#E8E4DF] shadow-2xs font-medium">
-              <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 text-xs text-(--color-text-muted)">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-(--color-border) shadow-2xs font-medium">
+              <span className="w-2 h-2 rounded-full bg-(--color-success) animate-pulse" />
               Everest Mill Unit 1 Online
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-[#E8E4DF] shadow-2xs font-medium">
-              <span className="text-[#EA580C] font-bold">4,850 m</span> Floor Output Today
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-(--color-border) shadow-2xs font-medium">
+              <span className="text-(--color-accent) font-bold">4,850 m</span> Floor Output Today
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-[#E8E4DF] shadow-2xs font-medium">
-              <span className="text-[#16A34A] font-bold">99.4%</span> First-Pass QC
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-(--color-border) shadow-2xs font-medium">
+              <span className="text-(--color-success) font-bold">99.4%</span> First-Pass QC
             </span>
           </div>
 
           {/* ─── Interactive Order Tracker Search Card ─── */}
           <div id="tracker" className="mt-8 sm:mt-10 text-left">
-            <div className="bg-white border border-[#E8E4DF] rounded-2xl shadow-xl shadow-stone-200/50 p-4 sm:p-6 transition-all duration-200">
-              <label htmlFor="search-input" className="block text-xs font-bold uppercase tracking-wider text-[#78716C] mb-2">
+            <div className="bg-white border border-(--color-border) rounded-2xl shadow-xl shadow-stone-200/50 p-4 sm:p-6 transition-all duration-200">
+              <label htmlFor="search-input" className="block text-xs font-bold uppercase tracking-wider text-(--color-text-muted) mb-2">
                 Public Order Status Lookup
               </label>
 
@@ -233,7 +233,7 @@ export function LandingPage() {
                 className="flex flex-col sm:flex-row gap-2.5"
               >
                 <div className="relative flex-1">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#78716C]">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-(--color-text-muted)">
                     <MagnifyingGlassIcon className="w-5 h-5" />
                   </div>
                   <input
@@ -242,7 +242,7 @@ export function LandingPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Enter Order # (e.g. ORD-2026-001) or Tracking Token..."
-                    className="w-full pl-11 pr-4 py-3 bg-[#FAFAF8] border border-[#E8E4DF] rounded-xl text-sm text-[#1A1714] placeholder-[#A8A29E] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/25 focus:border-[#EA580C] transition-all font-mono"
+                    className="w-full pl-11 pr-4 py-3 bg-(--color-bg) border border-(--color-border) rounded-xl text-sm text-(--color-text) placeholder-(--color-text-subtle) focus:outline-none focus:ring-2 focus:ring-(--color-accent)/25 focus:border-(--color-accent) transition-all font-mono"
                   />
                 </div>
 
@@ -258,9 +258,9 @@ export function LandingPage() {
               </form>
 
               {/* Demo Quick-Chips */}
-              <div className="mt-4 pt-3 border-t border-[#E8E4DF]/70 flex flex-wrap items-center gap-2">
-                <span className="text-xs font-medium text-[#78716C] flex items-center gap-1">
-                  <SparklesIcon className="w-3.5 h-3.5 text-[#EA580C]" />
+              <div className="mt-4 pt-3 border-t border-(--color-border)/70 flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium text-(--color-text-muted) flex items-center gap-1">
+                  <SparklesIcon className="w-3.5 h-3.5 text-(--color-accent)" />
                   Try live demo orders:
                 </span>
                 {DEMO_QUICK_SEARCHES.map((demo) => (
@@ -271,17 +271,17 @@ export function LandingPage() {
                       setSearchQuery(demo.code);
                       handleSearch(demo.code, true);
                     }}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#FAFAF8] border border-[#E8E4DF] text-[#1A1714] hover:bg-[#FFF7ED] hover:border-[#EA580C]/40 hover:text-[#EA580C] transition-all"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-(--color-bg) border border-(--color-border) text-(--color-text) hover:bg-(--color-accent-light) hover:border-(--color-accent)/40 hover:text-(--color-accent) transition-all"
                   >
-                    <span className="font-mono font-bold text-[#EA580C]">{demo.code}</span>
-                    <span className="text-[#78716C] text-[11px]">({demo.hint})</span>
+                    <span className="font-mono font-bold text-(--color-accent)">{demo.code}</span>
+                    <span className="text-(--color-text-muted) text-[11px]">({demo.hint})</span>
                   </button>
                 ))}
               </div>
 
               {/* Error Alert */}
               {searchError && (
-                <div className="mt-4 p-3 rounded-xl bg-[#FEF2F2] border border-[#FCA5A5] text-xs text-[#DC2626] flex items-center gap-2">
+                <div className="mt-4 p-3 rounded-xl bg-(--color-danger-light) border border-(--color-danger-border) text-xs text-(--color-danger) flex items-center gap-2">
                   <span>{searchError}</span>
                 </div>
               )}
@@ -293,15 +293,15 @@ export function LandingPage() {
                 ref={trackingResultRef}
                 className="mt-6 sm:mt-8 transition-all animate-fade-in text-left"
               >
-                <div className="bg-white border-2 border-[#EA580C]/20 rounded-3xl p-6 sm:p-8 shadow-xl shadow-[#EA580C]/5 relative overflow-hidden">
+                <div className="bg-white border-2 border-(--color-accent)/20 rounded-3xl p-6 sm:p-8 shadow-xl shadow-(--color-accent)/5 relative overflow-hidden">
                   {/* Top decorative accent bar */}
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#EA580C]" />
+                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-(--color-accent) via-[#F97316] to-(--color-accent)" />
 
                   {/* Header info */}
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-6 border-b border-[#E8E4DF]">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-6 border-b border-(--color-border)">
                     <div>
                       <div className="flex items-center gap-2.5 flex-wrap">
-                        <h2 className="text-2xl font-extrabold text-[#1A1714] tracking-tight">
+                        <h2 className="text-2xl font-extrabold text-(--color-text) tracking-tight">
                           {trackedOrder.orderNumber}
                         </h2>
                         <Badge
@@ -309,13 +309,13 @@ export function LandingPage() {
                           label={trackedOrder.status.replace('_', ' ')}
                           dot
                         />
-                        <span className="text-xs text-[#78716C] font-mono bg-[#FAFAF8] px-2 py-0.5 rounded-md border border-[#E8E4DF]">
+                        <span className="text-xs text-(--color-text-muted) font-mono bg-(--color-bg) px-2 py-0.5 rounded-md border border-(--color-border)">
                           Token: {trackedOrder.trackingToken}
                         </span>
                       </div>
-                      <p className="mt-1 text-sm text-[#78716C]">
-                        Buyer: <span className="font-semibold text-[#1A1714]">{trackedOrder.buyerName}</span> ·{' '}
-                        <span className="font-medium text-[#1A1714]">{trackedOrder.fabricType}</span> ({trackedOrder.colour})
+                      <p className="mt-1 text-sm text-(--color-text-muted)">
+                        Buyer: <span className="font-semibold text-(--color-text)">{trackedOrder.buyerName}</span> ·{' '}
+                        <span className="font-medium text-(--color-text)">{trackedOrder.fabricType}</span> ({trackedOrder.colour})
                       </p>
                     </div>
 
@@ -328,7 +328,7 @@ export function LandingPage() {
                       >
                         {copiedLink ? (
                           <>
-                            <CheckIcon className="w-3.5 h-3.5 mr-1 text-[#16A34A]" />
+                            <CheckIcon className="w-3.5 h-3.5 mr-1 text-(--color-success)" />
                             Copied Link
                           </>
                         ) : (
@@ -342,7 +342,7 @@ export function LandingPage() {
                         type="button"
                         onClick={() => handleSearch(trackedOrder.orderNumber, false)}
                         title="Refresh status"
-                        className="p-2 rounded-lg border border-[#E8E4DF] hover:bg-[#FAFAF8] text-[#78716C] hover:text-[#1A1714] transition-colors"
+                        className="p-2 rounded-lg border border-(--color-border) hover:bg-(--color-bg) text-(--color-text-muted) hover:text-(--color-text) transition-colors"
                       >
                         <ArrowPathIcon className={`w-4 h-4 ${searching ? 'animate-spin' : ''}`} />
                       </button>
@@ -353,7 +353,7 @@ export function LandingPage() {
                           setSearchQuery('');
                         }}
                         title="Dismiss order details"
-                        className="p-2 rounded-lg border border-[#E8E4DF] hover:bg-[#FEF2F2] text-[#78716C] hover:text-[#DC2626] hover:border-[#FCA5A5] transition-colors"
+                        className="p-2 rounded-lg border border-(--color-border) hover:bg-(--color-danger-light) text-(--color-text-muted) hover:text-(--color-danger) hover:border-(--color-danger-border) transition-colors"
                       >
                         <XMarkIcon className="w-4 h-4" />
                       </button>
@@ -363,11 +363,11 @@ export function LandingPage() {
                   {/* ─── Animated Milestone Pipeline Stepper ─── */}
                   <div className="py-8">
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#78716C]">
+                      <span className="text-xs font-bold uppercase tracking-wider text-(--color-text-muted)">
                         Live Manufacturing Pipeline
                       </span>
-                      <span className="text-xs font-semibold text-[#EA580C] flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-[#EA580C] animate-pulse" />
+                      <span className="text-xs font-semibold text-(--color-accent) flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-(--color-accent) animate-pulse" />
                         Active Stage: {trackedOrder.currentStage}
                       </span>
                     </div>
@@ -384,10 +384,10 @@ export function LandingPage() {
                             className={[
                               'p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between relative',
                               isCurrent
-                                ? 'bg-[#FFF7ED] border-[#EA580C]/40 shadow-sm shadow-[#EA580C]/10 ring-1 ring-[#EA580C]/20'
+                                ? 'bg-(--color-accent-light) border-(--color-accent)/40 shadow-sm shadow-(--color-accent)/10 ring-1 ring-(--color-accent)/20'
                                 : isPassed
-                                ? 'bg-[#F0FDF4] border-[#86EFAC]'
-                                : 'bg-[#FAFAF8] border-[#E8E4DF] opacity-75',
+                                ? 'bg-(--color-success-light) border-(--color-success-border)'
+                                : 'bg-(--color-bg) border-(--color-border) opacity-75',
                             ].join(' ')}
                           >
                             <div>
@@ -396,31 +396,31 @@ export function LandingPage() {
                                   className={[
                                     'text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center font-mono',
                                     isPassed
-                                      ? 'bg-[#16A34A] text-white'
+                                      ? 'bg-(--color-success) text-white'
                                       : isCurrent
-                                      ? 'bg-[#EA580C] text-white animate-pulse-subtle'
-                                      : 'bg-[#E8E4DF] text-[#78716C]',
+                                      ? 'bg-(--color-accent) text-white animate-pulse-subtle'
+                                      : 'bg-(--color-border) text-(--color-text-muted)',
                                   ].join(' ')}
                                 >
                                   {isPassed ? '✓' : idx + 1}
                                 </span>
 
                                 {isCurrent && (
-                                  <span className="text-[10px] uppercase font-bold text-[#EA580C] bg-white px-2 py-0.5 rounded-full border border-[#EA580C]/20">
+                                  <span className="text-[10px] uppercase font-bold text-(--color-accent) bg-white px-2 py-0.5 rounded-full border border-(--color-accent)/20">
                                     Active
                                   </span>
                                 )}
                               </div>
 
-                              <p className="text-sm font-bold text-[#1A1714]">{stg.label}</p>
-                              <p className="text-[11px] text-[#78716C] mt-0.5 leading-snug">{stg.desc}</p>
+                              <p className="text-sm font-bold text-(--color-text)">{stg.label}</p>
+                              <p className="text-[11px] text-(--color-text-muted) mt-0.5 leading-snug">{stg.desc}</p>
                             </div>
 
                             {/* Micro progress bar for current stage */}
                             {isCurrent && (
-                              <div className="mt-3 pt-2 border-t border-[#EA580C]/20">
+                              <div className="mt-3 pt-2 border-t border-(--color-accent)/20">
                                 <div className="w-full bg-[#FED7AA] h-1.5 rounded-full overflow-hidden">
-                                  <div className="bg-[#EA580C] h-full w-2/3 rounded-full animate-pulse" />
+                                  <div className="bg-(--color-accent) h-full w-2/3 rounded-full animate-pulse" />
                                 </div>
                               </div>
                             )}
@@ -431,58 +431,58 @@ export function LandingPage() {
                   </div>
 
                   {/* ─── Metres & Quantitative Progress Counters ─── */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-4 border-t border-[#E8E4DF]">
-                    <div className="p-4 rounded-xl bg-[#FAFAF8] border border-[#E8E4DF]">
-                      <span className="text-[11px] uppercase tracking-wider font-semibold text-[#78716C] block">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-4 border-t border-(--color-border)">
+                    <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
+                      <span className="text-[11px] uppercase tracking-wider font-semibold text-(--color-text-muted) block">
                         Ordered Quantity
                       </span>
-                      <p className="text-2xl font-extrabold text-[#1A1714] mt-1">
-                        {trackedOrder.metres.toLocaleString('en-IN')} <span className="text-sm font-normal text-[#78716C]">m</span>
+                      <p className="text-2xl font-extrabold text-(--color-text) mt-1">
+                        {trackedOrder.metres.toLocaleString('en-IN')} <span className="text-sm font-normal text-(--color-text-muted)">m</span>
                       </p>
-                      <p className="text-xs text-[#78716C] mt-0.5">Value: {formatCurrency(trackedOrder.totalAmount)}</p>
+                      <p className="text-xs text-(--color-text-muted) mt-0.5">Value: {formatCurrency(trackedOrder.totalAmount)}</p>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-[#FAFAF8] border border-[#E8E4DF]">
-                      <span className="text-[11px] uppercase tracking-wider font-semibold text-[#78716C] block">
+                    <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
+                      <span className="text-[11px] uppercase tracking-wider font-semibold text-(--color-text-muted) block">
                         Produced on Machines
                       </span>
-                      <p className="text-2xl font-extrabold text-[#EA580C] mt-1">
+                      <p className="text-2xl font-extrabold text-(--color-accent) mt-1">
                         {(trackedOrder.stageProgress?.[1]?.producedMetres ?? trackedOrder.stageProgress?.[0]?.producedMetres ?? 0).toLocaleString('en-IN')}{' '}
-                        <span className="text-sm font-normal text-[#78716C]">m</span>
+                        <span className="text-sm font-normal text-(--color-text-muted)">m</span>
                       </p>
-                      <p className="text-xs text-[#78716C] mt-0.5">Through spinning/looms</p>
+                      <p className="text-xs text-(--color-text-muted) mt-0.5">Through spinning/looms</p>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-[#FAFAF8] border border-[#E8E4DF]">
-                      <span className="text-[11px] uppercase tracking-wider font-semibold text-[#78716C] block">
+                    <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
+                      <span className="text-[11px] uppercase tracking-wider font-semibold text-(--color-text-muted) block">
                         Passed Quality Check
                       </span>
-                      <p className="text-2xl font-extrabold text-[#16A34A] mt-1">
+                      <p className="text-2xl font-extrabold text-(--color-success) mt-1">
                         {((trackedOrder.rollSummary?.passedRolls ?? 0) * 500).toLocaleString('en-IN')}{' '}
-                        <span className="text-sm font-normal text-[#78716C]">m</span>
+                        <span className="text-sm font-normal text-(--color-text-muted)">m</span>
                       </p>
-                      <p className="text-xs text-[#78716C] mt-0.5">{trackedOrder.rollSummary?.passedRolls ?? 0} rolls graded PASS</p>
+                      <p className="text-xs text-(--color-text-muted) mt-0.5">{trackedOrder.rollSummary?.passedRolls ?? 0} rolls graded PASS</p>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-[#FAFAF8] border border-[#E8E4DF]">
-                      <span className="text-[11px] uppercase tracking-wider font-semibold text-[#78716C] block">
+                    <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
+                      <span className="text-[11px] uppercase tracking-wider font-semibold text-(--color-text-muted) block">
                         Delivery Deadline
                       </span>
-                      <p className="text-xl font-bold text-[#1A1714] mt-1">
+                      <p className="text-xl font-bold text-(--color-text) mt-1">
                         {formatDate(trackedOrder.deadline)}
                       </p>
-                      <p className="text-xs text-[#78716C] mt-0.5">Scheduled dispatch</p>
+                      <p className="text-xs text-(--color-text-muted) mt-0.5">Scheduled dispatch</p>
                     </div>
                   </div>
 
                   {/* Rolls Grid if rolls exist */}
                   {trackedOrder.rollSummary && trackedOrder.rollSummary.rolls.length > 0 && (
-                    <div className="mt-6 pt-5 border-t border-[#E8E4DF]">
+                    <div className="mt-6 pt-5 border-t border-(--color-border)">
                       <div className="flex items-center justify-between mb-3">
-                        <p className="text-xs font-bold uppercase tracking-wider text-[#78716C]">
+                        <p className="text-xs font-bold uppercase tracking-wider text-(--color-text-muted)">
                           Individual Fabric Roll Inspect Log
                         </p>
-                        <span className="text-xs text-[#78716C]">
+                        <span className="text-xs text-(--color-text-muted)">
                           {trackedOrder.rollSummary.totalRolls} rolls generated
                         </span>
                       </div>
@@ -490,11 +490,11 @@ export function LandingPage() {
                         {trackedOrder.rollSummary.rolls.map((roll) => (
                           <div
                             key={roll.id}
-                            className="p-3 rounded-xl border border-[#E8E4DF] bg-[#FAFAF8] flex items-center justify-between text-xs"
+                            className="p-3 rounded-xl border border-(--color-border) bg-(--color-bg) flex items-center justify-between text-xs"
                           >
                             <div>
-                              <span className="font-bold text-[#1A1714] font-mono">{roll.rollNumber}</span>
-                              <p className="text-[#78716C] text-[11px]">{roll.metres} metres</p>
+                              <span className="font-bold text-(--color-text) font-mono">{roll.rollNumber}</span>
+                              <p className="text-(--color-text-muted) text-[11px]">{roll.metres} metres</p>
                             </div>
                             <Badge
                               variant={roll.qcStatus === 'PASS' ? 'success' : 'warning'}
@@ -507,9 +507,9 @@ export function LandingPage() {
                   )}
 
                   {/* Bottom status refresh indicator */}
-                  <div className="mt-6 pt-4 border-t border-[#E8E4DF]/60 flex items-center justify-between text-xs text-[#A8A29E]">
+                  <div className="mt-6 pt-4 border-t border-(--color-border)/60 flex items-center justify-between text-xs text-(--color-text-subtle)">
                     <span className="flex items-center gap-1.5">
-                      <ShieldCheckIcon className="w-4 h-4 text-[#16A34A]" />
+                      <ShieldCheckIcon className="w-4 h-4 text-(--color-success)" />
                       Direct live synchronization with Everest Textile Mills ERP
                     </span>
                     <span>Updated {lastRefreshed.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
@@ -522,16 +522,16 @@ export function LandingPage() {
       </section>
 
       {/* ─── Section: Manufacturing Pipeline Showcase ─── */}
-      <section id="pipeline" className="py-16 sm:py-24 bg-white border-y border-[#E8E4DF] px-4 sm:px-8">
+      <section id="pipeline" className="py-16 sm:py-24 bg-white border-y border-(--color-border) px-4 sm:px-8">
         <div className="max-w-6xl mx-auto">
           <div className="text-center max-w-2xl mx-auto mb-14">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#EA580C]">
+            <span className="text-xs font-bold uppercase tracking-wider text-(--color-accent)">
               Rigorous 4-Stage Traceability
             </span>
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-[#1A1714] tracking-tight mt-2">
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-(--color-text) tracking-tight mt-2">
               Every Metre Accounted For
             </h2>
-            <p className="mt-3 text-sm text-[#78716C]">
+            <p className="mt-3 text-sm text-(--color-text-muted)">
               We replace notebooks and verbal floor checks with automated state machines that
               record each physical event from receipt to the buyer's truck.
             </p>
@@ -539,52 +539,52 @@ export function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Card 1 */}
-            <div className="p-6 rounded-2xl bg-[#FAFAF8] border border-[#E8E4DF] hover:border-[#EA580C]/40 hover:shadow-md transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-[#FFF7ED] border border-[#EA580C]/20 flex items-center justify-center text-[#EA580C] mb-4 group-hover:scale-110 transition-transform">
+            <div className="p-6 rounded-2xl bg-(--color-bg) border border-(--color-border) hover:border-(--color-accent)/40 hover:shadow-md transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-(--color-accent-light) border border-(--color-accent)/20 flex items-center justify-center text-(--color-accent) mb-4 group-hover:scale-110 transition-transform">
                 <CubeIcon className="w-6 h-6" />
               </div>
-              <span className="text-xs font-mono font-bold text-[#EA580C]">STAGE 01</span>
-              <h3 className="text-base font-bold text-[#1A1714] mt-1">Yarn Gate & Inward</h3>
-              <p className="text-xs text-[#78716C] mt-2 leading-relaxed">
+              <span className="text-xs font-mono font-bold text-(--color-accent)">STAGE 01</span>
+              <h3 className="text-base font-bold text-(--color-text) mt-1">Yarn Gate & Inward</h3>
+              <p className="text-xs text-(--color-text-muted) mt-2 leading-relaxed">
                 Raw yarn is logged with supplier reference, exact kg weight, count specifications, and
                 allocated directly to buyer orders with zero shortfall leakage.
               </p>
             </div>
 
             {/* Card 2 */}
-            <div className="p-6 rounded-2xl bg-[#FAFAF8] border border-[#E8E4DF] hover:border-[#EA580C]/40 hover:shadow-md transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-[#FFF7ED] border border-[#EA580C]/20 flex items-center justify-center text-[#EA580C] mb-4 group-hover:scale-110 transition-transform">
+            <div className="p-6 rounded-2xl bg-(--color-bg) border border-(--color-border) hover:border-(--color-accent)/40 hover:shadow-md transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-(--color-accent-light) border border-(--color-accent)/20 flex items-center justify-center text-(--color-accent) mb-4 group-hover:scale-110 transition-transform">
                 <WrenchScrewdriverIcon className="w-6 h-6" />
               </div>
-              <span className="text-xs font-mono font-bold text-[#EA580C]">STAGE 02</span>
-              <h3 className="text-base font-bold text-[#1A1714] mt-1">Spinning & Loom Weaving</h3>
-              <p className="text-xs text-[#78716C] mt-2 leading-relaxed">
+              <span className="text-xs font-mono font-bold text-(--color-accent)">STAGE 02</span>
+              <h3 className="text-base font-bold text-(--color-text) mt-1">Spinning & Loom Weaving</h3>
+              <p className="text-xs text-(--color-text-muted) mt-2 leading-relaxed">
                 Orders run on assigned spinning units and high-speed looms. Shift supervisors record
                 metres produced per shift with automated stage cap protection.
               </p>
             </div>
 
             {/* Card 3 */}
-            <div className="p-6 rounded-2xl bg-[#FAFAF8] border border-[#E8E4DF] hover:border-[#EA580C]/40 hover:shadow-md transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-[#FFF7ED] border border-[#EA580C]/20 flex items-center justify-center text-[#EA580C] mb-4 group-hover:scale-110 transition-transform">
+            <div className="p-6 rounded-2xl bg-(--color-bg) border border-(--color-border) hover:border-(--color-accent)/40 hover:shadow-md transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-(--color-accent-light) border border-(--color-accent)/20 flex items-center justify-center text-(--color-accent) mb-4 group-hover:scale-110 transition-transform">
                 <BeakerIcon className="w-6 h-6" />
               </div>
-              <span className="text-xs font-mono font-bold text-[#EA580C]">STAGE 03</span>
-              <h3 className="text-base font-bold text-[#1A1714] mt-1">Dyeing & Roll Batching</h3>
-              <p className="text-xs text-[#78716C] mt-2 leading-relaxed">
+              <span className="text-xs font-mono font-bold text-(--color-accent)">STAGE 03</span>
+              <h3 className="text-base font-bold text-(--color-text) mt-1">Dyeing & Roll Batching</h3>
+              <p className="text-xs text-(--color-text-muted) mt-2 leading-relaxed">
                 Dyed vats produce discrete fabric rolls. Each roll is minted with a globally unique ID
                 linking it directly to its origin machines and yarn lot.
               </p>
             </div>
 
             {/* Card 4 */}
-            <div className="p-6 rounded-2xl bg-[#FAFAF8] border border-[#E8E4DF] hover:border-[#EA580C]/40 hover:shadow-md transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-[#FFF7ED] border border-[#EA580C]/20 flex items-center justify-center text-[#EA580C] mb-4 group-hover:scale-110 transition-transform">
+            <div className="p-6 rounded-2xl bg-(--color-bg) border border-(--color-border) hover:border-(--color-accent)/40 hover:shadow-md transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-(--color-accent-light) border border-(--color-accent)/20 flex items-center justify-center text-(--color-accent) mb-4 group-hover:scale-110 transition-transform">
                 <ShieldCheckIcon className="w-6 h-6" />
               </div>
-              <span className="text-xs font-mono font-bold text-[#EA580C]">STAGE 04</span>
-              <h3 className="text-base font-bold text-[#1A1714] mt-1">100% Roll QC & Dispatch</h3>
-              <p className="text-xs text-[#78716C] mt-2 leading-relaxed">
+              <span className="text-xs font-mono font-bold text-(--color-accent)">STAGE 04</span>
+              <h3 className="text-base font-bold text-(--color-text) mt-1">100% Roll QC & Dispatch</h3>
+              <p className="text-xs text-(--color-text-muted) mt-2 leading-relaxed">
                 Rigorous fabric inspection checks for holes, slubs, and colour mismatch. Only
                 PASSED rolls are unlocked for dispatch and invoicing.
               </p>
@@ -596,17 +596,17 @@ export function LandingPage() {
       {/* ─── Section: Mill Capabilities & Trust Numbers ─── */}
       <section id="capabilities" className="py-16 sm:py-20 px-4 sm:px-8 textile-dots">
         <div className="max-w-5xl mx-auto">
-          <div className="bg-[#1A1714] text-white rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden">
-            <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-[#EA580C]/20 to-transparent pointer-events-none" />
+          <div className="bg-(--color-text) text-white rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden">
+            <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-(--color-accent)/20 to-transparent pointer-events-none" />
 
             <div className="max-w-xl">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#EA580C]">
+              <span className="text-xs font-bold uppercase tracking-wider text-(--color-accent)">
                 Factory Infrastructure
               </span>
               <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight mt-2 text-white">
                 Built for High-Volume Reliability
               </h2>
-              <p className="mt-3 text-sm text-[#A8A29E] leading-relaxed">
+              <p className="mt-3 text-sm text-(--color-text-subtle) leading-relaxed">
                 Everest Textile Mills combines state-of-the-art weaving machinery with MillTrace’s
                 digital ledger to eliminate order delays and unverified stock discrepancies.
               </p>
@@ -614,20 +614,20 @@ export function LandingPage() {
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mt-10 pt-8 border-t border-stone-800">
               <div>
-                <p className="text-3xl sm:text-4xl font-extrabold text-[#EA580C]">50k+ m</p>
-                <p className="text-xs text-[#A8A29E] mt-1 font-medium">Monthly Production Volume</p>
+                <p className="text-3xl sm:text-4xl font-extrabold text-(--color-accent)">50k+ m</p>
+                <p className="text-xs text-(--color-text-subtle) mt-1 font-medium">Monthly Production Volume</p>
               </div>
               <div>
                 <p className="text-3xl sm:text-4xl font-extrabold text-white">99.4%</p>
-                <p className="text-xs text-[#A8A29E] mt-1 font-medium">First-Pass QC Standard</p>
+                <p className="text-xs text-(--color-text-subtle) mt-1 font-medium">First-Pass QC Standard</p>
               </div>
               <div>
-                <p className="text-3xl sm:text-4xl font-extrabold text-[#EA580C]">100%</p>
-                <p className="text-xs text-[#A8A29E] mt-1 font-medium">Roll-Level Traceability</p>
+                <p className="text-3xl sm:text-4xl font-extrabold text-(--color-accent)">100%</p>
+                <p className="text-xs text-(--color-text-subtle) mt-1 font-medium">Roll-Level Traceability</p>
               </div>
               <div>
                 <p className="text-3xl sm:text-4xl font-extrabold text-white">&lt; 15s</p>
-                <p className="text-xs text-[#A8A29E] mt-1 font-medium">Live Floor Refresh Sync</p>
+                <p className="text-xs text-(--color-text-subtle) mt-1 font-medium">Live Floor Refresh Sync</p>
               </div>
             </div>
           </div>
@@ -635,27 +635,27 @@ export function LandingPage() {
       </section>
 
       {/* ─── Section: Quality Guarantee ─── */}
-      <section id="quality" className="py-16 sm:py-20 bg-white border-t border-[#E8E4DF] px-4 sm:px-8">
+      <section id="quality" className="py-16 sm:py-20 bg-white border-t border-(--color-border) px-4 sm:px-8">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="w-12 h-12 rounded-2xl bg-[#FFF7ED] border border-[#EA580C]/20 text-[#EA580C] mx-auto flex items-center justify-center mb-4">
+          <div className="w-12 h-12 rounded-2xl bg-(--color-accent-light) border border-(--color-accent)/20 text-(--color-accent) mx-auto flex items-center justify-center mb-4">
             <CheckCircleIcon className="w-7 h-7" />
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1A1714]">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-(--color-text)">
             Everest Quality Assurance Promise
           </h2>
-          <p className="mt-3 text-sm text-[#78716C] max-w-xl mx-auto">
+          <p className="mt-3 text-sm text-(--color-text-muted) max-w-xl mx-auto">
             No roll leaves our dispatch dock without passing quality parameters. Each buyer receives
             transparent yardage counts and access to the complete machine and yarn production history.
           </p>
 
-          <div className="mt-8 flex flex-wrap justify-center gap-4 text-xs font-medium text-[#78716C]">
-            <span className="flex items-center gap-1.5 bg-[#FAFAF8] px-3.5 py-2 rounded-xl border border-[#E8E4DF]">
+          <div className="mt-8 flex flex-wrap justify-center gap-4 text-xs font-medium text-(--color-text-muted)">
+            <span className="flex items-center gap-1.5 bg-(--color-bg) px-3.5 py-2 rounded-xl border border-(--color-border)">
               ✓ Defect-flagged roll exclusion
             </span>
-            <span className="flex items-center gap-1.5 bg-[#FAFAF8] px-3.5 py-2 rounded-xl border border-[#E8E4DF]">
+            <span className="flex items-center gap-1.5 bg-(--color-bg) px-3.5 py-2 rounded-xl border border-(--color-border)">
               ✓ Pre-dispatch yardage double-check
             </span>
-            <span className="flex items-center gap-1.5 bg-[#FAFAF8] px-3.5 py-2 rounded-xl border border-[#E8E4DF]">
+            <span className="flex items-center gap-1.5 bg-(--color-bg) px-3.5 py-2 rounded-xl border border-(--color-border)">
               ✓ Tamper-proof tracking tokens
             </span>
           </div>
@@ -663,28 +663,28 @@ export function LandingPage() {
       </section>
 
       {/* ─── Footer ─── */}
-      <footer className="mt-auto bg-[#FAFAF8] border-t border-[#E8E4DF] py-12 px-4 sm:px-8 text-xs text-[#78716C]">
+      <footer className="mt-auto bg-(--color-bg) border-t border-(--color-border) py-12 px-4 sm:px-8 text-xs text-(--color-text-muted)">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg bg-[#EA580C] flex items-center justify-center text-white text-xs font-bold">
+            <div className="w-7 h-7 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-xs font-bold">
               MT
             </div>
             <div>
-              <p className="font-bold text-[#1A1714]">Everest Textile Mills</p>
-              <p className="text-[11px] text-[#A8A29E]">Powered by MillTrace Operating System</p>
+              <p className="font-bold text-(--color-text)">Everest Textile Mills</p>
+              <p className="text-[11px] text-(--color-text-subtle)">Powered by MillTrace Operating System</p>
             </div>
           </div>
 
           <div className="flex items-center gap-6">
-            <a href="#tracker" className="hover:text-[#EA580C] transition-colors">
+            <a href="#tracker" className="hover:text-(--color-accent) transition-colors">
               Order Tracker
             </a>
-            <Link to="/login" className="hover:text-[#EA580C] transition-colors font-semibold text-[#1A1714]">
+            <Link to="/login" className="hover:text-(--color-accent) transition-colors font-semibold text-(--color-text)">
               Staff Sign In
             </Link>
           </div>
 
-          <p className="text-[11px] text-[#A8A29E]">
+          <p className="text-[11px] text-(--color-text-subtle)">
             © 2026 Everest Textile Mills. All rights reserved.
           </p>
         </div>

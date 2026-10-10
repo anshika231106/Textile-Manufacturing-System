@@ -10,6 +10,9 @@ import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { Dialog } from '../../components/ui/Dialog';
+import { Callout } from '../../components/ui/Callout';
+import { ProgressBar } from '../../components/ui/ProgressBar';
+import { Table, type Column } from '../../components/ui/Table';
 import { formatCurrency, formatDate } from '../../lib/format';
 import {
   ArrowLeftIcon,
@@ -38,6 +41,8 @@ const QC_STATUS_VARIANTS: Record<string, 'neutral' | 'warning' | 'info' | 'succe
   REWORK:  'warning',
   REJECT:  'danger',
 };
+
+type YarnRequirement = Order['yarnRequirements'][number];
 
 export function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -110,6 +115,40 @@ export function OrderDetailPage() {
     );
   }
 
+  const yarnColumns: Column<YarnRequirement>[] = [
+    {
+      key: 'yarnType',
+      header: 'Yarn Type',
+      render: (y) => <span className="font-semibold">{y.yarnTypeName ?? y.yarnTypeId}</span>,
+    },
+    {
+      key: 'code',
+      header: 'Code',
+      render: (y) => <span className="font-mono text-(--color-text-muted)">{y.yarnTypeCode ?? '—'}</span>,
+    },
+    {
+      key: 'required',
+      header: 'Required',
+      render: (y) => <span className="font-bold">{y.requiredKg} kg</span>,
+    },
+    {
+      key: 'stock',
+      header: 'Current Stock',
+      render: (y) => <span>{y.availableKg !== undefined ? `${y.availableKg} kg` : '—'}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      align: 'right',
+      render: (y) =>
+        (y.shortfallKg ?? 0) > 0 ? (
+          <Badge variant="danger" label={`-${y.shortfallKg} kg short`} dot />
+        ) : (
+          <Badge variant="success" label="Available" dot />
+        ),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6 max-w-5xl mx-auto page-content pb-16">
       {/* Top bar & Breadcrumbs */}
@@ -118,13 +157,13 @@ export function OrderDetailPage() {
           <button
             type="button"
             onClick={() => navigate('/orders')}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-[#78716C] hover:text-[#EA580C] mb-2 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-(--color-text-muted) hover:text-(--color-accent) mb-2 transition-colors"
           >
             <ArrowLeftIcon className="w-3.5 h-3.5" />
             Back to Orders
           </button>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl sm:text-3xl font-bold text-[#1A1714] tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold text-(--color-text) tracking-tight">
               {order.orderNumber}
             </h1>
             <Badge
@@ -133,8 +172,8 @@ export function OrderDetailPage() {
               dot
             />
           </div>
-          <p className="mt-1 text-sm text-[#78716C]">
-            Buyer: <span className="font-semibold text-[#1A1714]">{order.buyerName}</span> · Created on {formatDate(order.createdAt)}
+          <p className="mt-1 text-sm text-(--color-text-muted)">
+            Buyer: <span className="font-semibold text-(--color-text)">{order.buyerName}</span> · Created on {formatDate(order.createdAt)}
           </p>
         </div>
 
@@ -152,7 +191,7 @@ export function OrderDetailPage() {
               Start Production
             </Button>
             {hasShortfall && (
-              <span className="text-xs text-[#D97706] font-medium flex items-center gap-1">
+              <span className="text-xs text-(--color-warning) font-medium flex items-center gap-1">
                 <ExclamationTriangleIcon className="w-3.5 h-3.5" />
                 Blocked: Yarn shortfall exists in inventory
               </span>
@@ -162,20 +201,20 @@ export function OrderDetailPage() {
       </div>
 
       {/* Public Tracking Link Banner */}
-      <Card className="p-4 bg-gradient-to-r from-orange-50/50 via-white to-orange-50/30 border-[#EA580C]/20">
+      <Card className="p-4 bg-gradient-to-r from-orange-50/50 via-white to-orange-50/30 border-(--color-accent)/20">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <SparklesIcon className="w-5 h-5 text-[#EA580C] shrink-0" />
+            <SparklesIcon className="w-5 h-5 text-(--color-accent) shrink-0" />
             <div>
-              <p className="text-xs font-bold text-[#1A1714]">Buyer Public Tracking Link</p>
-              <p className="text-xs text-[#78716C]">
+              <p className="text-xs font-bold text-(--color-text)">Buyer Public Tracking Link</p>
+              <p className="text-xs text-(--color-text-muted)">
                 Share this secure tokenized link with the buyer to view live production progress without logging in.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="bg-white border border-[#E8E4DF] rounded-lg px-3 py-1.5 text-xs text-[#78716C] font-mono select-all truncate max-w-[220px]">
+            <div className="bg-white border border-(--color-border) rounded-lg px-3 py-1.5 text-xs text-(--color-text-muted) font-mono select-all truncate max-w-[220px]">
               /track/{order.trackingToken}
             </div>
             <Button
@@ -186,7 +225,7 @@ export function OrderDetailPage() {
             >
               {copied ? (
                 <>
-                  <CheckIcon className="w-3.5 h-3.5 mr-1 text-[#16A34A]" />
+                  <CheckIcon className="w-3.5 h-3.5 mr-1 text-(--color-success)" />
                   Copied
                 </>
               ) : (
@@ -200,7 +239,7 @@ export function OrderDetailPage() {
               to={`/track/${order.trackingToken}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center p-2 rounded-lg border border-[#E8E4DF] bg-white text-[#78716C] hover:text-[#EA580C] hover:border-[#EA580C]/30 transition-colors"
+              className="inline-flex items-center justify-center p-2 rounded-lg border border-(--color-border) bg-white text-(--color-text-muted) hover:text-(--color-accent) hover:border-(--color-accent)/30 transition-colors"
               title="Open Public Tracking Page"
             >
               <ArrowTopRightOnSquareIcon className="w-4 h-4" />
@@ -214,35 +253,35 @@ export function OrderDetailPage() {
         <div className="lg:col-span-2 flex flex-col gap-6">
           {/* Order Specifications */}
           <Card className="p-6 flex flex-col gap-4">
-            <h2 className="text-base font-bold text-[#1A1714] border-b border-[#E8E4DF] pb-3">
+            <h2 className="text-base font-bold text-(--color-text) border-b border-(--color-border) pb-3">
               Fabric Specifications & Value
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
               <div>
-                <span className="text-[#78716C]">Fabric Type</span>
-                <p className="font-semibold text-sm text-[#1A1714] mt-0.5">{order.fabricType}</p>
+                <span className="text-(--color-text-muted)">Fabric Type</span>
+                <p className="font-semibold text-sm text-(--color-text) mt-0.5">{order.fabricType}</p>
               </div>
               <div>
-                <span className="text-[#78716C]">Colour / Shade</span>
-                <p className="font-semibold text-sm text-[#1A1714] mt-0.5">{order.colour}</p>
+                <span className="text-(--color-text-muted)">Colour / Shade</span>
+                <p className="font-semibold text-sm text-(--color-text) mt-0.5">{order.colour}</p>
               </div>
               <div>
-                <span className="text-[#78716C]">Ordered Metres</span>
-                <p className="font-semibold text-sm text-[#1A1714] mt-0.5">
+                <span className="text-(--color-text-muted)">Ordered Metres</span>
+                <p className="font-semibold text-sm text-(--color-text) mt-0.5">
                   {order.metres.toLocaleString('en-IN')} m
                 </p>
               </div>
               <div>
-                <span className="text-[#78716C]">Rate per Metre</span>
-                <p className="font-semibold text-sm text-[#1A1714] mt-0.5">
+                <span className="text-(--color-text-muted)">Rate per Metre</span>
+                <p className="font-semibold text-sm text-(--color-text) mt-0.5">
                   {formatCurrency(order.ratePerMetre)}
                 </p>
               </div>
             </div>
 
-            <div className="mt-2 pt-3 border-t border-[#E8E4DF]/60 flex items-center justify-between text-xs">
-              <span className="text-[#78716C]">Estimated Order Total</span>
-              <span className="text-base font-bold text-[#1A1714]">
+            <div className="mt-2 pt-3 border-t border-(--color-border)/60 flex items-center justify-between text-xs">
+              <span className="text-(--color-text-muted)">Estimated Order Total</span>
+              <span className="text-base font-bold text-(--color-text)">
                 {formatCurrency(order.totalAmount)}
               </span>
             </div>
@@ -250,8 +289,8 @@ export function OrderDetailPage() {
 
           {/* Yarn BOM & Inventory Status */}
           <Card className="p-6 flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-[#E8E4DF] pb-3">
-              <h2 className="text-base font-bold text-[#1A1714]">Yarn Requirements & Availability</h2>
+            <div className="flex items-center justify-between border-b border-(--color-border) pb-3">
+              <h2 className="text-base font-bold text-(--color-text)">Yarn Requirements & Availability</h2>
               {hasShortfall ? (
                 <Badge variant="warning" label="Shortfall Detected" dot />
               ) : (
@@ -259,43 +298,12 @@ export function OrderDetailPage() {
               )}
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="text-[#78716C] font-medium border-b border-[#E8E4DF]">
-                  <tr>
-                    <th className="pb-2">Yarn Type</th>
-                    <th className="pb-2">Code</th>
-                    <th className="pb-2">Required</th>
-                    <th className="pb-2">Current Stock</th>
-                    <th className="pb-2 text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E8E4DF]/60 text-[#1A1714]">
-                  {order.yarnRequirements.map((y, idx) => (
-                    <tr key={idx} className="py-2.5">
-                      <td className="py-2.5 font-semibold">{y.yarnTypeName ?? y.yarnTypeId}</td>
-                      <td className="py-2.5 font-mono text-[#78716C]">{y.yarnTypeCode ?? '—'}</td>
-                      <td className="py-2.5 font-bold">{y.requiredKg} kg</td>
-                      <td className="py-2.5">{y.availableKg !== undefined ? `${y.availableKg} kg` : '—'}</td>
-                      <td className="py-2.5 text-right">
-                        {(y.shortfallKg ?? 0) > 0 ? (
-                          <span className="text-[#DC2626] font-semibold">
-                            -{y.shortfallKg} kg short
-                          </span>
-                        ) : (
-                          <span className="text-[#16A34A] font-semibold">Available</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table columns={yarnColumns} rows={order.yarnRequirements} rowKey={(y) => y.yarnTypeId} />
           </Card>
 
           {/* Stage Progress Pipeline */}
           <Card className="p-6 flex flex-col gap-4">
-            <h2 className="text-base font-bold text-[#1A1714] border-b border-[#E8E4DF] pb-3">
+            <h2 className="text-base font-bold text-(--color-text) border-b border-(--color-border) pb-3">
               Production Stage Progress
             </h2>
 
@@ -313,14 +321,14 @@ export function OrderDetailPage() {
                     className={[
                       'p-4 rounded-xl border flex flex-col gap-2',
                       isComplete
-                        ? 'bg-[#F0FDF4] border-[#86EFAC]'
+                        ? 'bg-(--color-success-light) border-(--color-success-border)'
                         : isInProgress
-                        ? 'bg-[#FFF7ED] border-[#FDBA74]'
-                        : 'bg-[#FAFAF8] border-[#E8E4DF]',
+                        ? 'bg-(--color-accent-light) border-[#FDBA74]'
+                        : 'bg-(--color-bg) border-(--color-border)',
                     ].join(' ')}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#1A1714]">
+                      <span className="text-xs font-bold text-(--color-text)">
                         {idx + 1}. {stage.stage}
                       </span>
                       <Badge
@@ -329,21 +337,16 @@ export function OrderDetailPage() {
                       />
                     </div>
 
-                    <p className="text-xs text-[#78716C]">
+                    <p className="text-xs text-(--color-text-muted)">
                       {stage.machineName ? `Assigned: ${stage.machineName}` : 'Awaiting assignment'}
                     </p>
 
                     <div className="mt-1">
-                      <div className="flex justify-between text-xs font-medium text-[#1A1714] mb-1">
+                      <div className="flex justify-between text-xs font-medium text-(--color-text) mb-1">
                         <span>{stage.producedMetres} m</span>
-                        <span className="text-[#78716C]">{pct}%</span>
+                        <span className="text-(--color-text-muted)">{pct}%</span>
                       </div>
-                      <div className="w-full bg-[#E8E4DF] h-1.5 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[#EA580C] rounded-full transition-all duration-300"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
+                      <ProgressBar value={pct} tone={isComplete ? 'success' : 'accent'} size="sm" />
                     </div>
                   </div>
                 );
@@ -356,47 +359,47 @@ export function OrderDetailPage() {
         <div className="flex flex-col gap-6">
           {/* Delivery & Timeline Card */}
           <Card className="p-6 flex flex-col gap-4">
-            <h2 className="text-base font-bold text-[#1A1714] border-b border-[#E8E4DF] pb-3">
+            <h2 className="text-base font-bold text-(--color-text) border-b border-(--color-border) pb-3">
               Delivery Schedule
             </h2>
 
             <div className="flex items-start gap-3 text-xs">
-              <ClockIcon className="w-5 h-5 text-[#EA580C] shrink-0 mt-0.5" />
+              <ClockIcon className="w-5 h-5 text-(--color-accent) shrink-0 mt-0.5" />
               <div>
-                <p className="text-[#78716C]">Deadline Date</p>
-                <p className="text-sm font-bold text-[#1A1714] mt-0.5">
+                <p className="text-(--color-text-muted)">Deadline Date</p>
+                <p className="text-sm font-bold text-(--color-text) mt-0.5">
                   {formatDate(order.deadline)}
                 </p>
               </div>
             </div>
 
-            <div className="border-t border-[#E8E4DF]/60 pt-3 text-xs flex flex-col gap-2">
+            <div className="border-t border-(--color-border)/60 pt-3 text-xs flex flex-col gap-2">
               <div className="flex justify-between">
-                <span className="text-[#78716C]">Buyer Contact:</span>
-                <span className="font-medium text-[#1A1714]">{order.buyerPhone ?? '—'}</span>
+                <span className="text-(--color-text-muted)">Buyer Contact:</span>
+                <span className="font-medium text-(--color-text)">{order.buyerPhone ?? '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#78716C]">Current Stage:</span>
-                <span className="font-semibold text-[#EA580C]">{order.currentStage}</span>
+                <span className="text-(--color-text-muted)">Current Stage:</span>
+                <span className="font-semibold text-(--color-accent)">{order.currentStage}</span>
               </div>
             </div>
           </Card>
 
           {/* Roll Production & QC Summary */}
           <Card className="p-6 flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-[#E8E4DF] pb-3">
-              <h2 className="text-base font-bold text-[#1A1714]">Finished Rolls & QC</h2>
-              <span className="text-xs font-semibold text-[#78716C]">
+            <div className="flex items-center justify-between border-b border-(--color-border) pb-3">
+              <h2 className="text-base font-bold text-(--color-text)">Finished Rolls & QC</h2>
+              <span className="text-xs font-semibold text-(--color-text-muted)">
                 {order.rollSummary?.totalRolls ?? 0} rolls
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-center text-xs">
-              <div className="p-2.5 rounded-lg bg-[#F0FDF4] border border-[#86EFAC] text-[#16A34A]">
+              <div className="p-2.5 rounded-lg bg-(--color-success-light) border border-(--color-success-border) text-(--color-success)">
                 <p className="font-bold text-base">{order.rollSummary?.passedRolls ?? 0}</p>
                 <p className="text-[11px] font-medium">Passed</p>
               </div>
-              <div className="p-2.5 rounded-lg bg-[#FFFBEB] border border-[#FDE68A] text-[#D97706]">
+              <div className="p-2.5 rounded-lg bg-(--color-warning-light) border border-[#FDE68A] text-(--color-warning)">
                 <p className="font-bold text-base">{order.rollSummary?.inQcRolls ?? 0}</p>
                 <p className="text-[11px] font-medium">In QC</p>
               </div>
@@ -408,11 +411,11 @@ export function OrderDetailPage() {
                 {order.rollSummary.rolls.map((roll) => (
                   <div
                     key={roll.id}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-[#FAFAF8] border border-[#E8E4DF] text-xs"
+                    className="flex items-center justify-between p-2.5 rounded-lg bg-(--color-bg) border border-(--color-border) text-xs"
                   >
                     <div>
-                      <span className="font-semibold text-[#1A1714]">{roll.rollNumber}</span>
-                      <span className="text-[#78716C] ml-2">{roll.metres} m</span>
+                      <span className="font-semibold text-(--color-text)">{roll.rollNumber}</span>
+                      <span className="text-(--color-text-muted) ml-2">{roll.metres} m</span>
                     </div>
                     <Badge
                       variant={QC_STATUS_VARIANTS[roll.qcStatus] ?? 'neutral'}
@@ -422,7 +425,7 @@ export function OrderDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-[#78716C] text-center py-4 italic">
+              <p className="text-xs text-(--color-text-muted) text-center py-4 italic">
                 Rolls will appear here once created from dyeing output.
               </p>
             )}
@@ -437,24 +440,19 @@ export function OrderDetailPage() {
         title="Start Production"
       >
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-[#78716C]">
-            Are you sure you want to start production for order <strong className="text-[#1A1714]">{order.orderNumber}</strong>?
+          <p className="text-sm text-(--color-text-muted)">
+            Are you sure you want to start production for order <strong className="text-(--color-text)">{order.orderNumber}</strong>?
           </p>
 
-          <div className="p-3.5 rounded-xl bg-[#FFF7ED] border border-[#FED7AA] text-xs text-[#C2410C]">
-            <p className="font-semibold mb-1">Automated Actions:</p>
+          <Callout tone="accent" title="Automated Actions:">
             <ul className="list-disc list-inside space-y-0.5">
               <li>Raw material ({order.yarnRequirements.map((y) => `${y.requiredKg} kg`).join(', ')}) will be issued from yarn store.</li>
               <li>Order status will change to <strong>IN_PRODUCTION</strong>.</li>
               <li>Spinning stage job will become ready on the machine floor.</li>
             </ul>
-          </div>
+          </Callout>
 
-          {actionError && (
-            <div className="p-3 rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] text-xs text-[#DC2626]">
-              {actionError}
-            </div>
-          )}
+          {actionError && <Callout tone="danger">{actionError}</Callout>}
 
           <div className="flex items-center justify-end gap-2.5 pt-2">
             <Button

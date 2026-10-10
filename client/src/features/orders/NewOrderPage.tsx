@@ -9,12 +9,13 @@ import { Select } from '../../components/ui/Select';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
+import { Callout } from '../../components/ui/Callout';
+import { Table, type Column } from '../../components/ui/Table';
 import { formatCurrency, formatApiDate } from '../../lib/format';
 import {
   ArrowLeftIcon,
   PlusIcon,
   TrashIcon,
-  CheckCircleIcon,
   ExclamationTriangleIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
@@ -196,6 +197,39 @@ export function NewOrderPage() {
   const safeBuyersList = Array.isArray(buyers) ? buyers : MOCK_BUYERS;
   const safeYarnsList = Array.isArray(yarnTypes) ? yarnTypes : MOCK_YARN_TYPES;
 
+  const columns: Column<NonNullable<FeasibilityResult['items']>[number]>[] = [
+    {
+      key: 'yarn',
+      header: 'Yarn Material',
+      render: (item) => (
+        <span className="font-medium">
+          {item.yarnTypeName}
+          <span className="text-(--color-text-muted) ml-1">({item.yarnTypeCode})</span>
+        </span>
+      ),
+    },
+    {
+      key: 'required',
+      header: 'Required',
+      render: (item) => <span className="font-semibold">{item.requiredKg} kg</span>,
+    },
+    {
+      key: 'available',
+      header: 'In Stock (Avail)',
+      render: (item) => <span>{item.availableKg} kg</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status / Shortfall',
+      render: (item) =>
+        item.isSufficient ? (
+          <Badge variant="success" label="Sufficient" dot />
+        ) : (
+          <Badge variant="warning" label={`Short by ${item.shortfallKg} kg`} dot />
+        ),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6 max-w-4xl mx-auto page-content pb-12">
       {/* Back & Title */}
@@ -203,13 +237,13 @@ export function NewOrderPage() {
         <button
           type="button"
           onClick={() => navigate('/orders')}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#78716C] hover:text-[#EA580C] mb-3 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-(--color-text-muted) hover:text-(--color-accent) mb-3 transition-colors"
         >
           <ArrowLeftIcon className="w-3.5 h-3.5" />
           Back to Orders
         </button>
-        <h1 className="text-2xl font-bold text-[#1A1714] tracking-tight">Create New Order</h1>
-        <p className="mt-1 text-sm text-[#78716C]">
+        <h1 className="text-2xl font-bold text-(--color-text) tracking-tight">Create New Order</h1>
+        <p className="mt-1 text-sm text-(--color-text-muted)">
           Configure fabric specs, yarn bill of materials, and preview live stock feasibility.
         </p>
       </div>
@@ -217,18 +251,14 @@ export function NewOrderPage() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
         {/* Error banner */}
         {formError && (
-          <div className="rounded-xl bg-[#FEF2F2] border border-[#FCA5A5] p-4 flex items-start gap-3 text-[#DC2626]">
-            <ExclamationTriangleIcon className="w-5 h-5 shrink-0 mt-0.5" />
-            <div className="text-sm">
-              <p className="font-semibold">Unable to create order</p>
-              <p className="mt-0.5">{formError}</p>
-            </div>
-          </div>
+          <Callout tone="danger" title="Unable to create order" icon={ExclamationTriangleIcon}>
+            {formError}
+          </Callout>
         )}
 
         {/* 1. Buyer & Basic Information */}
         <Card className="p-6 flex flex-col gap-5">
-          <h2 className="text-base font-bold text-[#1A1714] border-b border-[#E8E4DF] pb-3">
+          <h2 className="text-base font-bold text-(--color-text) border-b border-(--color-border) pb-3">
             1. Buyer & Fabric Details
           </h2>
 
@@ -301,8 +331,15 @@ export function NewOrderPage() {
             />
 
             <div className="flex flex-col gap-1.5 justify-end">
-              <span className="text-xs font-medium text-[#78716C]">Estimated Total Value</span>
-              <div className="bg-[#FAFAF8] border border-[#E8E4DF] rounded-lg px-3.5 py-2.5 text-[#1A1714] font-bold text-sm">
+              <span className="text-xs font-medium text-(--color-text-muted)">Estimated Total Value</span>
+              <div
+                className={[
+                  'rounded-lg px-3.5 py-2.5 font-bold text-sm border transition-colors',
+                  estimatedTotal > 0
+                    ? 'bg-(--color-accent-light) border-(--color-accent)/20 text-(--color-accent)'
+                    : 'bg-(--color-bg) border-(--color-border) text-(--color-text)',
+                ].join(' ')}
+              >
                 {estimatedTotal > 0 ? formatCurrency(estimatedTotal) : '₹0.00'}
               </div>
             </div>
@@ -311,10 +348,10 @@ export function NewOrderPage() {
 
         {/* 2. Yarn Bill of Materials */}
         <Card className="p-6 flex flex-col gap-5">
-          <div className="flex items-center justify-between border-b border-[#E8E4DF] pb-3">
+          <div className="flex items-center justify-between border-b border-(--color-border) pb-3">
             <div>
-              <h2 className="text-base font-bold text-[#1A1714]">2. Yarn Requirements</h2>
-              <p className="text-xs text-[#78716C] mt-0.5">
+              <h2 className="text-base font-bold text-(--color-text)">2. Yarn Requirements</h2>
+              <p className="text-xs text-(--color-text-muted) mt-0.5">
                 Specify the yarn types and estimated raw kg needed for spinning/weaving.
               </p>
             </div>
@@ -335,7 +372,7 @@ export function NewOrderPage() {
             {yarnRows.map((row, idx) => (
               <div
                 key={row.id}
-                className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end p-3.5 rounded-xl bg-[#FAFAF8] border border-[#E8E4DF]"
+                className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end p-3.5 rounded-xl bg-(--color-bg) border border-(--color-border)"
               >
                 <div className="sm:col-span-7">
                   <Select
@@ -369,7 +406,7 @@ export function NewOrderPage() {
                     size="sm"
                     disabled={yarnRows.length <= 1}
                     onClick={() => handleRemoveYarnRow(row.id)}
-                    className="text-[#DC2626] hover:bg-[#FEF2F2] p-2"
+                    className="text-(--color-danger) hover:bg-(--color-danger-light) p-2"
                     title="Remove yarn row"
                   >
                     <TrashIcon className="w-4 h-4" />
@@ -381,15 +418,15 @@ export function NewOrderPage() {
         </Card>
 
         {/* 3. Live Feasibility Preview */}
-        <Card className="p-6 flex flex-col gap-4 bg-gradient-to-b from-white to-[#FAFAF8]">
+        <Card className="p-6 flex flex-col gap-4 bg-gradient-to-b from-white to-(--color-bg)">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <SparklesIcon className="w-5 h-5 text-[#EA580C]" />
-              <h2 className="text-base font-bold text-[#1A1714]">Live Stock Feasibility</h2>
+              <SparklesIcon className="w-5 h-5 text-(--color-accent)" />
+              <h2 className="text-base font-bold text-(--color-text)">Live Stock Feasibility</h2>
             </div>
 
             {checkingFeasibility && (
-              <div className="flex items-center gap-1.5 text-xs text-[#78716C]">
+              <div className="flex items-center gap-1.5 text-xs text-(--color-text-muted)">
                 <Spinner size="sm" />
                 Checking inventory...
               </div>
@@ -397,77 +434,32 @@ export function NewOrderPage() {
           </div>
 
           {!feasibility && !checkingFeasibility && (
-            <p className="text-xs text-[#78716C] italic">
+            <p className="text-xs text-(--color-text-muted) italic">
               Enter required yarn kg above to check live raw material availability in the mill store.
             </p>
           )}
 
           {feasibility && (
             <div className="flex flex-col gap-3">
-              {/* Overall status indicator */}
-              <div
-                className={[
-                  'p-4 rounded-xl border flex items-start gap-3',
+              <Callout
+                tone={feasibility.isFeasible ? 'success' : 'warning'}
+                title={
                   feasibility.isFeasible
-                    ? 'bg-[#F0FDF4] border-[#86EFAC] text-[#16A34A]'
-                    : 'bg-[#FFFBEB] border-[#FDE68A] text-[#D97706]',
-                ].join(' ')}
+                    ? 'All required yarn is in stock'
+                    : 'Raw material shortfall detected'
+                }
               >
-                {feasibility.isFeasible ? (
-                  <CheckCircleIcon className="w-5 h-5 shrink-0 mt-0.5" />
-                ) : (
-                  <ExclamationTriangleIcon className="w-5 h-5 shrink-0 mt-0.5" />
-                )}
-                <div>
-                  <p className="text-sm font-bold">
-                    {feasibility.isFeasible
-                      ? 'All required yarn is in stock'
-                      : 'Raw material shortfall detected'}
-                  </p>
-                  <p className="text-xs mt-0.5 text-[#78716C]">
-                    {feasibility.isFeasible
-                      ? 'Production can be started immediately upon order creation.'
-                      : 'You can still create this order to lock specifications, but production will be locked until additional yarn is received at the gate.'}
-                  </p>
-                </div>
-              </div>
+                {feasibility.isFeasible
+                  ? 'Production can be started immediately upon order creation.'
+                  : 'You can still create this order to lock specifications, but production will be locked until additional yarn is received at the gate.'}
+              </Callout>
 
-              {/* Items Breakdown Table */}
-              <div className="overflow-x-auto border border-[#E8E4DF] rounded-xl bg-white">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#FAFAF8] border-b border-[#E8E4DF] text-[#78716C] font-semibold">
-                    <tr>
-                      <th className="px-4 py-2.5">Yarn Material</th>
-                      <th className="px-4 py-2.5">Required</th>
-                      <th className="px-4 py-2.5">In Stock (Avail)</th>
-                      <th className="px-4 py-2.5">Status / Shortfall</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#E8E4DF]/70 text-[#1A1714]">
-                    {(feasibility.items ?? []).map((item) => (
-                      <tr key={item.yarnTypeId} className="hover:bg-[#FAFAF8]/50">
-                        <td className="px-4 py-2.5 font-medium">
-                          {item.yarnTypeName}
-                          <span className="text-[#78716C] ml-1">({item.yarnTypeCode})</span>
-                        </td>
-                        <td className="px-4 py-2.5 font-semibold">{item.requiredKg} kg</td>
-                        <td className="px-4 py-2.5">{item.availableKg} kg</td>
-                        <td className="px-4 py-2.5">
-                          {item.isSufficient ? (
-                            <Badge variant="success" label="Sufficient" dot />
-                          ) : (
-                            <Badge
-                              variant="warning"
-                              label={`Short by ${item.shortfallKg} kg`}
-                              dot
-                            />
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table
+                columns={columns}
+                rows={feasibility.items ?? []}
+                rowKey={(item) => item.yarnTypeId}
+                emptyTitle="No yarn lines"
+              />
             </div>
           )}
         </Card>

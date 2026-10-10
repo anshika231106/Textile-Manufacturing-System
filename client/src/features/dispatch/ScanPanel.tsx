@@ -9,15 +9,15 @@ export function ScanPanel({ onScan }: ScanPanelProps) {
   const [active, setActive] = useState(false);
 
   return (
-    <div className="rounded-xl border border-dashed border-[#E8E4DF] bg-[#FBFBFA] p-4 text-center">
-      <div className="flex items-center justify-center gap-2 text-[#78716C] mb-2">
-        <QrCodeIcon className="w-5 h-5 text-[#EA580C]" />
-        <span className="text-xs font-semibold uppercase tracking-wider text-[#1A1714]">
+    <div className="rounded-xl border border-dashed border-(--color-border) bg-(--color-surface-alt) p-4 text-center">
+      <div className="flex items-center justify-center gap-2 text-(--color-text-muted) mb-2">
+        <QrCodeIcon className="w-5 h-5 text-(--color-accent)" />
+        <span className="text-xs font-semibold uppercase tracking-wider text-(--color-text)">
           Optical Barcode / QR Scanner (P1 Feature)
         </span>
       </div>
 
-      <p className="text-xs text-[#78716C] max-w-md mx-auto">
+      <p className="text-xs text-(--color-text-muted) max-w-md mx-auto">
         Camera scanning interface for automated roll barcode tags. In standard P0 operations, manual entry and one-click selection from the passed rolls queue below are fully supported.
       </p>
 
@@ -49,9 +49,9 @@ export function ScanPanel({ onScan }: ScanPanelProps) {
         <button
           type="button"
           onClick={() => setActive(true)}
-          className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#78716C] hover:text-[#1A1714] bg-white border border-[#E8E4DF] rounded-lg hover:border-[#A8A29E] transition-colors"
+          className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-(--color-text-muted) hover:text-(--color-text) bg-white border border-(--color-border) rounded-lg hover:border-(--color-text-subtle) transition-colors"
         >
-          <CameraIcon className="w-4 h-4 text-[#78716C]" />
+          <CameraIcon className="w-4 h-4 text-(--color-text-muted)" />
           Activate Scanner View
         </button>
       )}
