@@ -74,9 +74,9 @@ Populates a full sample chain: Buyer → Order → yarn stock → machines → s
 
 ## Attendance and wages
 
-Attendance is stored per staff member and date. Supervisors can mark and save the full roster for today; Office and Owner can review attendance and monthly wage totals, while each Staff user can view only their own attendance and wage summary. Wage totals are calculated as the staff member's daily wage multiplied by recorded present days. Supervisors cannot access wage data, and attendance changes are rejected for roles other than Supervisor.
+Attendance is stored per staff member and date. A date with no saved attendance defaults to everyone absent in the roster; Supervisors can mark staff present and save the full roster for today. Office and Owner can review attendance and monthly wage totals, while each Staff user can view only their own attendance and wage summary. Wage totals are calculated as the staff member's daily wage multiplied by recorded present days. Office and Owner can update a staff member's daily wage, which is stored on the user record and used to recalculate wage totals. Supervisors cannot access wage data, and attendance changes are rejected for roles other than Supervisor.
 
-The API endpoints are `GET /api/v1/attendance?date=YYYY-MM-DD`, `POST /api/v1/attendance`, and `GET /api/v1/attendance/wages?month=YYYY-MM`.
+The API endpoints are `GET /api/v1/attendance?date=YYYY-MM-DD`, `POST /api/v1/attendance`, `GET /api/v1/attendance/wages?month=YYYY-MM`, and `PATCH /api/v1/attendance/staff/:staffId/wage` (Office/Owner only). Owner role changes are restricted to one-level promotions: Staff → Supervisor → Office.
 
 ## 8. Verify it worked
 

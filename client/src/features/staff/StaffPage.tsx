@@ -34,6 +34,12 @@ const ROLE_OPTIONS = [
   { value: 'OFFICE', label: 'Office Staff (Orders & Invoices)' },
 ];
 
+function nextRole(role: Role): Role | null {
+  if (role === 'STAFF') return 'SUPERVISOR';
+  if (role === 'SUPERVISOR') return 'OFFICE';
+  return null;
+}
+
 const ROLE_BADGE_VARIANT: Record<string, 'neutral' | 'info' | 'success' | 'warning' | 'danger'> = {
   OWNER: 'neutral',
   OFFICE: 'info',
@@ -155,8 +161,10 @@ export function StaffPage() {
   };
 
   const openRoleDialog = (user: StaffUser) => {
+    const upgrade = nextRole(user.role);
+    if (!upgrade) return;
     setRoleTarget(user);
-    setSelectedRole(user.role === 'STAFF' ? 'SUPERVISOR' : 'STAFF');
+    setSelectedRole(upgrade);
     setActionError('');
   };
 
@@ -240,7 +248,7 @@ export function StaffPage() {
         const isCurrent = currentUser?.id === u.id;
         return (
           <div className="flex justify-end items-center gap-2">
-            {isOwner && !isCurrent && u.role !== 'OWNER' && (
+            {isOwner && !isCurrent && nextRole(u.role) && (
               <button
                 type="button"
                 onClick={() => openRoleDialog(u)}
@@ -369,12 +377,15 @@ export function StaffPage() {
             </div>
             <Select
               id="change-staff-role"
-              label="New role"
-              options={ROLE_OPTIONS}
+              label="Upgrade to"
+              options={ROLE_OPTIONS.filter((option) => option.value === nextRole(roleTarget.role))}
               value={selectedRole}
               onChange={(event) => setSelectedRole(event.target.value as Role)}
               disabled={actionSubmitting}
             />
+            <p className="text-xs text-(--color-text-muted)">
+              Roles can only move up one level: Staff → Supervisor → Office.
+            </p>
             {actionError && <Callout tone="danger">{actionError}</Callout>}
             <div className="pt-3 border-t border-(--color-border) flex justify-end gap-2.5">
               <Button
