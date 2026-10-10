@@ -15,7 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import { LandingPage }     from './features/landing/LandingPage';
-import { HomePage }         from './features/reports/HomePage';
+import { DashboardPage }    from './features/reports/DashboardPage';
 import { LoginPage }        from './features/auth/LoginPage';
 import { TrackPage }        from './features/track/TrackPage';
 import { OrdersPage }       from './features/orders/OrdersPage';
@@ -56,7 +56,7 @@ export const ROUTES: RouteConfig[] = [
     icon: HomeIcon,
     roles: 'all',
     nav: true,
-    element: <HomePage />,
+    element: <DashboardPage />,
   },
   {
     path: '/stock',
