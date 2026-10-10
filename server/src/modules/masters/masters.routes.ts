@@ -3,6 +3,8 @@ import { prisma } from '../../lib/prisma';
 import { ok } from '../../lib/respond';
 import { authenticate } from '../../middleware/authenticate';
 
+import { stockService } from '../stock/stock.service';
+
 export const mastersRoutes = Router();
 
 mastersRoutes.use(authenticate);
@@ -34,19 +36,31 @@ mastersRoutes.get(['/suppliers', '/masters/suppliers'], async (_req, res, next) 
 // API-08: GET /yarn-types
 mastersRoutes.get(['/yarn-types', '/masters/yarn-types'], async (_req, res, next) => {
   try {
-    const yarnTypes = await prisma.yarnType.findMany({
-      orderBy: { code: 'asc' },
-    });
+    const [yarnTypes, stockSummary] = await Promise.all([
+      prisma.yarnType.findMany({ orderBy: { code: 'asc' } }),
+      stockService.getStockSummary().catch(() => []),
+    ]);
+
+    const stockMap = new Map((stockSummary || []).map((s) => [s.yarnTypeId, s]));
+
     return ok(
       res,
-      yarnTypes.map((yt) => ({
-        id: yt.id,
-        code: yt.code,
-        name: yt.name,
-        colour: yt.colour,
-        countLabel: yt.countLabel,
-        reorderLevelKg: Number(yt.reorderLevelKg),
-      }))
+      yarnTypes.map((yt) => {
+        const stock = stockMap.get(yt.id);
+        return {
+          id: yt.id,
+          code: yt.code,
+          name: yt.name,
+          colour: yt.colour,
+          countLabel: yt.countLabel,
+          reorderLevelKg: Number(yt.reorderLevelKg),
+          onHandKg: stock?.onHandKg ?? 0,
+          availableKg: stock?.availableKg ?? 0,
+          reservedKg: stock?.reservedKg ?? 0,
+          shortfallKg: stock?.shortfallKg ?? 0,
+          isLow: stock?.isLow ?? false,
+        };
+      })
     );
   } catch (err) {
     next(err);
