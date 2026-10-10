@@ -9,5 +9,356 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+}
+
+enum Role {
+  OWNER
+  OFFICE
+  SUPERVISOR
+  STOREKEEPER
+}
+
+enum Stage {
+  SPINNING
+  WEAVING
+  DYEING
+}
+
+enum MachineStatus {
+  IDLE
+  RUNNING
+  BREAKDOWN
+}
+
+enum StageJobStatus {
+  RUNNING
+  COMPLETED
+  INTERRUPTED
+}
+
+enum Shift {
+  MORNING
+  EVENING
+  NIGHT
+}
+
+enum MovementType {
+  RECEIPT
+  ISSUE
+}
+
+enum RollStatus {
+  PENDING_QC
+  PASSED
+  REWORK
+  REJECTED
+  DISPATCHED
+}
+
+enum QcResult {
+  PASS
+  REWORK
+  REJECT
+}
+
+enum DefectType {
+  HOLE
+  COLOUR_MISMATCH
+  UNEVEN_WEAVE
+  OTHER
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+
+  stockMovements StockMovement[]
+  orders         Order[]
+  productionLogs ProductionLog[]
+  rolls          Roll[]
+  qcRecords      QcRecord[]
+  dispatches     Dispatch[]
+  payments       Payment[]
+}
+
+model Buyer {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  contactName String?
+  phone       String?
+  createdAt   DateTime @default(now())
+
+  orders Order[]
+}
+
+model Supplier {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  phone     String?
+  createdAt DateTime @default(now())
+
+  movements StockMovement[]
+}
+
+model YarnType {
+  id             String   @id @default(uuid()) @db.Uuid
+  code           String   @unique
+  name           String
+  colour         String
+  countLabel     String?
+  reorderLevelKg Decimal  @default(0) @db.Decimal(12, 3)
+  createdAt      DateTime @default(now())
+
+  movements    StockMovement[]
+  requirements OrderYarnRequirement[]
+}
+
+model StockMovement {
+  id          String       @id @default(uuid()) @db.Uuid
+  yarnTypeId  String       @db.Uuid
+  type        MovementType
+  kg          Decimal      @db.Decimal(12, 3)
+  ratePerKg   Decimal      @db.Decimal(12, 2)
+  supplierId  String?      @db.Uuid
+  orderId     String?      @db.Uuid
+  reference   String?
+  occurredAt  DateTime     @default(now())
+  createdById String       @db.Uuid
+  createdAt   DateTime     @default(now())
+
+  yarnType  YarnType  @relation(fields: [yarnTypeId], references: [id])
+  supplier  Supplier? @relation(fields: [supplierId], references: [id])
+  order     Order?    @relation(fields: [orderId], references: [id])
+  createdBy User      @relation(fields: [createdById], references: [id])
+
+  @@index([yarnTypeId, occurredAt])
+  @@index([orderId])
+  @@index([type, occurredAt])
+}
+
+model Order {
+  id            String    @id @default(uuid()) @db.Uuid
+  orderNo       String    @unique
+  buyerId       String    @db.Uuid
+  fabricType    String
+  colour        String
+  metres        Decimal   @db.Decimal(12, 2)
+  ratePerMetre  Decimal   @db.Decimal(12, 2)
+  deadline      DateTime  @db.Date
+  trackingToken String    @unique
+  startedAt     DateTime?
+  createdById   String    @db.Uuid
+  createdAt     DateTime  @default(now())
+
+  buyer          Buyer                  @relation(fields: [buyerId], references: [id])
+  createdBy      User                   @relation(fields: [createdById], references: [id])
+  requirements   OrderYarnRequirement[]
+  movements      StockMovement[]
+  stageJobs      StageJob[]
+  productionLogs ProductionLog[]
+  rolls          Roll[]
+  dispatches     Dispatch[]
+  invoices       Invoice[]
+
+  @@index([buyerId])
+  @@index([startedAt])
+  @@index([deadline])
+}
+
+model OrderYarnRequirement {
+  id         String  @id @default(uuid()) @db.Uuid
+  orderId    String  @db.Uuid
+  yarnTypeId String  @db.Uuid
+  kgPerMetre Decimal @db.Decimal(8, 4)
+
+  order    Order    @relation(fields: [orderId], references: [id])
+  yarnType YarnType @relation(fields: [yarnTypeId], references: [id])
+
+  @@unique([orderId, yarnTypeId])
+}
+
+model Machine {
+  id           String        @id @default(uuid()) @db.Uuid
+  code         String        @unique
+  name         String
+  stage        Stage
+  status       MachineStatus @default(IDLE)
+  ratePerMetre Decimal       @default(0) @db.Decimal(8, 2)
+  createdAt    DateTime      @default(now())
+
+  stageJobs      StageJob[]
+  productionLogs ProductionLog[]
+  weavingRolls   Roll[]          @relation("RollWeavingMachine")
+  dyeingRolls    Roll[]          @relation("RollDyeingMachine")
+
+  @@index([stage, status])
+}
+
+model StageJob {
+  id        String         @id @default(uuid()) @db.Uuid
+  orderId   String         @db.Uuid
+  stage     Stage
+  machineId String         @db.Uuid
+  status    StageJobStatus @default(RUNNING)
+  startedAt DateTime       @default(now())
+  endedAt   DateTime?
+
+  order   Order           @relation(fields: [orderId], references: [id])
+  machine Machine         @relation(fields: [machineId], references: [id])
+  logs    ProductionLog[]
+
+  @@index([orderId, stage])
+  @@index([machineId, status])
+}
+
+model ProductionLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  stageJobId  String   @db.Uuid
+  orderId     String   @db.Uuid
+  machineId   String   @db.Uuid
+  stage       Stage
+  shift       Shift
+  metres      Decimal  @db.Decimal(12, 2)
+  loggedAt    DateTime @default(now())
+  createdById String   @db.Uuid
+
+  stageJob  StageJob @relation(fields: [stageJobId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id])
+  machine   Machine  @relation(fields: [machineId], references: [id])
+  createdBy User     @relation(fields: [createdById], references: [id])
+
+  @@index([orderId, stage])
+  @@index([machineId, loggedAt])
+  @@index([loggedAt])
+}
+
+model Roll {
+  id               String     @id @default(uuid()) @db.Uuid
+  rollNo           String     @unique
+  orderId          String     @db.Uuid
+  metres           Decimal    @db.Decimal(10, 2)
+  weavingMachineId String     @db.Uuid
+  dyeingMachineId  String     @db.Uuid
+  status           RollStatus @default(PENDING_QC)
+  createdById      String     @db.Uuid
+  createdAt        DateTime   @default(now())
+
+  order          Order         @relation(fields: [orderId], references: [id])
+  weavingMachine Machine       @relation("RollWeavingMachine", fields: [weavingMachineId], references: [id])
+  dyeingMachine  Machine       @relation("RollDyeingMachine", fields: [dyeingMachineId], references: [id])
+  createdBy      User          @relation(fields: [createdById], references: [id])
+  qcRecords      QcRecord[]
+  dispatchItem   DispatchItem?
+
+  @@index([orderId, status])
+  @@index([status])
+}
+
+model QcRecord {
+  id          String      @id @default(uuid()) @db.Uuid
+  rollId      String      @db.Uuid
+  result      QcResult
+  defectType  DefectType?
+  notes       String?
+  inspectorId String      @db.Uuid
+  checkedAt   DateTime    @default(now())
+
+  roll      Roll @relation(fields: [rollId], references: [id])
+  inspector User @relation(fields: [inspectorId], references: [id])
+
+  @@index([rollId])
+  @@index([checkedAt])
+}
+
+model Dispatch {
+  id           String   @id @default(uuid()) @db.Uuid
+  dispatchNo   String   @unique
+  orderId      String   @db.Uuid
+  vehicleNo    String?
+  dispatchedAt DateTime @default(now())
+  createdById  String   @db.Uuid
+
+  order     Order          @relation(fields: [orderId], references: [id])
+  createdBy User           @relation(fields: [createdById], references: [id])
+  items     DispatchItem[]
+  invoice   Invoice?
+
+  @@index([orderId])
+}
+
+model DispatchItem {
+  id         String  @id @default(uuid()) @db.Uuid
+  dispatchId String  @db.Uuid
+  rollId     String  @unique @db.Uuid
+  metres     Decimal @db.Decimal(10, 2)
+
+  dispatch Dispatch @relation(fields: [dispatchId], references: [id])
+  roll     Roll     @relation(fields: [rollId], references: [id])
+
+  @@index([dispatchId])
+}
+
+model Invoice {
+  id         String   @id @default(uuid()) @db.Uuid
+  invoiceNo  String   @unique
+  dispatchId String   @unique @db.Uuid
+  orderId    String   @db.Uuid
+  amount     Decimal  @db.Decimal(14, 2)
+  issuedAt   DateTime @default(now())
+
+  dispatch Dispatch  @relation(fields: [dispatchId], references: [id])
+  order    Order     @relation(fields: [orderId], references: [id])
+  payments Payment[]
+
+  @@index([orderId])
+  @@index([issuedAt])
+}
+
+model Payment {
+  id          String   @id @default(uuid()) @db.Uuid
+  invoiceId   String   @db.Uuid
+  amount      Decimal  @db.Decimal(14, 2)
+  paidOn      DateTime @db.Date
+  method      String?
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+  createdBy User    @relation(fields: [createdById], references: [id])
+
+  @@index([invoiceId])
+  @@index([paidOn])
+}
+
+model Worker {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  name      String
+  dailyWage Decimal  @db.Decimal(8, 2)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  attendance Attendance[]
+}
+
+model Attendance {
+  id       String   @id @default(uuid()) @db.Uuid
+  workerId String   @db.Uuid
+  date     DateTime @db.Date
+  present  Boolean
+
+  worker Worker @relation(fields: [workerId], references: [id])
+
+  @@unique([workerId, date])
+  @@index([date])
+}
+
+model Counter {
+  key   String @id
+  value Int    @default(0)
 }

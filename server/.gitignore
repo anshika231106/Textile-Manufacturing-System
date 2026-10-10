@@ -5,3 +5,6 @@ node_modules/
 .windsurf/
 .agents/
 .devin/
+
+generated/
+skills-lock.json
