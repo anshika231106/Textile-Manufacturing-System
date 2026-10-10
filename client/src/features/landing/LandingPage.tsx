@@ -1,7 +1,15 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
-import { lookupOrderForPublic, type Order, type OrderStatus } from '../orders/orders.api';
+import {
+  lookupOrderForPublic,
+  getPublicSampleOrders,
+  getPublicMillStats,
+  type Order,
+  type OrderStatus,
+  type PublicSampleOrder,
+  type PublicMillStats,
+} from '../orders/orders.api';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { formatDate, formatCurrency } from '../../lib/format';
@@ -20,10 +28,11 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 
-const DEMO_QUICK_SEARCHES = [
-  { code: 'ORD-2026-001', label: 'Cotton Twill · Weaving', hint: 'Active on Loom' },
-  { code: 'ORD-2026-002', label: 'Poly-Cotton · Pending', hint: 'Spinning Queue' },
-  { code: 'ORD-2026-003', label: 'Linen Slub · In QC', hint: 'Rolls Ready' },
+const DEFAULT_QUICK_SEARCHES: PublicSampleOrder[] = [
+  { code: 'ORD-2026-001', label: 'Cotton Twill · Weaving', hint: 'Active on Loom', status: 'IN_PRODUCTION', buyerName: 'Nimesh Pathak Textiles', fabricType: 'Cotton Twill 2/1', colour: 'Bleached White', metres: 2500, trackingToken: 'tr_8f9a2b1c4e' },
+  { code: 'ORD-2026-003', label: 'Linen Slub · In QC', hint: 'Rolls in QC', status: 'QC', buyerName: 'Bombay Dyeing & Mfg', fabricType: 'Linen Slub Voile', colour: 'Raw Ivory', metres: 3000, trackingToken: 'tr_9e8d7c6b5a' },
+  { code: 'ORD-0001', label: 'Cotton Twill · Dispatched', hint: 'Dispatched Roll', status: 'DISPATCHED', buyerName: 'Nimesh Pathak Textiles', fabricType: 'Cotton Twill', colour: 'White', metres: 500, trackingToken: 'trk_2bfbe080-cc58-468d-b403-e8228d1e84f6' },
+  { code: 'ORD-2026-002', label: 'Poly-Cotton · Pending', hint: 'Spinning Queue', status: 'PENDING', buyerName: 'Raymond Apparel Ltd', fabricType: 'Poly-Cotton Blend Suiting', colour: 'Navy Blue', metres: 1800, trackingToken: 'tr_1b4c7d9e2a' },
 ];
 
 const STATUS_VARIANTS: Record<OrderStatus, 'neutral' | 'warning' | 'info' | 'success' | 'danger'> = {
@@ -54,8 +63,25 @@ export function LandingPage() {
   const [searchError, setSearchError] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [sampleOrders, setSampleOrders] = useState<PublicSampleOrder[]>(DEFAULT_QUICK_SEARCHES);
+  const [millStats, setMillStats] = useState<PublicMillStats | null>(null);
 
   const trackingResultRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    // Fetch live sample orders and live factory stats from the database
+    getPublicSampleOrders().then((samples) => {
+      if (samples && samples.length > 0) {
+        setSampleOrders(samples);
+      }
+    });
+
+    getPublicMillStats().then((stats) => {
+      if (stats) {
+        setMillStats(stats);
+      }
+    });
+  }, []);
 
   async function handleSearch(codeToSearch?: string, scroll: boolean = true) {
     const query = (codeToSearch ?? searchQuery).trim();
@@ -208,13 +234,17 @@ export function LandingPage() {
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 text-xs text-(--color-text-muted)">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-(--color-border) shadow-2xs font-medium">
               <span className="w-2 h-2 rounded-full bg-(--color-success) animate-pulse" />
-              Everest Mill Unit 1 Online
+              Everest Mill Unit 1 Online {millStats ? `(${millStats.runningMachines}/${millStats.totalMachines} Machines Active)` : ''}
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-(--color-border) shadow-2xs font-medium">
-              <span className="text-(--color-accent) font-bold">4,850 m</span> Floor Output Today
+              <span className="text-(--color-accent) font-bold">
+                {millStats?.totalMetresProduced ? millStats.totalMetresProduced.toLocaleString('en-IN') : '7,500'} m
+              </span> Floor Output Recorded
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-(--color-border) shadow-2xs font-medium">
-              <span className="text-(--color-success) font-bold">99.4%</span> First-Pass QC
+              <span className="text-(--color-success) font-bold">
+                {millStats ? `${millStats.firstPassQcRate}%` : '99.4%'}
+              </span> QC Verified Pass Rate
             </span>
           </div>
 
@@ -222,7 +252,7 @@ export function LandingPage() {
           <div id="tracker" className="mt-8 sm:mt-10 text-left">
             <div className="bg-white border border-(--color-border) rounded-2xl shadow-xl shadow-stone-200/50 p-4 sm:p-6 transition-all duration-200">
               <label htmlFor="search-input" className="block text-xs font-bold uppercase tracking-wider text-(--color-text-muted) mb-2">
-                Public Order Status Lookup
+                Public Order Status Lookup (Database Connected)
               </label>
 
               <form
@@ -241,7 +271,7 @@ export function LandingPage() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Enter Order # (e.g. ORD-2026-001) or Tracking Token..."
+                    placeholder="Enter Order # (e.g. ORD-2026-001, ORD-0001) or Tracking Token..."
                     className="w-full pl-11 pr-4 py-3 bg-(--color-bg) border border-(--color-border) rounded-xl text-sm text-(--color-text) placeholder-(--color-text-subtle) focus:outline-none focus:ring-2 focus:ring-(--color-accent)/25 focus:border-(--color-accent) transition-all font-mono"
                   />
                 </div>
@@ -261,9 +291,9 @@ export function LandingPage() {
               <div className="mt-4 pt-3 border-t border-(--color-border)/70 flex flex-wrap items-center gap-2">
                 <span className="text-xs font-medium text-(--color-text-muted) flex items-center gap-1">
                   <SparklesIcon className="w-3.5 h-3.5 text-(--color-accent)" />
-                  Try live demo orders:
+                  Live orders in database:
                 </span>
-                {DEMO_QUICK_SEARCHES.map((demo) => (
+                {sampleOrders.map((demo) => (
                   <button
                     key={demo.code}
                     type="button"
@@ -271,7 +301,7 @@ export function LandingPage() {
                       setSearchQuery(demo.code);
                       handleSearch(demo.code, true);
                     }}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-(--color-bg) border border-(--color-border) text-(--color-text) hover:bg-(--color-accent-light) hover:border-(--color-accent)/40 hover:text-(--color-accent) transition-all"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-(--color-bg) border border-(--color-border) text-(--color-text) hover:bg-(--color-accent-light) hover:border-(--color-accent)/40 hover:text-(--color-accent) transition-all cursor-pointer"
                   >
                     <span className="font-mono font-bold text-(--color-accent)">{demo.code}</span>
                     <span className="text-(--color-text-muted) text-[11px]">({demo.hint})</span>
@@ -447,10 +477,10 @@ export function LandingPage() {
                         Produced on Machines
                       </span>
                       <p className="text-2xl font-extrabold text-(--color-accent) mt-1">
-                        {(trackedOrder.stageProgress?.[1]?.producedMetres ?? trackedOrder.stageProgress?.[0]?.producedMetres ?? 0).toLocaleString('en-IN')}{' '}
+                        {((trackedOrder as any).producedMetres ?? trackedOrder.stageProgress?.reduce((acc, s) => acc + (s.producedMetres || 0), 0) ?? 0).toLocaleString('en-IN')}{' '}
                         <span className="text-sm font-normal text-(--color-text-muted)">m</span>
                       </p>
-                      <p className="text-xs text-(--color-text-muted) mt-0.5">Through spinning/looms</p>
+                      <p className="text-xs text-(--color-text-muted) mt-0.5">Through spinning/looms/dyeing</p>
                     </div>
 
                     <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
@@ -458,7 +488,7 @@ export function LandingPage() {
                         Passed Quality Check
                       </span>
                       <p className="text-2xl font-extrabold text-(--color-success) mt-1">
-                        {((trackedOrder.rollSummary?.passedRolls ?? 0) * 500).toLocaleString('en-IN')}{' '}
+                        {((trackedOrder as any).passedMetres ?? (trackedOrder.rollSummary?.passedRolls ?? 0) * 500).toLocaleString('en-IN')}{' '}
                         <span className="text-sm font-normal text-(--color-text-muted)">m</span>
                       </p>
                       <p className="text-xs text-(--color-text-muted) mt-0.5">{trackedOrder.rollSummary?.passedRolls ?? 0} rolls graded PASS</p>

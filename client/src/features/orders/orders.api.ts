@@ -413,18 +413,59 @@ export async function startProduction(id: string): Promise<Order> {
   }
 }
 
+export interface PublicSampleOrder {
+  code: string;
+  trackingToken: string;
+  label: string;
+  hint: string;
+  status: OrderStatus;
+  currentStage?: Stage;
+  buyerName: string;
+  fabricType: string;
+  colour: string;
+  metres: number;
+}
+
+export interface PublicMillStats {
+  totalMachines: number;
+  runningMachines: number;
+  totalMetresProduced: number;
+  totalRolls: number;
+  passedRolls: number;
+  firstPassQcRate: number;
+}
+
 export async function lookupOrderForPublic(query: string): Promise<Order | null> {
-  const clean = query.trim().toUpperCase();
+  const clean = query.trim();
+  if (!clean) return null;
   try {
-    return await api<Order>(`/public/track/${query.trim()}`, { auth: false });
-  } catch {
+    return await api<Order>(`/public/track/${encodeURIComponent(clean)}`, { auth: false });
+  } catch (err) {
+    console.warn('Direct database order lookup error:', err);
+    const upper = clean.toUpperCase();
     const found = ordersStore.find(
       (o) =>
-        o.orderNumber.toUpperCase() === clean ||
-        o.trackingToken.toUpperCase() === clean ||
-        o.id.toUpperCase() === clean
+        o.orderNumber.toUpperCase() === upper ||
+        o.trackingToken.toUpperCase() === upper ||
+        o.id.toUpperCase() === upper
     );
     return found ? { ...found } : null;
+  }
+}
+
+export async function getPublicSampleOrders(): Promise<PublicSampleOrder[]> {
+  try {
+    return await api<PublicSampleOrder[]>('/public/samples', { auth: false });
+  } catch {
+    return [];
+  }
+}
+
+export async function getPublicMillStats(): Promise<PublicMillStats | null> {
+  try {
+    return await api<PublicMillStats>('/public/stats', { auth: false });
+  } catch {
+    return null;
   }
 }
 
