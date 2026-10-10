@@ -27,9 +27,8 @@ interface StaffUser {
 
 const ROLE_OPTIONS = [
   { value: 'STAFF', label: 'Floor Staff (Production & Weaving)' },
-  { value: 'SUPERVISOR', label: 'Floor Supervisor (Production & QC)' },
+  { value: 'SUPERVISOR', label: 'Floor Supervisor (Production, QC & Dispatch)' },
   { value: 'OFFICE', label: 'Office Staff (Orders & Invoices)' },
-  { value: 'STOREKEEPER', label: 'Storekeeper (Yarn Stock & Dispatch)' },
 ];
 
 const ROLE_BADGE_VARIANT: Record<string, 'neutral' | 'info' | 'success' | 'warning' | 'danger'> = {
@@ -37,7 +36,6 @@ const ROLE_BADGE_VARIANT: Record<string, 'neutral' | 'info' | 'success' | 'warni
   OFFICE: 'info',
   SUPERVISOR: 'warning',
   STAFF: 'neutral',
-  STOREKEEPER: 'success',
 };
 
 export function StaffPage() {
