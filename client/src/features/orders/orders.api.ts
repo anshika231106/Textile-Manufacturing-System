@@ -455,15 +455,6 @@ export interface PublicSampleOrder {
   metres: number;
 }
 
-export interface PublicMillStats {
-  totalMachines: number;
-  runningMachines: number;
-  totalMetresProduced: number;
-  totalRolls: number;
-  passedRolls: number;
-  firstPassQcRate: number;
-}
-
 export async function lookupOrderForPublic(query: string): Promise<Order | null> {
   const clean = query.trim();
   if (!clean) return null;
@@ -487,13 +478,5 @@ export async function getPublicSampleOrders(): Promise<PublicSampleOrder[]> {
     return await api<PublicSampleOrder[]>('/public/samples', { auth: false });
   } catch {
     return [];
-  }
-}
-
-export async function getPublicMillStats(): Promise<PublicMillStats | null> {
-  try {
-    return await api<PublicMillStats>('/public/stats', { auth: false });
-  } catch {
-    return null;
   }
 }

@@ -192,8 +192,12 @@
 }
 
 :root[data-theme='dark'] .landing-header {
-  background-color: var(--color-surface) !important;
-  border-bottom-color: transparent !important;
+  background-color: color-mix(in srgb, var(--color-surface) 75%, transparent) !important;
+}
+
+/* Keep in-page anchor targets clear of the fixed floating navbar. */
+.landing-page [id] {
+  scroll-margin-top: 6rem;
 }
 
 :root[data-theme='dark'] .landing-hero-image {

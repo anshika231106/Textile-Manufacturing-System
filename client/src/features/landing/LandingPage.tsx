@@ -5,11 +5,9 @@ import { useAuth } from '../../lib/auth';
 import {
   lookupOrderForPublic,
   getPublicSampleOrders,
-  getPublicMillStats,
   type Order,
   type OrderStatus,
   type PublicSampleOrder,
-  type PublicMillStats,
 } from '../orders/orders.api';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -191,6 +189,13 @@ function PipelineStepper({ activeIdx }: { activeIdx: number }) {
   );
 }
 
+const NAV_LINKS = [
+  { id: 'tracker', label: 'Live Tracker' },
+  { id: 'pipeline', label: 'Pipeline' },
+  { id: 'capabilities', label: 'Capabilities' },
+  { id: 'quality', label: 'Quality' },
+];
+
 export function LandingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -201,21 +206,39 @@ export function LandingPage() {
   const [searchError, setSearchError] = useState('');
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [sampleOrders, setSampleOrders] = useState<PublicSampleOrder[]>(DEFAULT_QUICK_SEARCHES);
-  const [millStats, setMillStats] = useState<PublicMillStats | null>(null);
 
   const trackingResultRef = useRef<HTMLDivElement | null>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState<string>(NAV_LINKS[0].id);
 
   useEffect(() => {
-    // Fetch live sample orders and live factory stats from the database
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    // Highlight whichever section is crossing the middle of the viewport.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.find((entry) => entry.isIntersecting);
+        if (visible) setActiveSection(visible.target.id);
+      },
+      { rootMargin: '-45% 0px -50% 0px' },
+    );
+    NAV_LINKS.forEach((link) => {
+      const el = document.getElementById(link.id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    // Fetch live sample orders from the database
     getPublicSampleOrders().then((samples) => {
       if (samples && samples.length > 0) {
         setSampleOrders(samples);
-      }
-    });
-
-    getPublicMillStats().then((stats) => {
-      if (stats) {
-        setMillStats(stats);
       }
     });
   }, []);
@@ -264,64 +287,71 @@ export function LandingPage() {
 
   return (
     <div className="landing-page min-h-screen bg-(--color-bg) text-(--color-text) selection:bg-(--color-accent)/20 flex flex-col font-sans">
-      {/* ─── Top Navigation Bar ─── */}
-      <header className="landing-header sticky top-0 z-40 bg-(--color-bg)/85 backdrop-blur-md border-b border-(--color-border) px-4 sm:px-8 py-3.5 transition-all">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      {/* ─── Top Navigation Bar (floating glass pill) ─── */}
+      <header className="fixed inset-x-0 top-0 z-40 px-3 sm:px-6 pt-3 pointer-events-none">
+        <div
+          className={[
+            'landing-header pointer-events-auto max-w-6xl mx-auto flex items-center justify-between gap-3',
+            'rounded-full border bg-(--color-bg)/70 backdrop-blur-xl backdrop-saturate-150',
+            'transition-all duration-300',
+            scrolled
+              ? 'pl-4 pr-1.5 py-1 border-(--color-border) shadow-lg shadow-stone-900/5'
+              : 'pl-5 pr-2 py-1.5 border-(--color-border)/60 shadow-xs',
+          ].join(' ')}
+        >
           {/* Brand */}
-          <Link to="/dashboard" className="flex items-center gap-3 group" aria-label="MillTrace dashboard">
+          <Link to="/dashboard" className="flex items-center shrink-0 group" aria-label="MillTrace dashboard">
             <img
               src="/logo.png"
               alt="MillTrace"
-              className="w-44 h-16 object-contain group-hover:scale-[1.02] transition-transform duration-200"
+              className="h-12 sm:h-14 -my-2 w-auto object-contain group-hover:scale-[1.03] transition-transform duration-200"
             />
           </Link>
 
-          {/* Navigation Links (Desktop) */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-(--color-text-muted)">
-            <a href="#tracker" className="hover:text-(--color-accent) transition-colors">
-              Live Tracker
-            </a>
-            <a href="#pipeline" className="hover:text-(--color-accent) transition-colors">
-              Manufacturing Pipeline
-            </a>
-            <a href="#capabilities" className="hover:text-(--color-accent) transition-colors">
-              Mill Capabilities
-            </a>
-            <a href="#quality" className="hover:text-(--color-accent) transition-colors">
-              Quality Protocol
-            </a>
+          {/* Navigation Links (Desktop) with scroll-spy sliding indicator */}
+          <nav className="hidden md:flex items-center gap-0.5 rounded-full bg-(--color-surface-sunken)/70 p-1 text-xs font-semibold">
+            {NAV_LINKS.map((link) => {
+              const isActive = activeSection === link.id;
+              return (
+                <a
+                  key={link.id}
+                  href={`#${link.id}`}
+                  onClick={() => setActiveSection(link.id)}
+                  className={[
+                    'relative rounded-full px-3.5 py-1.5 transition-colors duration-150',
+                    isActive ? 'text-(--color-accent)' : 'text-(--color-text-muted) hover:text-(--color-text)',
+                  ].join(' ')}
+                >
+                  {isActive && (
+                    <motion.span
+                      layoutId="landing-nav-pill"
+                      className="absolute inset-0 rounded-full bg-(--color-surface) shadow-sm ring-1 ring-(--color-border)"
+                      transition={springIndicator}
+                    />
+                  )}
+                  <span className="relative z-10">{link.label}</span>
+                </a>
+              );
+            })}
           </nav>
 
-          {/* Staff Access Button */}
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            {user ? (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => navigate('/dashboard')}
-                className="text-xs font-semibold shadow-xs"
-              >
-                Go to Staff Portal
-                <ArrowRightIcon className="w-3.5 h-3.5 ml-1" />
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => navigate('/login')}
-                className="text-xs font-semibold bg-white border-(--color-border) hover:border-(--color-accent)/40 hover:bg-(--color-accent-light)"
-              >
-                Staff Sign In
-                <ArrowRightIcon className="w-3.5 h-3.5 ml-1" />
-              </Button>
-            )}
+          {/* Theme + Staff Access */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <ThemeToggle className="h-8! w-8! rounded-full! border-transparent! bg-transparent! hover:bg-(--color-surface-sunken)! [&>svg]:h-4 [&>svg]:w-4" />
+            <button
+              type="button"
+              onClick={() => navigate(user ? '/dashboard' : '/login')}
+              className="group inline-flex items-center gap-1.5 rounded-full bg-(--color-text) text-(--color-bg) pl-4 pr-3 py-2 text-xs font-semibold shadow-sm transition-all duration-200 hover:bg-(--color-accent) hover:text-white hover:shadow-md hover:shadow-(--color-accent)/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent) focus-visible:ring-offset-2"
+            >
+              {user ? 'Staff Portal' : 'Staff Sign In'}
+              <ArrowRightIcon className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+            </button>
           </div>
         </div>
       </header>
 
       {/* ─── Hero Section with Live Search ─── */}
-      <section className="landing-hero relative pt-12 pb-16 sm:pt-20 sm:pb-24 px-4 sm:px-8 overflow-hidden bg-white">
+      <section className="landing-hero relative pt-28 pb-16 sm:pt-36 sm:pb-24 px-4 sm:px-8 overflow-hidden bg-white">
         {/* Subtle radial glow in warm orange */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-(--color-accent)/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -353,24 +383,6 @@ export function LandingPage() {
             Real-time stage visibility for buyers and production heads. Monitor spinning, weaving,
             continuous dyeing, and individual roll QC inspection with zero delay.
           </p>
-
-          {/* Live Mill Real-Time Metrics Pills */}
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 text-xs text-(--color-text-muted)">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-(--color-border) shadow-2xs font-medium">
-              <span className="w-2 h-2 rounded-full bg-(--color-success) animate-pulse" />
-              Everest Mill Unit 1 Online {millStats ? `(${millStats.runningMachines}/${millStats.totalMachines} Machines Active)` : ''}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-(--color-border) shadow-2xs font-medium">
-              <span className="text-(--color-accent) font-bold">
-                {millStats?.totalMetresProduced ? millStats.totalMetresProduced.toLocaleString('en-IN') : '7,500'} m
-              </span> Floor Output Recorded
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-(--color-border) shadow-2xs font-medium">
-              <span className="text-(--color-success) font-bold">
-                {millStats ? `${millStats.firstPassQcRate}%` : '99.4%'}
-              </span> QC Verified Pass Rate
-            </span>
-          </div>
 
           {/* ─── Interactive Order Tracker Search Card ─── */}
           <div id="tracker" className="mt-8 sm:mt-10 text-left">
