@@ -8,6 +8,8 @@ export interface Column<T> {
   render?: (row: T) => ReactNode;
   align?: 'left' | 'right' | 'center';
   width?: string;
+  /** Extra classes for this column's header and cells (e.g. 'hidden xl:table-cell'). */
+  className?: string;
 }
 
 interface TableProps<T> {
@@ -45,6 +47,7 @@ export function Table<T>({
                     ? 'text-center'
                     : 'text-left',
                   col.width ? `w-[${col.width}]` : '',
+                  col.className ?? '',
                 ].join(' ')}
               >
                 {col.header}
@@ -67,7 +70,7 @@ export function Table<T>({
                 key={rowKey(row)}
                 onClick={() => onRowClick?.(row)}
                 className={[
-                  'border-b border-(--color-border) last:border-0 transition-colors duration-100',
+                  'group/row border-b border-(--color-border) last:border-0 transition-colors duration-100',
                   onRowClick ? 'cursor-pointer hover:bg-(--color-accent-light)/60' : 'hover:bg-(--color-bg)',
                 ].join(' ')}
               >
@@ -81,6 +84,7 @@ export function Table<T>({
                         : col.align === 'center'
                         ? 'text-center'
                         : 'text-left',
+                      col.className ?? '',
                     ].join(' ')}
                   >
                     {col.render

@@ -34,8 +34,13 @@ import { Select } from '../../components/ui/Select';
 import { Dialog } from '../../components/ui/Dialog';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { Callout } from '../../components/ui/Callout';
+import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { formatCurrency } from '../../lib/format';
 import {
+  PhoneIcon,
+  EnvelopeIcon,
+  UserIcon,
+  XMarkIcon,
   UsersIcon,
   TruckIcon,
   CubeIcon,
@@ -74,6 +79,121 @@ const TABS: TabItem[] = [
   { id: 'yarns', label: 'Yarn Types', icon: CubeIcon, description: 'Material catalogue, counts, colours and minimum reorder thresholds' },
   { id: 'machines', label: 'Machines', icon: WrenchScrewdriverIcon, description: 'Spinning frames, looms and dyeing vats with operational cost rates' },
 ];
+
+// --- Shared cell renderers: fewer, richer columns instead of many sparse ones ---
+
+const TILE_TONES = [
+  'bg-(--color-accent-light) text-(--color-accent)',
+  'bg-(--color-info-light) text-(--color-info)',
+  'bg-(--color-success-light) text-(--color-success)',
+  'bg-(--color-warning-light) text-(--color-warning)',
+];
+
+function tileTone(name: string) {
+  let hash = 0;
+  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
+  return TILE_TONES[Math.abs(hash) % TILE_TONES.length];
+}
+
+function initialsOf(name: string) {
+  const words = name.trim().split(/\s+/).filter((w) => /[a-z0-9]/i.test(w));
+  return ((words[0]?.[0] ?? '?') + (words.length > 1 ? words[1][0] : '')).toUpperCase();
+}
+
+function EntityCell({ name, sub }: { name: string; sub?: string | null }) {
+  return (
+    <div className="flex items-center gap-3 min-w-0">
+      <div
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${tileTone(name)}`}
+        aria-hidden
+      >
+        {initialsOf(name)}
+      </div>
+      <div className="min-w-0">
+        <p className="font-semibold text-(--color-text) truncate">{name}</p>
+        {sub && <p className="text-xs text-(--color-text-muted) truncate">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+function ContactCell({ person, phone, email }: { person?: string | null; phone?: string | null; email?: string | null }) {
+  if (!person && !phone && !email) {
+    return <span className="text-xs italic text-(--color-text-subtle)">No contact details</span>;
+  }
+  return (
+    <div className="flex flex-col gap-0.5 text-xs">
+      {person && (
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-(--color-text)">
+          <UserIcon className="w-3.5 h-3.5 text-(--color-text-subtle)" />
+          {person}
+        </span>
+      )}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-(--color-text-muted)">
+        {phone && (
+          <a href={`tel:${phone}`} className="inline-flex items-center gap-1.5 whitespace-nowrap tabular-nums hover:text-(--color-accent)">
+            <PhoneIcon className="w-3.5 h-3.5 text-(--color-text-subtle)" />
+            {phone}
+          </a>
+        )}
+        {email && (
+          <a href={`mailto:${email}`} className="inline-flex items-center gap-1.5 whitespace-nowrap hover:text-(--color-accent)">
+            <EnvelopeIcon className="w-3.5 h-3.5 text-(--color-text-subtle)" />
+            {email}
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Available stock on one line: a slim meter (with a reorder-level tick) and the amount.
+function StockCell({ availableKg, reorderLevelKg }: { availableKg: number; reorderLevelKg: number }) {
+  const low = availableKg < reorderLevelKg;
+  const tight = !low && availableKg < reorderLevelKg * 1.5;
+  const scale = Math.max(availableKg, reorderLevelKg * 2, 1);
+  const tone = low ? 'bg-(--color-danger)' : tight ? 'bg-(--color-warning)' : 'bg-(--color-success)';
+  return (
+    <div className="flex items-center justify-end gap-3 whitespace-nowrap">
+      <div className="relative hidden xl:block h-1.5 w-24 rounded-full bg-(--color-surface-sunken)">
+        <div className={`h-full rounded-full ${tone}`} style={{ width: `${(availableKg / scale) * 100}%` }} />
+        <span
+          className="absolute -top-0.5 h-2.5 w-0.5 rounded-full bg-(--color-text-muted)"
+          style={{ left: `${(reorderLevelKg / scale) * 100}%` }}
+          aria-hidden
+        />
+      </div>
+      {low && <Badge variant="danger" label="Low" />}
+      <span
+        className={`min-w-16 text-right text-sm font-semibold tabular-nums ${low ? 'text-(--color-danger)' : 'text-(--color-text)'}`}
+      >
+        {availableKg.toLocaleString('en-IN')} kg
+      </span>
+    </div>
+  );
+}
+
+// Best-effort swatch colour from a shade name like "Crimson Red" or "Raw Beige".
+const SHADE_SWATCHES: [RegExp, string][] = [
+  [/white|bleach/i, '#FFFFFF'],
+  [/black|charcoal/i, '#1F1F1F'],
+  [/red|crimson|maroon/i, '#B91C1C'],
+  [/blue|navy|indigo/i, '#1D4ED8'],
+  [/green|olive/i, '#15803D'],
+  [/yellow|mustard/i, '#EAB308'],
+  [/grey|gray/i, '#9CA3AF'],
+  [/natural|raw|beige|ecru|cream/i, '#E7DCC5'],
+];
+
+function shadeSwatch(colour: string) {
+  return SHADE_SWATCHES.find(([pattern]) => pattern.test(colour))?.[1];
+}
+
+const STAGE_VARIANT: Record<string, 'info' | 'warning' | 'success'> = {
+  SPINNING: 'info',
+  WEAVING: 'warning',
+  DYEING: 'success',
+};
 
 export function MasterListPage() {
   const { type } = useParams<{ type?: string }>();
@@ -223,12 +343,13 @@ export function MasterListPage() {
         header: '',
         align: 'right',
         render: (r) => (
-          <div className="flex justify-end gap-1">
+          // Muted until the row is hovered or focused, so the row end never looks empty.
+          <div className="flex justify-end gap-1 transition-opacity duration-150 [@media(hover:hover)]:opacity-50 group-hover/row:opacity-100 focus-within:opacity-100">
             {canCreate && (
               <button
                 type="button"
                 onClick={() => openEdit(r)}
-                className="p-1 text-(--color-text-muted) hover:text-(--color-accent) rounded hover:bg-(--color-surface-sunken) transition-colors"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-(--color-text-muted) hover:text-(--color-accent) hover:bg-(--color-accent-light) transition-colors"
                 title="Edit"
                 aria-label={`Edit ${getLabel(r)}`}
               >
@@ -242,7 +363,7 @@ export function MasterListPage() {
                   setDeleteError('');
                   setDeleteTarget({ type, id: r.id, label: getLabel(r) });
                 }}
-                className="p-1 text-(--color-text-muted) hover:text-(--color-danger) rounded hover:bg-(--color-danger-light) transition-colors"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-(--color-text-muted) hover:text-(--color-danger) hover:bg-(--color-danger-light) transition-colors"
                 title="Delete"
                 aria-label={`Delete ${getLabel(r)}`}
               >
@@ -339,28 +460,13 @@ export function MasterListPage() {
   const buyerCols: Column<Buyer>[] = [
     {
       key: 'name',
-      header: 'Company / Mill Name',
-      render: (r) => (
-        <div>
-          <span className="font-semibold text-(--color-text)">{r.name}</span>
-          {r.address && <p className="text-xs text-(--color-text-muted)">{r.address}</p>}
-        </div>
-      ),
+      header: 'Company / Mill',
+      render: (r) => <EntityCell name={r.name} sub={r.address} />,
     },
     {
       key: 'contact',
-      header: 'Contact Person',
-      render: (r) => <span className="font-medium text-sm text-(--color-text)">{r.contactName || '—'}</span>,
-    },
-    {
-      key: 'phone',
-      header: 'Phone Number',
-      render: (r) => <span className="font-mono text-xs text-(--color-text)">{r.phone || '—'}</span>,
-    },
-    {
-      key: 'email',
-      header: 'Email',
-      render: (r) => <span className="text-xs text-(--color-text-muted)">{r.email || '—'}</span>,
+      header: 'Contact',
+      render: (r) => <ContactCell person={r.contactName} phone={r.phone} email={r.email} />,
     },
     ...actionsColumn<Buyer>('buyers', (r) => r.name),
   ];
@@ -370,67 +476,72 @@ export function MasterListPage() {
     {
       key: 'name',
       header: 'Supplier / Vendor',
-      render: (r) => (
-        <div>
-          <span className="font-semibold text-(--color-text)">{r.name}</span>
-          {r.contactName && <p className="text-xs text-(--color-text-muted)">Attn: {r.contactName}</p>}
-        </div>
-      ),
+      render: (r) => <EntityCell name={r.name} />,
     },
     {
-      key: 'phone',
-      header: 'Contact Phone',
-      render: (r) => <span className="font-mono text-xs text-(--color-text)">{r.phone || '—'}</span>,
-    },
-    {
-      key: 'email',
-      header: 'Email',
-      render: (r) => <span className="text-xs text-(--color-text-muted)">{r.email || '—'}</span>,
+      key: 'contact',
+      header: 'Contact',
+      render: (r) => <ContactCell person={r.contactName} phone={r.phone} email={r.email} />,
     },
     ...actionsColumn<Supplier>('suppliers', (r) => r.name),
   ];
 
-  // --- Yarn Table Columns ---
+  // --- Yarn Table Columns (one line per row) ---
   const yarnCols: Column<YarnType>[] = [
     {
-      key: 'code',
-      header: 'Code & Count',
+      key: 'name',
+      header: 'Yarn',
       render: (r) => (
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-semibold bg-(--color-surface-sunken) px-2 py-0.5 rounded border border-(--color-border) text-(--color-text)">
+        <div className="flex items-center gap-2.5">
+          <span className="shrink-0 whitespace-nowrap font-mono text-[11px] font-semibold bg-(--color-surface-sunken) px-2 py-0.5 rounded-md border border-(--color-border) text-(--color-text)">
             {r.code}
           </span>
-          {r.countLabel && <span className="text-xs text-(--color-text-muted)">({r.countLabel})</span>}
+          {/* Wraps only when the table runs out of room; count shows inline where its own column is hidden */}
+          <span className="text-sm">
+            <span className="font-semibold text-(--color-text)">{r.name}</span>
+            {r.countLabel && (
+              <span className="xl:hidden whitespace-nowrap text-xs text-(--color-text-muted)"> · {r.countLabel}</span>
+            )}
+          </span>
         </div>
       ),
     },
     {
-      key: 'name',
-      header: 'Yarn Material',
-      render: (r) => (
-        <div>
-          <span className="font-semibold text-sm text-(--color-text)">{r.name}</span>
-          <p className="text-xs text-(--color-text-muted)">Shade: {r.colour}</p>
-        </div>
-      ),
+      key: 'count',
+      header: 'Count',
+      className: 'hidden xl:table-cell',
+      render: (r) => <span className="text-sm text-(--color-text-muted)">{r.countLabel || '—'}</span>,
     },
     {
-      key: 'reorder',
-      header: 'Reorder Level (kg)',
-      align: 'right',
-      render: (r) => (
-        <span className="font-semibold text-sm text-(--color-text) block text-right">
-          {r.reorderLevelKg.toLocaleString('en-IN')} kg
-        </span>
-      ),
+      key: 'shade',
+      header: 'Shade',
+      render: (r) => {
+        const swatch = shadeSwatch(r.colour);
+        return (
+          <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm text-(--color-text)">
+            <span
+              className="h-3 w-3 shrink-0 rounded-full border border-(--color-border)"
+              style={{ backgroundColor: swatch ?? 'transparent' }}
+              aria-hidden
+            />
+            {r.colour}
+          </span>
+        );
+      },
     },
     {
       key: 'available',
-      header: 'Current Available',
+      header: 'Available',
+      align: 'right',
+      render: (r) => <StockCell availableKg={r.availableKg ?? 0} reorderLevelKg={r.reorderLevelKg} />,
+    },
+    {
+      key: 'reorder',
+      header: 'Reorder',
       align: 'right',
       render: (r) => (
-        <span className="text-sm font-medium text-(--color-success) block text-right">
-          {(r.availableKg ?? 0).toLocaleString('en-IN')} kg
+        <span className="whitespace-nowrap text-sm text-(--color-text-muted) tabular-nums">
+          {r.reorderLevelKg.toLocaleString('en-IN')} kg
         </span>
       ),
     },
@@ -440,28 +551,21 @@ export function MasterListPage() {
   // --- Machine Table Columns ---
   const machineCols: Column<Machine>[] = [
     {
-      key: 'code',
-      header: 'Machine Code',
+      key: 'machine',
+      header: 'Machine',
       render: (r) => (
-        <span className="font-mono text-xs font-semibold bg-(--color-surface-sunken) px-2 py-0.5 rounded border border-(--color-border) text-(--color-text)">
-          {r.code}
-        </span>
+        <div className="min-w-0">
+          <span className="font-mono text-[11px] font-semibold bg-(--color-surface-sunken) px-2 py-0.5 rounded-md border border-(--color-border) text-(--color-text)">
+            {r.code}
+          </span>
+          <p className="mt-1 font-medium text-sm text-(--color-text) truncate">{r.name}</p>
+        </div>
       ),
-    },
-    {
-      key: 'name',
-      header: 'Machine Name',
-      render: (r) => <span className="font-medium text-(--color-text)">{r.name}</span>,
     },
     {
       key: 'stage',
-      header: 'Production Stage',
-      render: (r) => (
-        <Badge
-          variant="info"
-          label={r.stage}
-        />
-      ),
+      header: 'Stage',
+      render: (r) => <Badge variant={STAGE_VARIANT[r.stage] ?? 'info'} label={r.stage.charAt(0) + r.stage.slice(1).toLowerCase()} />,
     },
     {
       key: 'status',
@@ -469,7 +573,7 @@ export function MasterListPage() {
       render: (r) => (
         <Badge
           variant={r.status === 'RUNNING' ? 'success' : r.status === 'BREAKDOWN' ? 'danger' : 'neutral'}
-          label={r.status}
+          label={r.status.charAt(0) + r.status.slice(1).toLowerCase()}
           dot
         />
       ),
@@ -479,8 +583,9 @@ export function MasterListPage() {
       header: 'Rate / Metre',
       align: 'right',
       render: (r) => (
-        <span className="font-semibold text-sm text-(--color-text) block text-right">
-          {formatCurrency(r.ratePerMetre)}/m
+        <span className="font-semibold text-sm text-(--color-text) tabular-nums">
+          {formatCurrency(r.ratePerMetre)}
+          <span className="text-xs font-normal text-(--color-text-muted)"> /m</span>
         </span>
       ),
     },
@@ -514,6 +619,13 @@ export function MasterListPage() {
     }
     return [];
   })();
+
+  const tabCounts: Partial<Record<MasterType, number>> = {
+    buyers: buyers?.length,
+    suppliers: suppliers?.length,
+    yarns: yarns?.length,
+    machines: machines?.length,
+  };
 
   const activeLoading =
     currentType === 'buyers' ? loadingBuyers :
@@ -552,6 +664,7 @@ export function MasterListPage() {
             <Button
               variant="primary"
               size="md"
+              className="whitespace-nowrap"
               onClick={openCreate}
             >
               <PlusIcon className="w-4 h-4" />
@@ -561,51 +674,55 @@ export function MasterListPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-(--color-border) overflow-x-auto pb-px">
-        {TABS.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = tab.id === currentType;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
-                isActive
-                  ? 'border-(--color-accent) text-(--color-accent)'
-                  : 'border-transparent text-(--color-text-muted) hover:text-(--color-text)'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Tabs (with record counts) + search, on one row */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="overflow-x-auto -mx-1 px-1">
+          <SegmentedControl
+            value={currentType}
+            onChange={handleTabChange}
+            options={TABS.map((tab) => ({
+              value: tab.id,
+              label: tab.label,
+              icon: tab.icon,
+              count: tabCounts[tab.id],
+            }))}
+          />
+        </div>
 
-      {/* Search and Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative max-w-sm w-full">
-          <MagnifyingGlassIcon className="w-4 h-4 text-(--color-text-muted) absolute left-3 top-1/2 -translate-y-1/2" />
+        <div className="relative w-full lg:max-w-xs">
+          <MagnifyingGlassIcon className="w-4 h-4 text-(--color-text-muted) absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder={`Search ${currentTabInfo.label.toLowerCase()}...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-(--color-border) bg-white placeholder:text-(--color-text-subtle) focus:outline-none focus:ring-2 focus:ring-(--color-accent)/20 focus:border-(--color-accent)"
+            className="w-full pl-10 pr-20 py-2 text-sm rounded-full border border-(--color-border) bg-(--color-surface) placeholder:text-(--color-text-subtle) focus:outline-none focus:ring-2 focus:ring-(--color-accent)/20 focus:border-(--color-accent) transition-shadow"
           />
+          {searchQuery && (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <span className="text-[11px] text-(--color-text-muted) tabular-nums">
+                {filteredData.length} of {tabCounts[currentType] ?? 0}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-(--color-text-muted) hover:bg-(--color-surface-sunken) hover:text-(--color-text)"
+                aria-label="Clear search"
+              >
+                <XMarkIcon className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
-
-        <span className="text-xs text-(--color-text-muted)">
-          Showing {filteredData.length} records
-        </span>
       </div>
+
+      <p className="-mt-3 text-xs text-(--color-text-muted)">{currentTabInfo.description}</p>
 
       {/* Table Area */}
       {activeError ? (
         <ErrorState message={activeError.message} code={activeError.code} onRetry={reloadCurrent} />
       ) : (
-        <Card className="p-0 border border-(--color-border) overflow-hidden shadow-xs">
+        <Card className="p-0 overflow-hidden rounded-2xl! shadow-xs [&>div]:border-0 [&>div]:rounded-none">
           {currentType === 'buyers' && (
             <Table
               columns={buyerCols}
