@@ -125,10 +125,30 @@ export async function updateStaffRoleService(id: string, role: Role, currentUser
   if (target.role === role) {
     throw badRequest('ROLE_UNCHANGED', 'The user already has this role');
   }
+  const roleRank: Partial<Record<Role, number>> = {
+    STAFF: 0,
+    SUPERVISOR: 1,
+    OFFICE: 2,
+  };
+  const currentRank = roleRank[target.role];
+  const requestedRank = roleRank[role];
+  if (currentRank === undefined || requestedRank !== currentRank + 1) {
+    throw badRequest(
+      'ROLE_MUST_BE_UPGRADED',
+      'Roles can only be upgraded one level at a time: Staff, Supervisor, then Office',
+    );
+  }
 
-  return prisma.user.update({
-    where: { id },
+  const promotion = await prisma.user.updateMany({
+    where: { id, role: target.role },
     data: { role },
+  });
+  if (promotion.count !== 1) {
+    throw conflict('ROLE_CHANGED_CONCURRENTLY', 'The employee role changed. Refresh and try again.');
+  }
+
+  return prisma.user.findUniqueOrThrow({
+    where: { id },
     select: {
       id: true,
       name: true,

@@ -6,7 +6,7 @@ export interface WorkerAttendanceRecord {
   workerName: string;
   workerRole: string;
   dailyWage?: number;
-  present: boolean | null;
+  present: boolean;
 }
 
 export interface DailyAttendanceResponse {
@@ -54,4 +54,11 @@ export function saveAttendance(input: SaveAttendanceInput): Promise<DailyAttenda
 
 export function getWages(month: string): Promise<MonthlyWagesResponse> {
   return api<MonthlyWagesResponse>(`/attendance/wages?month=${encodeURIComponent(month)}`);
+}
+
+export function updateDailyWage(staffId: string, dailyWage: number): Promise<{ staffId: string; dailyWage: number }> {
+  return api<{ staffId: string; dailyWage: number }>(`/attendance/staff/${staffId}/wage`, {
+    method: 'PATCH',
+    body: JSON.stringify({ dailyWage }),
+  });
 }
