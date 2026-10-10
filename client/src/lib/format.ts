@@ -58,3 +58,25 @@ export function formatRelative(iso: string, now: Date = new Date()): string {
 export function formatCompact(value: number): string {
   return new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
 }
+
+/** Up to two initials from a name: "Suresh Patil" -> "SP". */
+export function initialsOf(name: string): string {
+  const words = name.trim().split(/\s+/).filter((w) => /[a-z0-9]/i.test(w));
+  return ((words[0]?.[0] ?? '?') + (words.length > 1 ? words[1][0] : '')).toUpperCase();
+}
+
+// Best-effort swatch colour from a shade name like "Crimson Red" or "Raw Beige".
+const SHADE_SWATCHES: [RegExp, string][] = [
+  [/white|bleach/i, '#FFFFFF'],
+  [/black|charcoal/i, '#1F1F1F'],
+  [/red|crimson|maroon/i, '#B91C1C'],
+  [/blue|navy|indigo/i, '#1D4ED8'],
+  [/green|olive|sage/i, '#15803D'],
+  [/yellow|mustard/i, '#EAB308'],
+  [/grey|gray/i, '#9CA3AF'],
+  [/natural|raw|beige|ecru|cream|ivory/i, '#E7DCC5'],
+];
+
+export function shadeSwatch(colour: string): string | undefined {
+  return SHADE_SWATCHES.find(([pattern]) => pattern.test(colour))?.[1];
+}

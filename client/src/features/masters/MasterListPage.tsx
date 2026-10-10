@@ -38,7 +38,7 @@ import { Dialog } from '../../components/ui/Dialog';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { Callout } from '../../components/ui/Callout';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
-import { formatCurrency } from '../../lib/format';
+import { formatCurrency, initialsOf, shadeSwatch } from '../../lib/format';
 import {
   PhoneIcon,
   EnvelopeIcon,
@@ -108,11 +108,6 @@ function tileTone(name: string) {
   let hash = 0;
   for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
   return TILE_TONES[Math.abs(hash) % TILE_TONES.length];
-}
-
-function initialsOf(name: string) {
-  const words = name.trim().split(/\s+/).filter((w) => /[a-z0-9]/i.test(w));
-  return ((words[0]?.[0] ?? '?') + (words.length > 1 ? words[1][0] : '')).toUpperCase();
 }
 
 function EntityCell({ name, sub }: { name: string; sub?: string | null }) {
@@ -186,22 +181,6 @@ function StockCell({ availableKg, reorderLevelKg }: { availableKg: number; reord
       </span>
     </div>
   );
-}
-
-// Best-effort swatch colour from a shade name like "Crimson Red" or "Raw Beige".
-const SHADE_SWATCHES: [RegExp, string][] = [
-  [/white|bleach/i, '#FFFFFF'],
-  [/black|charcoal/i, '#1F1F1F'],
-  [/red|crimson|maroon/i, '#B91C1C'],
-  [/blue|navy|indigo/i, '#1D4ED8'],
-  [/green|olive/i, '#15803D'],
-  [/yellow|mustard/i, '#EAB308'],
-  [/grey|gray/i, '#9CA3AF'],
-  [/natural|raw|beige|ecru|cream/i, '#E7DCC5'],
-];
-
-function shadeSwatch(colour: string) {
-  return SHADE_SWATCHES.find(([pattern]) => pattern.test(colour))?.[1];
 }
 
 const STAGE_VARIANT: Record<string, 'info' | 'warning' | 'success'> = {

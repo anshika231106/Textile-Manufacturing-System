@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../components/ui/Toast';
-import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Dialog } from '../../components/ui/Dialog';
 import { Spinner } from '../../components/ui/Spinner';
@@ -12,6 +11,7 @@ import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Table, type Column } from '../../components/ui/Table';
 import { Card } from '../../components/ui/Card';
 import { Pagination } from '../../components/ui/Pagination';
+import { formatDate, formatRelative, initialsOf, shadeSwatch } from '../../lib/format';
 import {
   getQcQueue,
   recordResult,
@@ -34,6 +34,8 @@ import {
   Square3Stack3DIcon,
   ClockIcon,
   ChartBarIcon,
+  TruckIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 
 const DEFECT_OPTIONS: { value: DefectType; label: string; description: string }[] = [
@@ -54,6 +56,107 @@ const VERDICT_OPTIONS: {
   { value: 'REWORK', label: 'REWORK', icon: WrenchIcon, tone: 'warning', description: 'Mending / Correction' },
   { value: 'REJECT', label: 'REJECT', icon: XCircleIcon, tone: 'danger', description: 'Scrap / Downgrade' },
 ];
+
+// --- Table cell renderers ---
+
+// One place for status colour: the pill and the row's left edge both read from here.
+const STATUS_META: Record<
+  RollStatus,
+  { label: string; icon: React.ElementType; pill: string; bar: string }
+> = {
+  PENDING_QC: {
+    label: 'Pending QC',
+    icon: ClockIcon,
+    pill: 'bg-(--color-warning-light) text-(--color-warning) ring-(--color-warning-border)',
+    bar: 'bg-(--color-warning)',
+  },
+  PASSED: {
+    label: 'Passed',
+    icon: CheckCircleIcon,
+    pill: 'bg-(--color-success-light) text-(--color-success) ring-(--color-success-border)',
+    bar: 'bg-(--color-success)',
+  },
+  REWORK: {
+    label: 'Rework',
+    icon: WrenchIcon,
+    pill: 'bg-(--color-accent-light) text-(--color-accent) ring-(--color-accent)/40',
+    bar: 'bg-(--color-accent)',
+  },
+  REJECTED: {
+    label: 'Rejected',
+    icon: XCircleIcon,
+    pill: 'bg-(--color-danger-light) text-(--color-danger) ring-(--color-danger-border)',
+    bar: 'bg-(--color-danger)',
+  },
+  DISPATCHED: {
+    label: 'Dispatched',
+    icon: TruckIcon,
+    pill: 'bg-(--color-surface-sunken) text-(--color-text-muted) ring-(--color-border)',
+    bar: 'bg-(--color-text-subtle)',
+  },
+};
+
+const DEFECT_LABELS: Record<DefectType, string> = {
+  HOLE: 'Hole / Tear',
+  COLOUR_MISMATCH: 'Colour mismatch',
+  UNEVEN_WEAVE: 'Uneven weave',
+  OTHER: 'Other defect',
+};
+
+function StatusPill({ status }: { status: RollStatus }) {
+  const meta = STATUS_META[status];
+  const Icon = meta.icon;
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${meta.pill}`}
+    >
+      <Icon className={`h-3.5 w-3.5 ${status === 'PENDING_QC' ? 'animate-pulse-subtle' : ''}`} />
+      {meta.label}
+    </span>
+  );
+}
+
+function InspectionCell({ roll }: { roll: QcRollItem }) {
+  let detail;
+  if (roll.defectType) {
+    detail = (
+      <span className="w-full truncate text-xs text-(--color-text-muted)" title={roll.notes}>
+        <span className="font-medium text-(--color-danger)">{DEFECT_LABELS[roll.defectType]}</span>
+        {roll.notes && <> · {roll.notes}</>}
+      </span>
+    );
+  } else if (roll.lastResult === 'PASS') {
+    detail = <span className="text-xs text-(--color-text-muted)">Grade A quality</span>;
+  } else {
+    detail = <span className="text-xs italic text-(--color-text-subtle)">Awaiting first inspection</span>;
+  }
+  return (
+    <div className="flex max-w-60 min-w-0 flex-col items-start gap-1.5">
+      <StatusPill status={roll.status} />
+      {detail}
+    </div>
+  );
+}
+
+// Stored names look like "Suresh Patil (SUPERVISOR)"; show the name and keep the role as a hint.
+function InspectorCell({ name, at }: { name?: string; at?: string }) {
+  if (!name) return <span className="text-xs text-(--color-text-subtle)">Not yet inspected</span>;
+  const [, person = name, role] = name.match(/^(.*?)\s*(?:\((.+)\))?$/) ?? [];
+  return (
+    <div className="flex min-w-0 items-center gap-2.5" title={role ? `${person} · ${role}` : person}>
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-(--color-surface-sunken) text-[11px] font-bold text-(--color-text-muted) ring-1 ring-(--color-border)"
+        aria-hidden
+      >
+        {initialsOf(person)}
+      </span>
+      <div className="min-w-0">
+        <p className="truncate whitespace-nowrap text-sm font-medium text-(--color-text)">{person}</p>
+        {at && <p className="whitespace-nowrap text-xs text-(--color-text-subtle)">{formatRelative(at)}</p>}
+      </div>
+    </div>
+  );
+}
 
 export function QcPage() {
   const { user } = useAuth();
@@ -165,29 +268,50 @@ export function QcPage() {
   const rollColumns: Column<QcRollItem>[] = [
     {
       key: 'roll',
-      header: 'Roll Identifier',
+      header: 'Roll',
+      className: 'relative pl-6',
       render: (roll) => (
-        <div>
+        <>
+          <span
+            className={`absolute left-0 top-3 bottom-3 w-1 rounded-r-full ${STATUS_META[roll.status].bar}`}
+            aria-hidden
+          />
           <Link
             to={`/rolls/${roll.id}`}
-            className="font-mono font-bold text-sm text-indigo-600 hover:text-indigo-800 hover:underline inline-flex items-center gap-1"
+            className="whitespace-nowrap font-mono text-sm font-semibold text-(--color-text) hover:text-(--color-accent) transition-colors"
           >
             {roll.rollNo}
           </Link>
-          <div className="text-[11px] text-(--color-text-subtle)">
-            Created: {new Date(roll.createdAt).toLocaleDateString()}
-          </div>
-        </div>
+          <p className="whitespace-nowrap text-xs text-(--color-text-subtle)" title={formatDate(roll.createdAt)}>
+            Created {formatRelative(roll.createdAt)}
+          </p>
+        </>
       ),
     },
     {
       key: 'order',
-      header: 'Linked Order',
+      header: 'Order',
       render: (roll) => (
-        <div>
-          <div className="font-mono font-semibold text-(--color-text)">{roll.orderNumber}</div>
-          <div className="text-[11px] font-medium text-(--color-text-dark)">{roll.buyerName}</div>
-          <div className="text-[11px] text-(--color-text-muted)">{roll.fabricType} ({roll.colour})</div>
+        <div className="min-w-0">
+          <p className="whitespace-nowrap font-mono text-sm font-medium text-(--color-text)">{roll.orderNumber}</p>
+          <p className="max-w-48 truncate text-xs text-(--color-text-muted)">{roll.buyerName}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'fabric',
+      header: 'Fabric',
+      render: (roll) => (
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            className="h-4 w-4 shrink-0 rounded-full ring-1 ring-(--color-border) shadow-inner"
+            style={{ backgroundColor: shadeSwatch(roll.colour) ?? 'transparent' }}
+            aria-hidden
+          />
+          <div className="min-w-0">
+            <p className="max-w-44 truncate text-sm text-(--color-text)">{roll.fabricType}</p>
+            <p className="text-xs text-(--color-text-muted)">{roll.colour}</p>
+          </div>
         </div>
       ),
     },
@@ -196,99 +320,64 @@ export function QcPage() {
       header: 'Length',
       align: 'right',
       render: (roll) => (
-        <span className="font-mono font-bold text-sm text-(--color-text) whitespace-nowrap">
-          {roll.metres} <span className="text-xs font-sans font-normal text-(--color-text-muted)">m</span>
+        <span className="whitespace-nowrap text-sm font-semibold tabular-nums text-(--color-text)">
+          {roll.metres.toLocaleString('en-IN')}
+          <span className="ml-1 text-xs font-normal text-(--color-text-subtle)">m</span>
         </span>
       ),
     },
     {
       key: 'machines',
-      header: 'Machine Sources',
+      header: 'Machines',
+      className: 'hidden xl:table-cell',
       render: (roll) => (
-        <div className="text-[11px]">
-          <div className="text-(--color-text-dark)">
-            <span className="text-(--color-text-muted)">Loom:</span> {roll.weavingMachineName}
-          </div>
-          <div className="text-(--color-text-dark) mt-0.5">
-            <span className="text-(--color-text-muted)">Dyeing:</span> {roll.dyeingMachineName}
-          </div>
-        </div>
+        <dl className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1 text-xs">
+          <dt className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-subtle)">Loom</dt>
+          <dd className="truncate text-(--color-text-dark)">{roll.weavingMachineName}</dd>
+          <dt className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-subtle)">Dye</dt>
+          <dd className="truncate text-(--color-text-dark)">{roll.dyeingMachineName}</dd>
+        </dl>
       ),
     },
     {
-      key: 'status',
-      header: 'QC Status',
-      render: (roll) => (
-        <>
-          {roll.status === 'PENDING_QC' && <Badge variant="warning" label="PENDING QC" dot />}
-          {roll.status === 'PASSED' && <Badge variant="success" label="PASSED" dot />}
-          {roll.status === 'REWORK' && <Badge variant="warning" label="REWORK" dot />}
-          {roll.status === 'REJECTED' && <Badge variant="danger" label="REJECTED" dot />}
-          {roll.status === 'DISPATCHED' && <Badge variant="info" label="DISPATCHED" />}
-        </>
-      ),
-    },
-    {
-      key: 'result',
-      header: 'Last Result / Defects',
-      render: (roll) =>
-        roll.defectType ? (
-          <div className="space-y-0.5">
-            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-              {roll.defectType.replace('_', ' ')}
-            </span>
-            {roll.notes && (
-              <p className="text-[11px] text-(--color-text-muted) line-clamp-1 italic max-w-xs">"{roll.notes}"</p>
-            )}
-          </div>
-        ) : roll.lastResult === 'PASS' ? (
-          <div className="text-emerald-700 font-medium text-xs flex items-center gap-1">
-            <CheckCircleIcon className="w-3.5 h-3.5" />
-            Grade A Quality
-          </div>
-        ) : (
-          <span className="text-(--color-text-subtle) italic text-[11px]">Not inspected yet</span>
-        ),
+      key: 'inspection',
+      header: 'Inspection',
+      render: (roll) => <InspectionCell roll={roll} />,
     },
     {
       key: 'inspector',
       header: 'Inspector',
-      render: (roll) =>
-        roll.inspectorName ? (
-          <div className="text-[11px]">
-            <div className="text-(--color-text) font-medium">{roll.inspectorName}</div>
-            {roll.inspectedAt && (
-              <div className="text-[10px] text-(--color-text-subtle)">
-                {new Date(roll.inspectedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </div>
-            )}
-          </div>
-        ) : (
-          <span className="text-(--color-text-subtle) text-[11px]">—</span>
-        ),
+      className: 'hidden lg:table-cell',
+      render: (roll) => <InspectorCell name={roll.inspectorName} at={roll.inspectedAt} />,
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: '',
       align: 'right',
-      render: (roll) => (
-        <div className="flex items-center justify-end gap-1.5">
-          <Link to={`/rolls/${roll.id}`}>
-            <Button size="sm" variant="ghost" className="text-xs text-indigo-600 hover:bg-indigo-50">
-              Trace
+      render: (roll) => {
+        const needsAction = roll.status === 'PENDING_QC' || roll.status === 'REWORK';
+        return (
+          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+            <Link
+              to={`/rolls/${roll.id}`}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-(--color-text-muted) hover:text-(--color-accent) hover:bg-(--color-accent-light) transition-colors"
+              title="Trace roll"
+              aria-label={`Trace ${roll.rollNo}`}
+            >
+              <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+            </Link>
+            <Button
+              size="sm"
+              variant={needsAction ? 'primary' : 'ghost'}
+              onClick={() => openInspection(roll)}
+              className={`min-w-28 rounded-full text-xs ${needsAction ? '' : 'ring-1 ring-inset ring-(--color-border)'}`}
+            >
+              <ShieldCheckIcon className="h-4 w-4" />
+              {roll.status === 'PENDING_QC' ? 'Inspect' : 'Re-inspect'}
             </Button>
-          </Link>
-          <Button
-            size="sm"
-            variant={roll.status === 'PENDING_QC' || roll.status === 'REWORK' ? 'primary' : 'secondary'}
-            onClick={() => openInspection(roll)}
-            className="text-xs shadow-2xs"
-          >
-            <ShieldCheckIcon className="w-3.5 h-3.5" />
-            {roll.status === 'PENDING_QC' ? 'Inspect' : 'Re-inspect'}
-          </Button>
-        </div>
-      ),
+          </div>
+        );
+      },
     },
   ];
 
@@ -301,7 +390,7 @@ export function QcPage() {
             <h1 className="text-2xl font-bold text-(--color-text) tracking-tight">
               Quality Control & Roll Inspection
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-(--color-accent-light) text-(--color-accent) border border-(--color-accent)/30">
               QC Station
             </span>
           </div>
@@ -404,7 +493,7 @@ export function QcPage() {
         </div>
       ) : (
         <Card className="overflow-hidden p-0">
-          <Table columns={rollColumns} rows={paginatedRolls} rowKey={(r) => r.id} />
+          <Table bare columns={rollColumns} rows={paginatedRolls} rowKey={(r) => r.id} />
           <Pagination
             page={visiblePage}
             pageSize={pageSize}
@@ -442,7 +531,7 @@ export function QcPage() {
             <div className="p-3 bg-(--color-surface-sunken) rounded-xl border border-(--color-border) text-xs space-y-1.5 text-(--color-text-dark)">
               <div className="flex justify-between font-semibold">
                 <span className="font-mono text-(--color-text)">{inspectingRoll.rollNo}</span>
-                <span className="font-mono text-emerald-800">{inspectingRoll.metres} metres</span>
+                <span className="font-mono text-(--color-success)">{inspectingRoll.metres} metres</span>
               </div>
               <div className="flex justify-between">
                 <span>Order:</span>
@@ -482,7 +571,7 @@ export function QcPage() {
                     key={opt.value}
                     className={`flex items-start gap-2.5 p-2 rounded-lg border cursor-pointer transition-colors ${
                       defectType === opt.value
-                        ? 'bg-rose-100/70 border-rose-400 text-rose-950 font-medium'
+                        ? 'bg-(--color-danger-light) border-(--color-danger) text-(--color-text) font-medium'
                         : 'bg-white border-(--color-border) text-(--color-text-dark) hover:bg-(--color-surface-alt)'
                     }`}
                   >
@@ -492,7 +581,7 @@ export function QcPage() {
                       value={opt.value}
                       checked={defectType === opt.value}
                       onChange={() => setDefectType(opt.value)}
-                      className="mt-0.5 text-rose-600 focus:ring-rose-500"
+                      className="mt-0.5 accent-(--color-danger)"
                     />
                     <div className="text-xs">
                       <div className="font-semibold">{opt.label}</div>

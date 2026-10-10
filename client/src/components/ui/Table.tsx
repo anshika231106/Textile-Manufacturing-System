@@ -20,6 +20,8 @@ interface TableProps<T> {
   emptyDescription?: string;
   rowKey: (row: T) => string;
   onRowClick?: (row: T) => void;
+  /** Drop the outer border/radius when the table already sits inside a Card. */
+  bare?: boolean;
 }
 
 export function Table<T>({
@@ -30,9 +32,10 @@ export function Table<T>({
   emptyDescription = 'Nothing to show here yet.',
   rowKey,
   onRowClick,
+  bare = false,
 }: TableProps<T>) {
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-(--color-border) bg-white">
+    <div className={['w-full overflow-x-auto', bare ? '' : 'rounded-lg border border-(--color-border) bg-white'].join(' ')}>
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="border-b border-(--color-border) bg-(--color-bg)">
