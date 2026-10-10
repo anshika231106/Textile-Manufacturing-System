@@ -13,7 +13,7 @@ async function resolveAuditUserId(req: Request): Promise<string> {
     return (req as any).user.id;
   }
   const fallback = await prisma.user.findFirst({
-    where: { role: { in: ['STOREKEEPER', 'OWNER', 'OFFICE'] } },
+    where: { role: { in: ['SUPERVISOR', 'OWNER', 'OFFICE'] } },
     select: { id: true },
   });
   if (fallback) return fallback.id;
