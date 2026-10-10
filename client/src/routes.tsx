@@ -22,7 +22,6 @@ import { OrdersPage }       from './features/orders/OrdersPage';
 import { NewOrderPage }     from './features/orders/NewOrderPage';
 import { OrderDetailPage }  from './features/orders/OrderDetailPage';
 import { StaffPage }        from './features/staff/StaffPage';
-import { Placeholder }      from './components/ui/Placeholder';
 
 import { StockPage }         from './features/stock/StockPage';
 import { ReceiptPage }       from './features/stock/ReceiptPage';
@@ -187,15 +186,6 @@ export const ROUTES: RouteConfig[] = [
     roles: ['OWNER'],
     nav: true,
     element: <MonthEndPage />,
-  },
-  {
-    path: '/reports/defects',
-    label: 'Defects',
-    icon: ChartBarIcon,
-    roles: ['OWNER'],
-    nav: true,
-    p1: true,
-    element: <Placeholder title="Defects Report" description="Defect % by machine and type — P1, coming in Phase 6." />,
   },
   {
     path: '/rolls/:id',

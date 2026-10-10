@@ -55,10 +55,10 @@ export function AppLayout({ children, pageTitle }: AppLayoutProps) {
             to="/dashboard"
             onClick={() => setMobileOpen(false)}
             aria-label="MillTrace dashboard"
-            className="flex min-w-0 items-center"
+            className={`flex min-w-0 items-center ${collapsed ? 'mx-auto' : ''}`}
           >
             <img
-              src="/logo.png"
+              src={collapsed ? '/fevicon.png' : '/logo.png'}
               alt="MillTrace"
               className={`flex-shrink-0 object-contain ${collapsed ? 'w-8 h-8' : 'w-36 h-12'}`}
             />
