@@ -1,0 +1,188 @@
+import type { ComponentType } from 'react';
+import type { Role } from './lib/auth';
+import {
+  HomeIcon,
+  CubeIcon,
+  ShoppingBagIcon,
+  WrenchScrewdriverIcon,
+  BeakerIcon,
+  TruckIcon,
+  DocumentTextIcon,
+  ClipboardDocumentListIcon,
+  ChartBarIcon,
+  UsersIcon,
+} from '@heroicons/react/24/outline';
+
+import { HomePage }         from './features/reports/HomePage';
+import { LoginPage }        from './features/auth/LoginPage';
+import { TrackPage }        from './features/track/TrackPage';
+import { Placeholder }      from './components/ui/Placeholder';
+
+export interface RouteConfig {
+  path: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  /** 'all' means every authenticated role can access it */
+  roles: Role[] | 'all';
+  /** whether to show this route in the sidebar navigation */
+  nav: boolean;
+  element: JSX.Element;
+  /** is this a P1 feature (still wired but labelled) */
+  p1?: boolean;
+}
+
+export const ROUTES: RouteConfig[] = [
+  {
+    path: '/',
+    label: 'Dashboard',
+    icon: HomeIcon,
+    roles: 'all',
+    nav: true,
+    element: <HomePage />,
+  },
+  {
+    path: '/stock',
+    label: 'Yarn Stock',
+    icon: CubeIcon,
+    roles: 'all',
+    nav: true,
+    element: <Placeholder title="Yarn Stock" description="Stock overview, low-stock indicators and ledger — coming in Phase 2." />,
+  },
+  {
+    path: '/stock/receipt',
+    label: 'Stock Receipt',
+    icon: CubeIcon,
+    roles: ['OWNER', 'STOREKEEPER'],
+    nav: false,
+    element: <Placeholder title="Record Receipt" description="Yarn receipt form — coming in Phase 2." />,
+  },
+  {
+    path: '/masters/:type',
+    label: 'Masters',
+    icon: UsersIcon,
+    roles: 'all',
+    nav: true,
+    element: <Placeholder title="Masters" description="Buyers, suppliers, yarns, machines, workers — coming in Phase 2." />,
+  },
+  {
+    path: '/orders',
+    label: 'Orders',
+    icon: ShoppingBagIcon,
+    roles: 'all',
+    nav: true,
+    element: <Placeholder title="Orders" description="Order list and status filters — coming in Phase 3." />,
+  },
+  {
+    path: '/orders/new',
+    label: 'New Order',
+    icon: ShoppingBagIcon,
+    roles: ['OWNER', 'OFFICE'],
+    nav: false,
+    element: <Placeholder title="New Order" description="Order creation with yarn feasibility — coming in Phase 3." />,
+  },
+  {
+    path: '/orders/:id',
+    label: 'Order Detail',
+    icon: ShoppingBagIcon,
+    roles: 'all',
+    nav: false,
+    element: <Placeholder title="Order Detail" description="Order details and production actions — coming in Phase 3." />,
+  },
+  {
+    path: '/floor',
+    label: 'Machine Floor',
+    icon: WrenchScrewdriverIcon,
+    roles: 'all',
+    nav: true,
+    element: <Placeholder title="Machine Floor" description="Live machine board with 5s polling — coming in Phase 4." />,
+  },
+  {
+    path: '/floor/log',
+    label: 'Production Log',
+    icon: ClipboardDocumentListIcon,
+    roles: ['OWNER', 'SUPERVISOR'],
+    nav: false,
+    element: <Placeholder title="Production Log" description="Log metres per shift — coming in Phase 4." />,
+  },
+  {
+    path: '/qc',
+    label: 'Quality Control',
+    icon: BeakerIcon,
+    roles: ['OWNER', 'SUPERVISOR'],
+    nav: true,
+    element: <Placeholder title="Quality Control" description="QC queue, roll creation and results — coming in Phase 4." />,
+  },
+  {
+    path: '/dispatch',
+    label: 'Dispatch',
+    icon: TruckIcon,
+    roles: ['OWNER', 'STOREKEEPER'],
+    nav: true,
+    element: <Placeholder title="Dispatch" description="Select rolls and confirm dispatch — coming in Phase 5." />,
+  },
+  {
+    path: '/invoices',
+    label: 'Invoices',
+    icon: DocumentTextIcon,
+    roles: ['OWNER', 'OFFICE', 'STOREKEEPER'],
+    nav: true,
+    element: <Placeholder title="Invoices" description="Invoice list and payment recording — coming in Phase 5." />,
+  },
+  {
+    path: '/invoices/:id',
+    label: 'Invoice',
+    icon: DocumentTextIcon,
+    roles: ['OWNER', 'OFFICE', 'STOREKEEPER'],
+    nav: false,
+    element: <Placeholder title="Invoice Detail" description="Invoice details and payment entry — coming in Phase 5." />,
+  },
+  {
+    path: '/attendance',
+    label: 'Attendance',
+    icon: ClipboardDocumentListIcon,
+    roles: ['OWNER', 'OFFICE', 'SUPERVISOR'],
+    nav: true,
+    element: <Placeholder title="Attendance" description="Daily attendance and wage view — coming in Phase 5." />,
+  },
+  {
+    path: '/reports/month-end',
+    label: 'Month-End',
+    icon: ChartBarIcon,
+    roles: ['OWNER', 'OFFICE'],
+    nav: true,
+    element: <Placeholder title="Month-End Report" description="Purchases, wages, profit — coming in Phase 5." />,
+  },
+  {
+    path: '/reports/defects',
+    label: 'Defects',
+    icon: ChartBarIcon,
+    roles: ['OWNER'],
+    nav: true,
+    p1: true,
+    element: <Placeholder title="Defects Report" description="Defect % by machine and type — P1, coming in Phase 6." />,
+  },
+  {
+    path: '/rolls/:id',
+    label: 'Roll Trace',
+    icon: BeakerIcon,
+    roles: ['OWNER', 'SUPERVISOR'],
+    nav: false,
+    p1: true,
+    element: <Placeholder title="Roll Trace" description="Full traceability timeline — P1, coming in Phase 6." />,
+  },
+  {
+    path: '/rolls/:id/label',
+    label: 'Roll Label',
+    icon: BeakerIcon,
+    roles: 'all',
+    nav: false,
+    p1: true,
+    element: <Placeholder title="Roll Label" description="Printable QR label — P1, coming in Phase 6." />,
+  },
+];
+
+// Public-only routes (no AppLayout, no auth)
+export const PUBLIC_ROUTES = [
+  { path: '/login',           element: <LoginPage /> },
+  { path: '/track/:token',    element: <TrackPage /> },
+];
