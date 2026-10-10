@@ -84,6 +84,15 @@ export interface Order {
   rollSummary: OrderRollSummary;
 }
 
+export interface PaginatedOrders {
+  items: Order[];
+  meta: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
+}
+
 export interface CreateOrderInput {
   buyerId: string;
   fabricType: string;
@@ -263,16 +272,36 @@ let ordersStore: Order[] = [
   },
 ];
 
-export async function listOrders(filters?: { status?: string }): Promise<Order[]> {
+export async function listOrdersPage(filters: {
+  status?: string;
+  limit: number;
+  offset: number;
+}): Promise<PaginatedOrders> {
   try {
-    const q = filters?.status ? `?status=${encodeURIComponent(filters.status)}` : '';
-    return await api<Order[]>(`/orders${q}`);
+    const query = new URLSearchParams({
+      limit: String(filters.limit),
+      offset: String(filters.offset),
+    });
+    if (filters.status) query.set('status', filters.status);
+    return await api<PaginatedOrders>(`/orders?${query.toString()}`);
   } catch {
-    if (filters?.status && filters.status !== 'ALL') {
-      return ordersStore.filter((o) => o.status === filters.status);
-    }
-    return [...ordersStore];
+    const filtered = filters.status
+      ? ordersStore.filter((order) => order.status === filters.status)
+      : [...ordersStore];
+    return {
+      items: filtered.slice(filters.offset, filters.offset + filters.limit),
+      meta: { total: filtered.length, limit: filters.limit, offset: filters.offset },
+    };
   }
+}
+
+export async function listOrders(filters?: { status?: string }): Promise<Order[]> {
+  const result = await listOrdersPage({
+    ...(filters?.status ? { status: filters.status } : {}),
+    limit: 200,
+    offset: 0,
+  });
+  return result.items;
 }
 
 export async function getOrder(id: string): Promise<Order> {
@@ -468,4 +497,3 @@ export async function getPublicMillStats(): Promise<PublicMillStats | null> {
     return null;
   }
 }
-

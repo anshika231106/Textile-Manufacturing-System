@@ -41,7 +41,7 @@ export class OrdersController {
       const query = ListOrdersQuerySchema.parse(req.query);
       const result = await ordersService.listOrders(query);
       return res.status(200).json({
-        data: result.items,
+        data: result,
         items: result.items,
         meta: result.meta,
       });
