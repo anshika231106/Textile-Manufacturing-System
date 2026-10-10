@@ -497,7 +497,7 @@ export function DispatchPage() {
             </div>
 
             {/* Financial Invoice Estimate Calculation */}
-            <div className="p-4 bg-gradient-to-br from-white to-(--color-accent-light)/40 rounded-xl border border-(--color-border) space-y-2 text-xs">
+            <div className="p-4 bg-gradient-to-br from-(--color-surface) to-(--color-accent-light)/40 rounded-xl border border-(--color-border) space-y-2 text-xs">
               <div className="flex justify-between text-(--color-text-muted)">
                 <span>Total Dispatched Rolls:</span>
                 <span className="font-mono font-bold text-(--color-text)">{selectedRolls.length}</span>

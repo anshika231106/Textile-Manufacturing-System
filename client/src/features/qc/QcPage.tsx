@@ -10,6 +10,8 @@ import { Callout } from '../../components/ui/Callout';
 import { StatCard, StatGrid } from '../../components/ui/StatCard';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Table, type Column } from '../../components/ui/Table';
+import { Card } from '../../components/ui/Card';
+import { Pagination } from '../../components/ui/Pagination';
 import {
   getQcQueue,
   recordResult,
@@ -72,6 +74,8 @@ export function QcPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedStatusTab, setSelectedStatusTab] = useState<'ALL' | RollStatus>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(0);
+  const pageSize = 10;
 
   // Inspection modal state
   const [inspectingRoll, setInspectingRoll] = useState<QcRollItem | null>(null);
@@ -145,6 +149,10 @@ export function QcPage() {
       return true;
     });
   }, [rolls, selectedStatusTab, searchQuery]);
+
+  const pageCount = Math.ceil(filteredRolls.length / pageSize);
+  const visiblePage = Math.min(page, Math.max(pageCount - 1, 0));
+  const paginatedRolls = filteredRolls.slice(visiblePage * pageSize, (visiblePage + 1) * pageSize);
 
   const statusTabOptions: { value: 'ALL' | RollStatus; label: string; count: number }[] = [
     { value: 'ALL', label: 'All Rolls', count: stats.totalRolls },
@@ -346,7 +354,15 @@ export function QcPage() {
       <div className="bg-white rounded-xl border border-(--color-border) p-3.5 flex flex-col md:flex-row items-center justify-between gap-3 shadow-2xs">
         {/* Status Tabs */}
         <div className="w-full md:w-auto overflow-x-auto">
-          <SegmentedControl value={selectedStatusTab} onChange={setSelectedStatusTab} options={statusTabOptions} size="sm" />
+          <SegmentedControl
+            value={selectedStatusTab}
+            onChange={(v) => {
+              setSelectedStatusTab(v);
+              setPage(0);
+            }}
+            options={statusTabOptions}
+            size="sm"
+          />
         </div>
 
         {/* Search */}
@@ -356,7 +372,10 @@ export function QcPage() {
             type="text"
             placeholder="Search roll, order, buyer..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(0);
+            }}
             className="w-full text-xs rounded-lg border border-(--color-border) bg-white py-2 pl-9 pr-3 text-(--color-text) placeholder-(--color-text-subtle) focus:outline-none focus:ring-1 focus:ring-(--color-accent)"
           />
         </div>
@@ -384,7 +403,16 @@ export function QcPage() {
           </Button>
         </div>
       ) : (
-        <Table columns={rollColumns} rows={filteredRolls} rowKey={(r) => r.id} />
+        <Card className="overflow-hidden p-0">
+          <Table columns={rollColumns} rows={paginatedRolls} rowKey={(r) => r.id} />
+          <Pagination
+            page={visiblePage}
+            pageSize={pageSize}
+            totalCount={filteredRolls.length}
+            itemLabel="rolls"
+            onPageChange={setPage}
+          />
+        </Card>
       )}
 
       {/* Create Fabric Roll Dialog */}

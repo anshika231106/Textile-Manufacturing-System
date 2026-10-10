@@ -301,6 +301,16 @@
   background-color: #302341 !important;
 }
 
+/* Pale gradient tints wash out on dark surfaces; start them from the raised surface instead. */
+:root[data-theme='dark'] :is(
+  [class~="from-indigo-50/40"],
+  [class~="from-blue-50/40"],
+  [class~="from-emerald-50/40"],
+  [class~="from-purple-50/40"]
+) {
+  --tw-gradient-from: var(--color-surface-alt) !important;
+}
+
 :root[data-theme='dark'] .text-emerald-700,
 :root[data-theme='dark'] .text-emerald-800,
 :root[data-theme='dark'] .text-green-700,

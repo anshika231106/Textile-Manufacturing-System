@@ -112,10 +112,10 @@ const DEFECT_LABEL: Record<string, string> = {
 // Mirrors the role lists in routes.tsx for the pages the dashboard links to
 // (routes.tsx imports this page, so importing ROUTES here would be circular).
 const PAGE_ROLES: Record<string, Role[] | 'all'> = {
-  '/orders': 'all',
-  '/orders/new': 'all',
-  '/orders/:id': 'all',
-  '/stock': 'all',
+  '/orders': ['OWNER', 'OFFICE', 'SUPERVISOR'],
+  '/orders/new': ['OWNER', 'OFFICE'],
+  '/orders/:id': ['OWNER', 'OFFICE', 'SUPERVISOR'],
+  '/stock': ['OWNER', 'OFFICE', 'SUPERVISOR'],
   '/floor': ['OWNER', 'SUPERVISOR', 'STAFF'],
   '/floor/log': ['OWNER', 'SUPERVISOR'],
   '/qc': ['OWNER', 'SUPERVISOR'],

@@ -239,7 +239,7 @@ export function RollTracePage() {
 
       {/* Hero Overview Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4 border-l-4 border-l-indigo-500 bg-gradient-to-br from-indigo-50/40 to-white">
+        <Card className="p-4 border-l-4 border-l-indigo-500 bg-gradient-to-br from-indigo-50/40 to-(--color-surface)">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
             <CubeIcon className="w-4 h-4 text-indigo-600" /> Roll Specification
           </div>
@@ -247,7 +247,7 @@ export function RollTracePage() {
           <div className="text-xs text-slate-600 mt-1 truncate">{order.fabricType} ({order.colour})</div>
         </Card>
 
-        <Card className="p-4 border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50/40 to-white">
+        <Card className="p-4 border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50/40 to-(--color-surface)">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
             <UserIcon className="w-4 h-4 text-blue-600" /> Buyer & Order
           </div>
@@ -255,7 +255,7 @@ export function RollTracePage() {
           <div className="text-xs text-slate-600 mt-1">Order: <span className="font-mono font-medium">{order.orderNo}</span> ({order.metres}m total)</div>
         </Card>
 
-        <Card className="p-4 border-l-4 border-l-emerald-500 bg-gradient-to-br from-emerald-50/40 to-white">
+        <Card className="p-4 border-l-4 border-l-emerald-500 bg-gradient-to-br from-emerald-50/40 to-(--color-surface)">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
             <ShieldCheckIcon className="w-4 h-4 text-emerald-600" /> Quality Control
           </div>
@@ -276,7 +276,7 @@ export function RollTracePage() {
           </div>
         </Card>
 
-        <Card className="p-4 border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50/40 to-white">
+        <Card className="p-4 border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50/40 to-(--color-surface)">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
             <TruckIcon className="w-4 h-4 text-purple-600" /> Logistics Status
           </div>

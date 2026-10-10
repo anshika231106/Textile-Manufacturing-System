@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../../db/prisma';
 import { notFound } from '../../lib/httpErrors';
 import { ok } from '../../lib/respond';
-import { authenticate } from '../../middleware/authenticate';
+import { authenticate, authorize } from '../../middleware/authenticate';
 
 export const rollsRoutes = Router();
 
@@ -15,6 +15,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 rollsRoutes.get(
   ['/rolls/:id/trace', '/rolls/:id'],
   authenticate,
+  authorize('OWNER', 'OFFICE', 'SUPERVISOR'),
   async (req, res, next) => {
     try {
       const { id } = req.params;

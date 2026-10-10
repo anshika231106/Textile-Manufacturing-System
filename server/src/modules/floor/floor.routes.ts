@@ -330,7 +330,10 @@ floorRoutes.get(
   async (req, res, next) => {
     try {
       const { limit } = logQuery.parse(req.query);
+      const staffId = req.authUser?.role === 'STAFF' ? req.authUser.id : undefined;
       const logs = await prisma.productionLog.findMany({
+        // Staff only see logs they wrote or logs on machines assigned to them.
+        where: staffId ? { OR: [{ createdById: staffId }, { machine: { assignedStaffId: staffId } }] } : {},
         take: limit,
         orderBy: { loggedAt: 'desc' },
         include: {

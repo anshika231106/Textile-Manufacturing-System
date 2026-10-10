@@ -154,16 +154,16 @@ export async function deleteYarnType(id: string): Promise<void> {
 }
 
 // --- Machines ---
+// The server generates the machine code from the stage (e.g. WEAVE-03).
 export type MachineInput = {
-  code: string;
   name: string;
   stage: 'SPINNING' | 'WEAVING' | 'DYEING';
   status?: 'IDLE' | 'RUNNING' | 'BREAKDOWN';
   ratePerMetre: number;
 };
 
-// Stage and status cannot be edited: stage is fixed, status is set from the floor.
-export type MachineUpdate = Partial<Pick<MachineInput, 'code' | 'name' | 'ratePerMetre'>>;
+// Code and stage cannot be edited, and status is set from the floor.
+export type MachineUpdate = Partial<Pick<MachineInput, 'name' | 'ratePerMetre'>>;
 
 export function listMachines(includeRetired = false): Promise<Machine[]> {
   return api<Machine[]>(`/masters/machines${retiredQuery(includeRetired)}`);

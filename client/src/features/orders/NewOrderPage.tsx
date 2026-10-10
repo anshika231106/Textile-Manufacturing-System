@@ -558,7 +558,7 @@ export function NewOrderPage() {
         </Card>
 
         {/* 3. Live Feasibility Preview */}
-        <Card className="p-6 flex flex-col gap-4 bg-gradient-to-b from-white to-(--color-bg)">
+        <Card className="p-6 flex flex-col gap-4 bg-gradient-to-b from-(--color-surface) to-(--color-bg)">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <SparklesIcon className="w-5 h-5 text-(--color-accent)" />

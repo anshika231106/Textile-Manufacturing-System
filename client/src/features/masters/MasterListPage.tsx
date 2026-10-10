@@ -66,6 +66,9 @@ interface DeleteTarget {
   label: string;
 }
 
+// Mirrors the server's code prefixes, to preview the generated code.
+const MACHINE_CODE_PREFIX = { SPINNING: 'SPIN', WEAVING: 'WEAVE', DYEING: 'DYE' } as const;
+
 const API_PATHS: Record<MasterType, MasterPath> = {
   buyers: 'buyers',
   suppliers: 'suppliers',
@@ -496,17 +499,16 @@ export function MasterListPage() {
         setYarnForm(EMPTY_YARN_FORM);
         reloadYarns();
       } else if (currentType === 'machines') {
-        if (!machineForm.code.trim()) throw new Error('Machine code is required.');
         if (!machineForm.name.trim()) throw new Error('Machine name is required.');
         const rateVal = parseFloat(machineForm.ratePerMetre) || 0;
         const input = {
-          code: machineForm.code.trim().toUpperCase(),
           name: machineForm.name.trim(),
           ratePerMetre: rateVal,
         };
-        if (editingId) await updateMachine(editingId, input);
-        else await createMachine({ ...input, stage: machineForm.stage });
-        showToast(`Machine "${input.code}" ${editingId ? 'updated' : 'registered'}!`, 'success');
+        const saved = editingId
+          ? await updateMachine(editingId, input)
+          : await createMachine({ ...input, stage: machineForm.stage });
+        showToast(`Machine "${saved.code}" ${editingId ? 'updated' : 'registered'}!`, 'success');
         setMachineForm(EMPTY_MACHINE_FORM);
         reloadMachines();
       }
@@ -987,10 +989,9 @@ export function MasterListPage() {
               <div className="grid grid-cols-2 gap-3">
                 <Input
                   label="Machine Code"
-                  required
-                  placeholder="e.g. LOOM-04"
-                  value={machineForm.code}
-                  onChange={(e) => setMachineForm({ ...machineForm, code: e.target.value })}
+                  value={editingId ? machineForm.code : `${MACHINE_CODE_PREFIX[machineForm.stage]}-##`}
+                  disabled
+                  hint={editingId ? 'Codes are fixed once assigned' : 'Assigned automatically on save'}
                 />
                 <Select
                   label="Production Stage"
