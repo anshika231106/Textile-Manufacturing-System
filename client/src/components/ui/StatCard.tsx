@@ -17,27 +17,27 @@ export interface StatCardProps {
 const toneStyles: Record<Tone, { chip: string; wash: string }> = {
   neutral: {
     chip: 'bg-(--color-surface-sunken) text-(--color-text-muted)',
-    wash: 'from-white to-white',
+    wash: 'from-(--color-surface) to-(--color-surface)',
   },
   accent: {
     chip: 'bg-(--color-accent-light) text-(--color-accent)',
-    wash: 'from-white to-(--color-accent-light)/40',
+    wash: 'from-(--color-surface) to-(--color-accent-light)/40',
   },
   success: {
     chip: 'bg-(--color-success-light) text-(--color-success)',
-    wash: 'from-white to-(--color-success-light)/40',
+    wash: 'from-(--color-surface) to-(--color-success-light)/40',
   },
   warning: {
     chip: 'bg-(--color-warning-light) text-(--color-warning)',
-    wash: 'from-white to-(--color-warning-light)/40',
+    wash: 'from-(--color-surface) to-(--color-warning-light)/40',
   },
   danger: {
     chip: 'bg-(--color-danger-light) text-(--color-danger)',
-    wash: 'from-white to-(--color-danger-light)/40',
+    wash: 'from-(--color-surface) to-(--color-danger-light)/40',
   },
   info: {
     chip: 'bg-(--color-info-light) text-(--color-info)',
-    wash: 'from-white to-(--color-info-light)/40',
+    wash: 'from-(--color-surface) to-(--color-info-light)/40',
   },
 };
 

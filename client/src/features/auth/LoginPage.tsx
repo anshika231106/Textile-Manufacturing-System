@@ -12,6 +12,7 @@ import { useAuth } from '../../lib/auth';
 import { ApiError } from '../../lib/api';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 
 const DEMO_ACCOUNTS = [
   { label: 'Admin / Owner', email: 'owner@everest.com', icon: ShieldCheckIcon },
@@ -67,6 +68,7 @@ export function LoginPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-(--color-bg) px-4 py-12 overflow-hidden textile-dots">
+      <ThemeToggle className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6" />
       {/* Soft brand glow, echoing the Landing hero without competing with the form */}
       <div
         className="absolute -top-32 left-1/2 -translate-x-1/2 w-[640px] h-[320px] rounded-full bg-(--color-accent)/10 blur-3xl pointer-events-none"

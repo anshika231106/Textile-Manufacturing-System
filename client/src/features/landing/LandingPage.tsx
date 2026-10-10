@@ -13,6 +13,7 @@ import {
 } from '../orders/orders.api';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { formatDate } from '../../lib/format';
 import {
   drawCheck,
@@ -262,9 +263,9 @@ export function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-(--color-bg) text-(--color-text) selection:bg-(--color-accent)/20 flex flex-col font-sans">
+    <div className="landing-page min-h-screen bg-(--color-bg) text-(--color-text) selection:bg-(--color-accent)/20 flex flex-col font-sans">
       {/* ─── Top Navigation Bar ─── */}
-      <header className="sticky top-0 z-40 bg-(--color-bg)/85 backdrop-blur-md border-b border-(--color-border) px-4 sm:px-8 py-3.5 transition-all">
+      <header className="landing-header sticky top-0 z-40 bg-(--color-bg)/85 backdrop-blur-md border-b border-(--color-border) px-4 sm:px-8 py-3.5 transition-all">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* Brand */}
           <Link to="/dashboard" className="flex items-center gap-3 group" aria-label="MillTrace dashboard">
@@ -293,6 +294,7 @@ export function LandingPage() {
 
           {/* Staff Access Button */}
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             {user ? (
               <Button
                 variant="primary"
@@ -319,20 +321,20 @@ export function LandingPage() {
       </header>
 
       {/* ─── Hero Section with Live Search ─── */}
-      <section className="relative pt-12 pb-16 sm:pt-20 sm:pb-24 px-4 sm:px-8 overflow-hidden bg-white">
+      <section className="landing-hero relative pt-12 pb-16 sm:pt-20 sm:pb-24 px-4 sm:px-8 overflow-hidden bg-white">
         {/* Subtle radial glow in warm orange */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-(--color-accent)/5 rounded-full blur-3xl pointer-events-none" />
 
-        {/* ─── Background: Textile Mill Facility (Ambient Backdrop Merged to White Downwards) ─── */}
+        {/* ─── Background: Textile Mill Facility with blended top and bottom edges ─── */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0">
           <img
             src="/textile-mill-hero.jpg"
             alt="Everest Textile Mills automated weaving shed and spinning units"
-            className="w-full h-full object-cover object-top opacity-50 [mask-image:linear-gradient(to_bottom,black_15%,transparent_85%)] [-webkit-mask-image:linear-gradient(to_bottom,black_15%,transparent_85%)]"
+            className="landing-hero-image w-full h-full object-cover object-top opacity-50 [mask-image:linear-gradient(to_bottom,black_15%,transparent_85%)] [-webkit-mask-image:linear-gradient(to_bottom,black_15%,transparent_85%)]"
           />
-          {/* Subtle gradient overlays so cards and text remain crystal clear while background smoothly dissolves into white */}
-          <div className="absolute inset-0 bg-gradient-to-b from-white/15 via-white/60 to-white" />
-          <div className="absolute inset-0 bg-gradient-to-r from-white/80 via-transparent to-white/80" />
+          {/* Blend the image into the page background at its top and bottom edges. */}
+          <div className="landing-hero-overlay landing-hero-overlay-vertical absolute inset-0 bg-gradient-to-b from-white/15 via-white/60 to-white" />
+          <div className="landing-hero-overlay landing-hero-overlay-horizontal absolute inset-0 bg-gradient-to-r from-white/80 via-transparent to-white/80" />
         </div>
 
         <div className="max-w-5xl mx-auto text-center relative z-10">
