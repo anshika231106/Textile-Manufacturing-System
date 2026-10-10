@@ -41,7 +41,7 @@ export async function api<T>(
 
   const res = await fetch(url, { ...fetchOptions, headers });
 
-  if (res.status === 401) {
+  if (res.status === 401 && auth) {
     // Clear invalid auth state
     try { localStorage.removeItem('milltrace_token'); } catch { /* ignore */ }
     window.location.href = '/login';

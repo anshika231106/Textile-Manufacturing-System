@@ -41,7 +41,7 @@ export function StockPage() {
 
   const { data: yarnTypes } = useApi(listYarnTypes, []);
 
-  const canRecord = user?.role === 'OWNER' || user?.role === 'STOREKEEPER';
+  const canRecord = user?.role === 'OWNER' || user?.role === 'SUPERVISOR';
 
   // Compute KPI metrics
   const kpis = useMemo(() => {

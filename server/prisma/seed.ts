@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
-import { prisma } from "../src/lib/prisma";
 import bcrypt from "bcryptjs";
+import { prisma } from "../src/lib/prisma";
 
 async function main() {
   const defaultPasswordHash = await bcrypt.hash("password", 10);
@@ -68,13 +68,13 @@ async function main() {
   // MACHINES
   // ---------------------------------------------------------
   const spinningMachine = await prisma.machine.create({
-    data: { code: "SPIN-01", name: "Spinning Unit 1", stage: "SPINNING", status: "IDLE", ratePerMetre: 2 },
+    data: { code: "SPIN-01", name: "Spinning Unit 1", stage: "SPINNING", status: "IDLE", assignedStaffId: staff.id, ratePerMetre: 2 },
   });
   const weavingMachine = await prisma.machine.create({
-    data: { code: "WEAVE-01", name: "Weaving Loom 1", stage: "WEAVING", status: "IDLE", ratePerMetre: 3 },
+    data: { code: "WEAVE-01", name: "Weaving Loom 1", stage: "WEAVING", status: "IDLE", assignedStaffId: staff.id, ratePerMetre: 3 },
   });
   const dyeingMachine = await prisma.machine.create({
-    data: { code: "DYE-01", name: "Dyeing Vat 1", stage: "DYEING", status: "IDLE", ratePerMetre: 1.5 },
+    data: { code: "DYE-01", name: "Dyeing Vat 1", stage: "DYEING", status: "IDLE", assignedStaffId: staff2.id, ratePerMetre: 1.5 },
   });
 
   // ---------------------------------------------------------

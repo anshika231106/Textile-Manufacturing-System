@@ -22,7 +22,7 @@ export function Nav({ collapsed }: NavProps) {
           key={route.path}
           to={route.path}
           end={route.path === '/dashboard' || route.path === '/'}
-          title={route.label}
+          title={user.role === 'STAFF' && route.path === '/floor' ? 'My Machines' : route.label}
           className={({ isActive }) =>
             [
               'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-150',
@@ -47,7 +47,9 @@ export function Nav({ collapsed }: NavProps) {
                 ].join(' ')}
               />
               {!collapsed && (
-                <span className="truncate">{route.label}</span>
+                <span className="truncate">
+                  {user.role === 'STAFF' && route.path === '/floor' ? 'My Machines' : route.label}
+                </span>
               )}
             </>
           )}

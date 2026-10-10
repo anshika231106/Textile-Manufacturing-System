@@ -10,7 +10,7 @@
 
 $$\text{Yarn Receipt} \longrightarrow \text{Order} \longrightarrow \text{Production Stages} \longrightarrow \text{Roll Creation} \longrightarrow \text{Quality Control} \longrightarrow \text{Dispatch} \longrightarrow \text{Invoice/Payment} \longrightarrow \text{Month-End Report}$$
 
-- **Internal Staff Portal**: Role-based operational access for `OWNER`, `OFFICE`, `SUPERVISOR`, and `STOREKEEPER`.
+- **Internal Staff Portal**: Role-based operational access for `OWNER`, `OFFICE`, `SUPERVISOR`, and `STAFF`.
 - **Buyer Tracking Portal**: Public, tokenized real-time tracking for buyers without login credentials.
 
 ---

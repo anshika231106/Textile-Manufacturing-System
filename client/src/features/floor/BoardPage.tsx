@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { usePolling } from '../../lib/usePolling';
@@ -13,7 +13,11 @@ import {
   completeJob,
   markBreakdown,
   restoreMachine,
+  assignMachine,
+  listFloorStaff,
+  updateMachineStatus,
   type FloorMachine,
+  type FloorStaff,
   type BoardStats,
   type Stage,
   type MachineStatus,
@@ -51,9 +55,13 @@ export function BoardPage() {
   const { showToast } = useToast();
 
   const isSupervisorOrOwner = user?.role === 'SUPERVISOR' || user?.role === 'OWNER';
+  const isStaff = user?.role === 'STAFF';
 
   const [loading, setLoading] = useState(true);
+  const [boardError, setBoardError] = useState('');
   const [machines, setMachines] = useState<FloorMachine[]>([]);
+  const [staffMembers, setStaffMembers] = useState<FloorStaff[]>([]);
+  const [savingMachineId, setSavingMachineId] = useState<string | null>(null);
   const [stats, setStats] = useState<BoardStats>({
     totalMachines: 0,
     running: 0,
@@ -95,14 +103,54 @@ export function BoardPage() {
       setMachines(data.machines);
       setStats(data.stats);
       setLastRefreshed(new Date());
+      setBoardError('');
+      if (data.machines.length === 0 && isStaff) {
+        setBoardError('No machines have been assigned to your account yet. Ask your supervisor to assign your machines.');
+      }
     } catch (err) {
       console.error('Error refreshing machine floor board:', err);
+      setBoardError(err instanceof Error ? err.message : 'Unable to load machine status.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isStaff]);
 
   usePolling(refreshBoard, 5000);
+
+  useEffect(() => {
+    if (!isSupervisorOrOwner) return;
+    listFloorStaff()
+      .then(setStaffMembers)
+      .catch((err: unknown) => {
+        showToast(err instanceof Error ? err.message : 'Unable to load staff list', 'error');
+      });
+  }, [isSupervisorOrOwner, showToast]);
+
+  const handleAssignMachine = async (machineId: string, staffId: string) => {
+    try {
+      setSavingMachineId(machineId);
+      await assignMachine(machineId, staffId || null);
+      showToast('Machine assignment updated', 'success');
+      await refreshBoard();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Unable to update machine assignment', 'error');
+    } finally {
+      setSavingMachineId(null);
+    }
+  };
+
+  const handleStaffStatusChange = async (machine: FloorMachine, status: MachineStatus) => {
+    try {
+      setSavingMachineId(machine.id);
+      await updateMachineStatus(machine.id, status);
+      showToast(`${machine.name} status updated to ${status === 'BREAKDOWN' ? 'Damaged' : status.toLowerCase()}`, 'success');
+      await refreshBoard();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Unable to update machine status', 'error');
+    } finally {
+      setSavingMachineId(null);
+    }
+  };
 
   // Load orders for start-job modal once
   const loadOrders = useCallback(async () => {
@@ -229,7 +277,9 @@ export function BoardPage() {
             </span>
           </div>
           <p className="text-sm text-[#78716C] mt-1">
-            Real-time machine statuses, active orders, and live production output tracking.
+            {isStaff
+              ? 'Update the status of machines assigned to you. Supervisors can see changes live.'
+              : 'Monitor machine status, active orders, production output, and staff assignments.'}
             <span className="ml-2 text-xs text-[#A8A29E]">
               Last sync: {lastRefreshed.toLocaleTimeString()}
             </span>
@@ -256,10 +306,14 @@ export function BoardPage() {
                 Log Shift Metres
               </Button>
             </Link>
+          ) : isStaff ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-50 border border-blue-100 text-xs font-medium text-blue-700">
+              Your Assigned Machines
+            </div>
           ) : (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#F5F4F2] border border-[#E8E4DF] text-xs font-medium text-[#78716C]">
               <ShieldExclamationIcon className="w-4 h-4 text-[#A8A29E]" />
-              Read-Only View ({user?.role || 'Guest'})
+              View Only ({user?.role || 'Guest'})
             </div>
           )}
         </div>
@@ -302,7 +356,7 @@ export function BoardPage() {
         <div className={`bg-white rounded-xl border p-4 shadow-2xs hover:shadow-xs transition-shadow ${stats.breakdown > 0 ? 'border-rose-200 bg-rose-50/40 text-rose-900' : 'border-[#E8E4DF]'}`}>
           <div className="flex items-center justify-between text-[#78716C] mb-1">
             <span className={`text-xs font-medium uppercase tracking-wider ${stats.breakdown > 0 ? 'text-rose-700' : ''}`}>
-              Breakdown
+              Damaged
             </span>
             <ExclamationTriangleIcon className={`w-4 h-4 ${stats.breakdown > 0 ? 'text-rose-600' : 'text-[#A8A29E]'}`} />
           </div>
@@ -310,7 +364,7 @@ export function BoardPage() {
             {stats.breakdown}
           </div>
           <div className={`text-xs mt-1 ${stats.breakdown > 0 ? 'text-rose-600 font-medium' : 'text-[#78716C]'}`}>
-            {stats.breakdown > 0 ? 'Requires technician' : 'Zero downtime'}
+            {stats.breakdown > 0 ? 'Requires attention' : 'No damaged machines'}
           </div>
         </div>
 
@@ -371,7 +425,7 @@ export function BoardPage() {
               <option value="ALL">All Statuses</option>
               <option value="RUNNING">Running</option>
               <option value="IDLE">Idle</option>
-              <option value="BREAKDOWN">Breakdown</option>
+              <option value="BREAKDOWN">Damaged</option>
             </select>
           </div>
 
@@ -393,6 +447,10 @@ export function BoardPage() {
         <div className="flex flex-col items-center justify-center py-20 text-[#78716C]">
           <Spinner />
           <p className="text-sm mt-3 font-medium">Connecting to machine floor sensors...</p>
+        </div>
+      ) : boardError ? (
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800">
+          {boardError}
         </div>
       ) : (
         <div className="space-y-8">
@@ -470,7 +528,7 @@ export function BoardPage() {
                                   <Badge variant="neutral" label="IDLE" />
                                 )}
                                 {isBreakdown && (
-                                  <Badge variant="danger" label="BREAKDOWN" dot />
+                                  <Badge variant="danger" label="DAMAGED" dot />
                                 )}
                               </div>
                             </div>
@@ -520,13 +578,13 @@ export function BoardPage() {
                               <div className="bg-rose-50 rounded-lg p-3 border border-rose-200 text-xs text-rose-800 space-y-1.5">
                                 <div className="flex items-center gap-1.5 font-semibold text-rose-900">
                                   <ExclamationTriangleIcon className="w-4 h-4 text-rose-600 shrink-0" />
-                                  Breakdown Reported
+                                  Machine Damaged
                                 </div>
                                 <p className="text-rose-700 leading-relaxed">
-                                  {machine.breakdownReason || 'Technical fault observed during production run.'}
+                                  {machine.statusNote || machine.breakdownReason || 'Damage reported on this machine.'}
                                 </p>
                                 <div className="text-[11px] text-rose-600 font-mono mt-1">
-                                  Reported: {machine.breakdownReportedAt ? new Date(machine.breakdownReportedAt).toLocaleTimeString() : 'Recent'}
+                                  Reported by {machine.statusUpdatedBy?.name || 'Staff'}{machine.statusUpdatedAt ? ` at ${new Date(machine.statusUpdatedAt).toLocaleString()}` : ''}
                                 </div>
                               </div>
                             ) : (
@@ -541,87 +599,136 @@ export function BoardPage() {
                           </div>
 
                           {/* Machine Card Actions */}
-                          <div className="p-3 bg-[#FBFBFA] border-t border-[#E8E4DF] flex items-center justify-between gap-2">
-                            {isIdle && (
+                          <div className="p-3 bg-[#FBFBFA] border-t border-[#E8E4DF] space-y-3">
+                            {isStaff ? (
                               <>
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  disabled={!isSupervisorOrOwner}
-                                  onClick={() => openStartJobModal(machine)}
-                                  className="w-full text-xs shadow-2xs"
-                                >
-                                  <PlayIcon className="w-3.5 h-3.5" />
-                                  Start Job
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  disabled={!isSupervisorOrOwner}
-                                  onClick={() => {
-                                    setBreakdownMachine(machine);
-                                    setBreakdownReason('');
-                                  }}
-                                  className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                                  title="Mark Breakdown"
-                                >
-                                  Fault
-                                </Button>
+                                <div className="text-xs text-[#78716C]">
+                                  Assigned to <span className="font-semibold text-[#1A1714]">{machine.assignedStaff?.name || user?.name}</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-1.5">
+                                  {(['IDLE', 'RUNNING', 'BREAKDOWN'] as MachineStatus[]).map((status) => (
+                                    <button
+                                      key={status}
+                                      type="button"
+                                      aria-pressed={machine.status === status}
+                                      disabled={savingMachineId === machine.id || machine.status === status}
+                                      onClick={() => handleStaffStatusChange(machine, status)}
+                                      className={`rounded-lg border px-2 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${
+                                        machine.status === status
+                                          ? status === 'BREAKDOWN'
+                                            ? 'border-rose-300 bg-rose-100 text-rose-800'
+                                            : status === 'RUNNING'
+                                              ? 'border-emerald-300 bg-emerald-100 text-emerald-800'
+                                              : 'border-slate-300 bg-slate-100 text-slate-800'
+                                          : 'border-[#E8E4DF] bg-white text-[#78716C] hover:border-[#EA580C]/50'
+                                      }`}
+                                    >
+                                      {status === 'BREAKDOWN' ? 'Damaged' : status}
+                                    </button>
+                                  ))}
+                                </div>
                               </>
-                            )}
+                            ) : (
+                              <div className="flex items-center justify-between gap-2">
+                                {isIdle && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="primary"
+                                      onClick={() => openStartJobModal(machine)}
+                                      className="w-full text-xs shadow-2xs"
+                                    >
+                                      <PlayIcon className="w-3.5 h-3.5" />
+                                      Start Job
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        setBreakdownMachine(machine);
+                                        setBreakdownReason('');
+                                      }}
+                                      className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                      title="Mark Damaged"
+                                    >
+                                      Fault
+                                    </Button>
+                                  </>
+                                )}
 
-                            {isRunning && (
-                              <div className="flex items-center gap-1.5 w-full">
-                                <Link to={`/floor/log?machineId=${machine.id}`} className="flex-1">
+                                {isRunning && (
+                                  <div className="flex items-center gap-1.5 w-full">
+                                    {machine.currentJob && isSupervisorOrOwner && (
+                                      <Link to={`/floor/log?machineId=${machine.id}`} className="flex-1">
+                                        <Button size="sm" variant="secondary" className="w-full text-xs">
+                                          Log Metres
+                                        </Button>
+                                      </Link>
+                                    )}
+                                    {machine.currentJob && (
+                                      <Button
+                                        size="sm"
+                                        variant="primary"
+                                        onClick={() => setCompleteJobMachine(machine)}
+                                        className="text-xs bg-emerald-600 hover:bg-emerald-700 border-transparent shadow-2xs"
+                                        title="Complete Job"
+                                      >
+                                        <CheckCircleIcon className="w-4 h-4" />
+                                        Finish
+                                      </Button>
+                                    )}
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        setBreakdownMachine(machine);
+                                        setBreakdownReason('');
+                                      }}
+                                      className="text-xs text-rose-600 hover:bg-rose-50 p-2"
+                                      title="Report Damage"
+                                    >
+                                      <ExclamationTriangleIcon className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                )}
+
+                                {isBreakdown && (
                                   <Button
                                     size="sm"
-                                    variant="secondary"
-                                    className="w-full text-xs"
+                                    variant="primary"
+                                    loading={isSubmittingRestore && restoreMachineId === machine.id}
+                                    onClick={() => handleRestore(machine.id)}
+                                    className="w-full text-xs bg-emerald-600 hover:bg-emerald-700 border-transparent shadow-2xs"
                                   >
-                                    Log Metres
+                                    <ArrowPathIcon className="w-3.5 h-3.5" />
+                                    Restore to Service
                                   </Button>
-                                </Link>
-
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  disabled={!isSupervisorOrOwner}
-                                  onClick={() => setCompleteJobMachine(machine)}
-                                  className="text-xs bg-emerald-600 hover:bg-emerald-700 border-transparent shadow-2xs"
-                                  title="Complete Job"
-                                >
-                                  <CheckCircleIcon className="w-4 h-4" />
-                                  Finish
-                                </Button>
-
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  disabled={!isSupervisorOrOwner}
-                                  onClick={() => {
-                                    setBreakdownMachine(machine);
-                                    setBreakdownReason('');
-                                  }}
-                                  className="text-xs text-rose-600 hover:bg-rose-50 p-2"
-                                  title="Report Breakdown"
-                                >
-                                  <ExclamationTriangleIcon className="w-4 h-4" />
-                                </Button>
+                                )}
                               </div>
                             )}
 
-                            {isBreakdown && (
-                              <Button
-                                size="sm"
-                                variant="primary"
-                                disabled={!isSupervisorOrOwner}
-                                loading={isSubmittingRestore && restoreMachineId === machine.id}
-                                onClick={() => handleRestore(machine.id)}
-                                className="w-full text-xs bg-emerald-600 hover:bg-emerald-700 border-transparent shadow-2xs"
-                              >
-                                <ArrowPathIcon className="w-3.5 h-3.5" />
-                                Restore to Service
-                              </Button>
+                            {isSupervisorOrOwner && (
+                              <label className="block border-t border-[#E8E4DF] pt-3">
+                                <span className="block text-xs font-medium text-[#78716C] mb-1.5">Assigned Staff</span>
+                                <select
+                                  value={machine.assignedStaff?.id ?? ''}
+                                  disabled={savingMachineId === machine.id}
+                                  onChange={(event) => handleAssignMachine(machine.id, event.target.value)}
+                                  className="w-full rounded-lg border border-[#E8E4DF] bg-white py-2 px-2.5 text-xs text-[#1A1714] focus:outline-none focus:ring-1 focus:ring-[#EA580C] disabled:opacity-60"
+                                >
+                                  <option value="">Unassigned</option>
+                                  {staffMembers.map((staff) => (
+                                    <option key={staff.id} value={staff.id}>{staff.name}</option>
+                                  ))}
+                                </select>
+                              </label>
+                            )}
+
+                            {machine.statusUpdatedBy && (
+                              <p className="text-[11px] text-[#78716C]">
+                                Last status update by <span className="font-medium text-[#44403C]">{machine.statusUpdatedBy.name}</span>
+                                {machine.statusUpdatedAt && ` · ${new Date(machine.statusUpdatedAt).toLocaleString()}`}
+                              </p>
                             )}
                           </div>
                         </div>

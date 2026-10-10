@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import type { ReactNode } from 'react';
 import { api } from './api';
 
-export type Role = 'OWNER' | 'OFFICE' | 'SUPERVISOR' | 'STOREKEEPER' | 'STAFF';
+export type Role = 'OWNER' | 'OFFICE' | 'SUPERVISOR' | 'STAFF';
 
 export interface User {
   id: string;
@@ -10,33 +10,6 @@ export interface User {
   email: string;
   role: Role;
 }
-
-export const DEMO_USERS: Record<string, User> = {
-  'owner@everest.com': {
-    id: 'u_owner',
-    name: 'Vikram Mehta',
-    email: 'owner@everest.com',
-    role: 'OWNER',
-  },
-  'office@everest.com': {
-    id: 'u_office',
-    name: 'Anjali Rao',
-    email: 'office@everest.com',
-    role: 'OFFICE',
-  },
-  'supervisor@everest.com': {
-    id: 'u_supervisor',
-    name: 'Suresh Patil',
-    email: 'supervisor@everest.com',
-    role: 'SUPERVISOR',
-  },
-  'store@everest.com': {
-    id: 'u_store',
-    name: 'Ramesh Yadav',
-    email: 'store@everest.com',
-    role: 'STOREKEEPER',
-  },
-};
 
 interface AuthState {
   user: User | null;
@@ -75,17 +48,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     setToken(stored);
-
-    // If session is a demo token, restore demo user instantly
-    if (stored.startsWith('demo_token_')) {
-      const role = stored.replace('demo_token_', '').toUpperCase();
-      const demoUser =
-        Object.values(DEMO_USERS).find((u) => u.role === role) ??
-        DEMO_USERS['owner@everest.com'];
-      setUser(demoUser);
-      setLoading(false);
-      return;
-    }
 
     api<User>('/auth/me')
       .then((u) => setUser(u))
