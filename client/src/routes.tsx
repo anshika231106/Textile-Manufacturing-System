@@ -25,6 +25,9 @@ import { Placeholder }      from './components/ui/Placeholder';
 import { StockPage }         from './features/stock/StockPage';
 import { ReceiptPage }       from './features/stock/ReceiptPage';
 import { MasterListPage }    from './features/masters/MasterListPage';
+import { BoardPage }         from './features/floor/BoardPage';
+import { LogPage }           from './features/floor/LogPage';
+import { QcPage }            from './features/qc/QcPage';
 
 export interface RouteConfig {
   path: string;
@@ -110,7 +113,7 @@ export const ROUTES: RouteConfig[] = [
     icon: WrenchScrewdriverIcon,
     roles: 'all',
     nav: true,
-    element: <Placeholder title="Machine Floor" description="Live machine board with 5s polling — coming in Phase 4." />,
+    element: <BoardPage />,
   },
   {
     path: '/floor/log',
@@ -118,7 +121,7 @@ export const ROUTES: RouteConfig[] = [
     icon: ClipboardDocumentListIcon,
     roles: ['OWNER', 'SUPERVISOR'],
     nav: false,
-    element: <Placeholder title="Production Log" description="Log metres per shift — coming in Phase 4." />,
+    element: <LogPage />,
   },
   {
     path: '/qc',
@@ -126,7 +129,7 @@ export const ROUTES: RouteConfig[] = [
     icon: BeakerIcon,
     roles: ['OWNER', 'SUPERVISOR'],
     nav: true,
-    element: <Placeholder title="Quality Control" description="QC queue, roll creation and results — coming in Phase 4." />,
+    element: <QcPage />,
   },
   {
     path: '/dispatch',
