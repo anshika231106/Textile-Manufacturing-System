@@ -442,6 +442,11 @@ export async function startProduction(id: string): Promise<Order> {
   }
 }
 
+// No mock fallback: a refused delete (e.g. ORDER_IN_USE) must surface to the user, not be faked.
+export async function deleteOrder(id: string): Promise<void> {
+  await api(`/orders/${id}`, { method: 'DELETE' });
+}
+
 export interface PublicSampleOrder {
   code: string;
   trackingToken: string;

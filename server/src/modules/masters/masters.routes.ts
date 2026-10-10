@@ -12,7 +12,7 @@ export const mastersRoutes = Router();
 
 mastersRoutes.use(authenticate);
 
-// Deleting master data is limited to the roles that manage it.
+// Deleting and retiring master data is limited to the roles that manage it.
 const MASTER_ADMIN_ROLES = ['OWNER', 'OFFICE'] as const;
 const idParams = validate({ params: z.object({ id: z.string().uuid('Invalid ID format') }) });
 
@@ -21,9 +21,19 @@ function plural(count: number, noun: string) {
 }
 
 // Friendly 409 for a duplicate unique field; the P2002 handler still covers races.
-async function ensureUnique(existing: Promise<unknown>, message: string) {
-  if (await existing) throw conflict('MASTER_DUPLICATE', message);
+async function ensureUnique(existing: Promise<{ retiredAt: Date | null } | null>, message: string) {
+  const record = await existing;
+  if (!record) return;
+  throw conflict(
+    'MASTER_DUPLICATE',
+    record.retiredAt ? `${message} It is retired - restore it from "Show retired" instead.` : message
+  );
 }
+
+// Lists hide retired records unless the masters page asks for them.
+const listQuery = z.object({ includeRetired: z.enum(['true', 'false']).optional() });
+const activeFilter = (query: unknown) =>
+  (query as z.infer<typeof listQuery>).includeRetired === 'true' ? {} : { retiredAt: null };
 
 // Optional text field: a blank string is stored as null, so edits can clear a value.
 const optionalText = (max: number) =>
@@ -89,6 +99,7 @@ function toYarnTypeDto(yt: YarnTypeRow, stock?: StockRow) {
     reservedKg: stock?.reservedKg ?? 0,
     shortfallKg: stock?.shortfallKg ?? 0,
     isLow: stock?.isLow ?? false,
+    retiredAt: yt.retiredAt,
   };
 }
 
@@ -100,13 +111,15 @@ function toMachineDto(m: MachineRow) {
     stage: m.stage,
     status: m.status,
     ratePerMetre: Number(m.ratePerMetre),
+    retiredAt: m.retiredAt,
   };
 }
 
 // API-04: GET /buyers
-mastersRoutes.get(['/buyers', '/masters/buyers'], async (_req, res, next) => {
+mastersRoutes.get(['/buyers', '/masters/buyers'], validate({ query: listQuery }), async (req, res, next) => {
   try {
     const buyers = await prisma.buyer.findMany({
+      where: activeFilter(req.query),
       orderBy: { name: 'asc' },
     });
     return ok(res, buyers);
@@ -116,9 +129,10 @@ mastersRoutes.get(['/buyers', '/masters/buyers'], async (_req, res, next) => {
 });
 
 // API-06: GET /suppliers
-mastersRoutes.get(['/suppliers', '/masters/suppliers'], async (_req, res, next) => {
+mastersRoutes.get(['/suppliers', '/masters/suppliers'], validate({ query: listQuery }), async (req, res, next) => {
   try {
     const suppliers = await prisma.supplier.findMany({
+      where: activeFilter(req.query),
       orderBy: { name: 'asc' },
     });
     return ok(res, suppliers);
@@ -128,10 +142,10 @@ mastersRoutes.get(['/suppliers', '/masters/suppliers'], async (_req, res, next) 
 });
 
 // API-08: GET /yarn-types
-mastersRoutes.get(['/yarn-types', '/masters/yarn-types'], async (_req, res, next) => {
+mastersRoutes.get(['/yarn-types', '/masters/yarn-types'], validate({ query: listQuery }), async (req, res, next) => {
   try {
     const [yarnTypes, stockSummary] = await Promise.all([
-      prisma.yarnType.findMany({ orderBy: { code: 'asc' } }),
+      prisma.yarnType.findMany({ where: activeFilter(req.query), orderBy: { code: 'asc' } }),
       stockService.getStockSummary().catch(() => []),
     ]);
 
@@ -147,9 +161,10 @@ mastersRoutes.get(['/yarn-types', '/masters/yarn-types'], async (_req, res, next
 });
 
 // API-10: GET /machines
-mastersRoutes.get(['/machines', '/masters/machines'], async (_req, res, next) => {
+mastersRoutes.get(['/machines', '/masters/machines'], validate({ query: listQuery }), async (req, res, next) => {
   try {
     const machines = await prisma.machine.findMany({
+      where: activeFilter(req.query),
       orderBy: { code: 'asc' },
     });
     return ok(res, machines.map(toMachineDto));
@@ -473,3 +488,101 @@ mastersRoutes.delete(
     }
   }
 );
+
+// --- Retire / restore ---
+// Retiring hides a record from lists and dropdowns but keeps it for the history that
+// references it, so it is the alternative to deleting a record that is in use.
+interface RetireConfig {
+  path: string;
+  noun: string;
+  find: (id: string) => Promise<{ id: string; label: string; retiredAt: Date | null } | null>;
+  setRetiredAt: (id: string, retiredAt: Date | null) => Promise<unknown>;
+  beforeRetire?: (id: string, label: string) => Promise<void>;
+}
+
+const retireConfigs: RetireConfig[] = [
+  {
+    path: 'buyers',
+    noun: 'Buyer',
+    find: async (id) => {
+      const r = await prisma.buyer.findUnique({ where: { id } });
+      return r && { id: r.id, label: r.name, retiredAt: r.retiredAt };
+    },
+    setRetiredAt: (id, retiredAt) => prisma.buyer.update({ where: { id }, data: { retiredAt } }),
+  },
+  {
+    path: 'suppliers',
+    noun: 'Supplier',
+    find: async (id) => {
+      const r = await prisma.supplier.findUnique({ where: { id } });
+      return r && { id: r.id, label: r.name, retiredAt: r.retiredAt };
+    },
+    setRetiredAt: (id, retiredAt) => prisma.supplier.update({ where: { id }, data: { retiredAt } }),
+  },
+  {
+    path: 'yarn-types',
+    noun: 'Yarn type',
+    find: async (id) => {
+      const r = await prisma.yarnType.findUnique({ where: { id } });
+      return r && { id: r.id, label: r.code, retiredAt: r.retiredAt };
+    },
+    setRetiredAt: (id, retiredAt) => prisma.yarnType.update({ where: { id }, data: { retiredAt } }),
+  },
+  {
+    path: 'machines',
+    noun: 'Machine',
+    find: async (id) => {
+      const r = await prisma.machine.findUnique({ where: { id } });
+      return r && { id: r.id, label: r.code, retiredAt: r.retiredAt };
+    },
+    // A retired machine is off the floor, so it also loses its staff assignment.
+    setRetiredAt: (id, retiredAt) =>
+      prisma.machine.update({
+        where: { id },
+        data: retiredAt ? { retiredAt, assignedStaffId: null } : { retiredAt },
+      }),
+    beforeRetire: async (id, label) => {
+      const activeJob = await prisma.stageJob.findFirst({ where: { machineId: id, status: 'RUNNING' } });
+      if (activeJob) {
+        throw conflict('ACTIVE_JOB', `Cannot retire "${label}": complete or stop its running job first.`);
+      }
+    },
+  },
+];
+
+for (const cfg of retireConfigs) {
+  mastersRoutes.post(
+    [`/${cfg.path}/:id/retire`, `/masters/${cfg.path}/:id/retire`],
+    authorize(...MASTER_ADMIN_ROLES),
+    idParams,
+    async (req, res, next) => {
+      try {
+        const record = await cfg.find(req.params.id);
+        if (!record) throw notFound(`${cfg.noun} not found`);
+        if (!record.retiredAt) {
+          await cfg.beforeRetire?.(record.id, record.label);
+          await cfg.setRetiredAt(record.id, new Date());
+        }
+        return ok(res, { id: record.id });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  mastersRoutes.post(
+    [`/${cfg.path}/:id/restore`, `/masters/${cfg.path}/:id/restore`],
+    authorize(...MASTER_ADMIN_ROLES),
+    idParams,
+    async (req, res, next) => {
+      try {
+        const record = await cfg.find(req.params.id);
+        if (!record) throw notFound(`${cfg.noun} not found`);
+        if (record.retiredAt) await cfg.setRetiredAt(record.id, null);
+        return ok(res, { id: record.id });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+}

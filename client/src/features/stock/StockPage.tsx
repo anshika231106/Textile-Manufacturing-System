@@ -39,7 +39,8 @@ export function StockPage() {
     reload: reloadStock,
   } = useApi(getStockSummary, []);
 
-  const { data: yarnTypes } = useApi(listYarnTypes, []);
+  // The ledger is history, so its yarn filter includes retired yarn types.
+  const { data: yarnTypes } = useApi(() => listYarnTypes(true), []);
 
   const canRecord = user?.role === 'OWNER' || user?.role === 'SUPERVISOR';
 

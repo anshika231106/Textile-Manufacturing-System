@@ -111,6 +111,7 @@ model Buyer {
   phone       String?
   email       String?
   address     String?
+  retiredAt   DateTime?
   createdAt   DateTime @default(now())
 
   orders Order[]
@@ -122,6 +123,7 @@ model Supplier {
   contactName String?
   phone       String?
   email       String?
+  retiredAt   DateTime?
   createdAt   DateTime @default(now())
 
   movements StockMovement[]
@@ -134,6 +136,7 @@ model YarnType {
   colour         String
   countLabel     String?
   reorderLevelKg Decimal  @default(0) @db.Decimal(12, 3)
+  retiredAt      DateTime?
   createdAt      DateTime @default(now())
 
   movements    StockMovement[]
@@ -215,6 +218,7 @@ model Machine {
   statusUpdatedAt DateTime?
   statusNote   String?
   ratePerMetre Decimal       @default(0) @db.Decimal(8, 2)
+  retiredAt    DateTime?
   createdAt    DateTime      @default(now())
 
   assignedStaff User? @relation("MachineAssignee", fields: [assignedStaffId], references: [id])

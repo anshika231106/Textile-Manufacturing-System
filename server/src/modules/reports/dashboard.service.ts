@@ -83,6 +83,7 @@ export async function buildDashboard(role: Role) {
     prisma.productionLog.groupBy({ by: ['orderId', 'stage'], _sum: { metres: true } }),
     prisma.roll.groupBy({ by: ['orderId', 'status'], _sum: { metres: true }, _count: { _all: true } }),
     prisma.machine.findMany({
+      where: { retiredAt: null },
       select: {
         id: true,
         code: true,
@@ -101,6 +102,7 @@ export async function buildDashboard(role: Role) {
       select: { loggedAt: true, stage: true, shift: true, metres: true },
     }),
     prisma.yarnType.findMany({
+      where: { retiredAt: null },
       select: { id: true, code: true, name: true, colour: true, reorderLevelKg: true },
       orderBy: { code: 'asc' },
     }),

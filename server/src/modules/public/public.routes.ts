@@ -69,8 +69,8 @@ publicRoutes.get(['/stats', '/public/stats'], async (req, res, next) => {
     const [totalRolls, passedRolls, totalMachines, runningMachines, productionLogsSum] = await Promise.all([
       prisma.roll.count(),
       prisma.roll.count({ where: { status: { in: ['PASSED', 'DISPATCHED'] } } }),
-      prisma.machine.count(),
-      prisma.machine.count({ where: { status: 'RUNNING' } }),
+      prisma.machine.count({ where: { retiredAt: null } }),
+      prisma.machine.count({ where: { status: 'RUNNING', retiredAt: null } }),
       prisma.productionLog.aggregate({ _sum: { metres: true } }),
     ]);
 

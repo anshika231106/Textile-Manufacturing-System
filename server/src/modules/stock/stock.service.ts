@@ -1,7 +1,7 @@
 import { prisma } from '../../lib/prisma';
 import { round2, round3, toDecimal } from '../../lib/numbers';
 import { computeYarnStock } from '../../domain/stock';
-import { notFound } from '../../lib/httpErrors';
+import { notFound, unprocessable } from '../../lib/httpErrors';
 import type { CreateReceiptInput, StockLedgerQuery, FinishedStockQuery } from './stock.schemas';
 
 export class StockService {
@@ -20,6 +20,12 @@ export class StockService {
     }
     if (!supplier) {
       throw notFound(`Supplier '${input.supplierId}' not found`);
+    }
+    if (yarnType.retiredAt) {
+      throw unprocessable('MASTER_RETIRED', `Yarn type '${yarnType.code}' is retired`);
+    }
+    if (supplier.retiredAt) {
+      throw unprocessable('MASTER_RETIRED', `Supplier '${supplier.name}' is retired`);
     }
 
     if (input.orderId) {

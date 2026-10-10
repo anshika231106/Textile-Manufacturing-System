@@ -7,6 +7,7 @@ export interface Buyer {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
+  retiredAt?: string | null;
   createdAt?: string;
 }
 
@@ -16,6 +17,7 @@ export interface Supplier {
   contactName?: string | null;
   phone?: string | null;
   email?: string | null;
+  retiredAt?: string | null;
   createdAt?: string;
 }
 
@@ -29,6 +31,7 @@ export interface YarnType {
   availableKg?: number;
   onHandKg?: number;
   reservedKg?: number;
+  retiredAt?: string | null;
   createdAt?: string;
 }
 
@@ -40,6 +43,7 @@ export interface Machine {
   stage: 'SPINNING' | 'WEAVING' | 'DYEING';
   status: 'IDLE' | 'RUNNING' | 'BREAKDOWN';
   ratePerMetre: number;
+  retiredAt?: string | null;
   createdAt?: string;
 }
 
@@ -61,6 +65,20 @@ export const MOCK_YARN_TYPES: YarnType[] = [
 ];
 
 
+// Lists hide retired records unless asked for them.
+const retiredQuery = (includeRetired: boolean) => (includeRetired ? '?includeRetired=true' : '');
+
+export type MasterPath = 'buyers' | 'suppliers' | 'yarn-types' | 'machines';
+
+// Retiring hides a record from lists and dropdowns but keeps the history that uses it.
+export async function retireMaster(path: MasterPath, id: string): Promise<void> {
+  await api(`/masters/${path}/${id}/retire`, { method: 'POST' });
+}
+
+export async function restoreMaster(path: MasterPath, id: string): Promise<void> {
+  await api(`/masters/${path}/${id}/restore`, { method: 'POST' });
+}
+
 // --- Buyers ---
 export type BuyerInput = {
   name: string;
@@ -70,8 +88,8 @@ export type BuyerInput = {
   address?: string;
 };
 
-export function listBuyers(): Promise<Buyer[]> {
-  return api<Buyer[]>('/masters/buyers');
+export function listBuyers(includeRetired = false): Promise<Buyer[]> {
+  return api<Buyer[]>(`/masters/buyers${retiredQuery(includeRetired)}`);
 }
 
 export function createBuyer(input: BuyerInput): Promise<Buyer> {
@@ -94,8 +112,8 @@ export type SupplierInput = {
   email?: string;
 };
 
-export function listSuppliers(): Promise<Supplier[]> {
-  return api<Supplier[]>('/masters/suppliers');
+export function listSuppliers(includeRetired = false): Promise<Supplier[]> {
+  return api<Supplier[]>(`/masters/suppliers${retiredQuery(includeRetired)}`);
 }
 
 export function createSupplier(input: SupplierInput): Promise<Supplier> {
@@ -119,8 +137,8 @@ export type YarnTypeInput = {
   reorderLevelKg: number;
 };
 
-export function listYarnTypes(): Promise<YarnType[]> {
-  return api<YarnType[]>('/masters/yarn-types');
+export function listYarnTypes(includeRetired = false): Promise<YarnType[]> {
+  return api<YarnType[]>(`/masters/yarn-types${retiredQuery(includeRetired)}`);
 }
 
 export function createYarnType(input: YarnTypeInput): Promise<YarnType> {
@@ -147,8 +165,8 @@ export type MachineInput = {
 // Stage and status cannot be edited: stage is fixed, status is set from the floor.
 export type MachineUpdate = Partial<Pick<MachineInput, 'code' | 'name' | 'ratePerMetre'>>;
 
-export function listMachines(): Promise<Machine[]> {
-  return api<Machine[]>('/masters/machines');
+export function listMachines(includeRetired = false): Promise<Machine[]> {
+  return api<Machine[]>(`/masters/machines${retiredQuery(includeRetired)}`);
 }
 
 export function createMachine(input: MachineInput): Promise<Machine> {

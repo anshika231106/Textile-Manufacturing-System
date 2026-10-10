@@ -282,6 +282,11 @@ export class OrdersService {
       throw notFound(`Yarn type '${missing}' not found`);
     }
 
+    const retiredYarn = yarnTypes.find((y) => y.retiredAt);
+    if (retiredYarn) {
+      throw unprocessable('MASTER_RETIRED', `Yarn type '${retiredYarn.code}' is retired`);
+    }
+
     const stockMap = await this.getStockMap(yarnTypeIds, excludeOrderId);
     const assessment = evaluateFeasibility(rawReqs, stockMap);
 
@@ -318,6 +323,9 @@ export class OrdersService {
     if (!buyer) {
       throw notFound(`Buyer '${input.buyerId}' not found`);
     }
+    if (buyer.retiredAt) {
+      throw unprocessable('MASTER_RETIRED', `Buyer '${buyer.name}' is retired`);
+    }
 
     // Determine requirements normalized to kgPerMetre
     const requirements: { yarnTypeId: string; kgPerMetre: number }[] = [];
@@ -345,6 +353,11 @@ export class OrdersService {
       const foundIds = new Set(yarnTypes.map((y) => y.id));
       const missing = yarnTypeIds.find((id) => !foundIds.has(id));
       throw notFound(`Yarn type '${missing}' not found`);
+    }
+
+    const retiredYarn = yarnTypes.find((y) => y.retiredAt);
+    if (retiredYarn) {
+      throw unprocessable('MASTER_RETIRED', `Yarn type '${retiredYarn.code}' is retired`);
     }
 
     // Atomic creation inside transaction
@@ -636,7 +649,7 @@ export class OrdersService {
 
         // 2. Assign initial spinning machine if available
         const spinningMachine = await tx.machine.findFirst({
-          where: { stage: 'SPINNING', status: 'IDLE' },
+          where: { stage: 'SPINNING', status: 'IDLE', retiredAt: null },
         });
 
         if (spinningMachine) {
@@ -669,6 +682,51 @@ export class OrdersService {
     );
 
     return this.formatOrderDetail(updatedOrder, null);
+  }
+
+  /**
+   * DELETE /orders/:id - Remove an order that has not entered production yet.
+   * Once yarn is issued or any job, roll, dispatch or invoice exists, the order is part of the
+   * stock ledger and production history, so deleting it is refused instead of cascading.
+   */
+  async deleteOrder(id: string) {
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            movements: true,
+            stageJobs: true,
+            productionLogs: true,
+            rolls: true,
+            dispatches: true,
+            invoices: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw notFound(`Order '${id}' not found`);
+    }
+
+    const { movements, stageJobs, productionLogs, rolls, dispatches, invoices } = order._count;
+    const inUse = () =>
+      conflict('ORDER_IN_USE', `Cannot delete ${order.orderNo}: production has already started on this order.`);
+
+    if (order.startedAt || movements + stageJobs + productionLogs + rolls + dispatches + invoices > 0) {
+      throw inUse();
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.orderYarnRequirement.deleteMany({ where: { orderId: order.id } });
+      // Conditional delete: if a concurrent "Start Production" claimed the order in the meantime,
+      // nothing is deleted and the requirement removal above rolls back with the transaction.
+      const removed = await tx.order.deleteMany({ where: { id: order.id, startedAt: null } });
+      if (removed.count !== 1) throw inUse();
+    });
+
+    return { id: order.id };
   }
 }
 

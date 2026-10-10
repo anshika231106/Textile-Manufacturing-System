@@ -20,6 +20,9 @@ import {
   createMachine,
   updateMachine,
   deleteMachine,
+  retireMaster,
+  restoreMaster,
+  type MasterPath,
   type Buyer,
   type Supplier,
   type YarnType,
@@ -50,6 +53,8 @@ import {
   ArrowPathIcon,
   TrashIcon,
   PencilSquareIcon,
+  ArchiveBoxIcon,
+  ArrowUturnLeftIcon,
 } from '@heroicons/react/24/outline';
 
 // Workers are managed in Staff Management (people) and Attendance (daily wages).
@@ -60,6 +65,13 @@ interface DeleteTarget {
   id: string;
   label: string;
 }
+
+const API_PATHS: Record<MasterType, MasterPath> = {
+  buyers: 'buyers',
+  suppliers: 'suppliers',
+  yarns: 'yarn-types',
+  machines: 'machines',
+};
 
 const EMPTY_BUYER_FORM = { name: '', contactName: '', phone: '', email: '', address: '' };
 const EMPTY_SUPPLIER_FORM = { name: '', contactName: '', phone: '', email: '' };
@@ -216,6 +228,9 @@ export function MasterListPage() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  // Set when the server refuses a delete because the record is in use; offers Retire instead.
+  const [deleteInUse, setDeleteInUse] = useState(false);
+  const [showRetired, setShowRetired] = useState(false);
 
   // Form states for creation
   const [buyerForm, setBuyerForm] = useState(EMPTY_BUYER_FORM);
@@ -235,13 +250,13 @@ export function MasterListPage() {
 
   // Data fetching
   const { data: buyers, loading: loadingBuyers, error: errorBuyers, reload: reloadBuyers } =
-    useApi(listBuyers, [currentType]);
+    useApi(() => listBuyers(showRetired), [currentType, showRetired]);
   const { data: suppliers, loading: loadingSuppliers, error: errorSuppliers, reload: reloadSuppliers } =
-    useApi(listSuppliers, [currentType]);
+    useApi(() => listSuppliers(showRetired), [currentType, showRetired]);
   const { data: yarns, loading: loadingYarns, error: errorYarns, reload: reloadYarns } =
-    useApi(listYarnTypes, [currentType]);
+    useApi(() => listYarnTypes(showRetired), [currentType, showRetired]);
   const { data: machines, loading: loadingMachines, error: errorMachines, reload: reloadMachines } =
-    useApi(listMachines, [currentType]);
+    useApi(() => listMachines(showRetired), [currentType, showRetired]);
 
   const handleTabChange = (t: MasterType) => {
     navigate(`/masters/${t}`);
@@ -297,17 +312,41 @@ export function MasterListPage() {
     setDialogOpen(true);
   };
 
-  const reloadCurrent = () => {
-    if (currentType === 'buyers') reloadBuyers();
-    if (currentType === 'suppliers') reloadSuppliers();
-    if (currentType === 'yarns') reloadYarns();
-    if (currentType === 'machines') reloadMachines();
+  const reloadType = (t: MasterType) => {
+    if (t === 'buyers') reloadBuyers();
+    if (t === 'suppliers') reloadSuppliers();
+    if (t === 'yarns') reloadYarns();
+    if (t === 'machines') reloadMachines();
+  };
+  const reloadCurrent = () => reloadType(currentType);
+
+  const handleRetire = async (t: MasterType, id: string, label: string, restore = false) => {
+    try {
+      if (restore) await restoreMaster(API_PATHS[t], id);
+      else await retireMaster(API_PATHS[t], id);
+      showToast(`"${label}" ${restore ? 'restored' : 'retired'}.`, 'success');
+      reloadType(t);
+      return true;
+    } catch (err: any) {
+      showToast(err.message || `Failed to ${restore ? 'restore' : 'retire'} record.`, 'error');
+      return false;
+    }
+  };
+
+  // Retire from the delete dialog after the server reported the record is in use.
+  const handleRetireInstead = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    const done = await handleRetire(deleteTarget.type, deleteTarget.id, deleteTarget.label);
+    setIsDeleting(false);
+    if (done) setDeleteTarget(null);
   };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
     setDeleteError('');
+    setDeleteInUse(false);
     try {
       if (deleteTarget.type === 'buyers') {
         await deleteBuyer(deleteTarget.id);
@@ -326,12 +365,13 @@ export function MasterListPage() {
       setDeleteTarget(null);
     } catch (err: any) {
       setDeleteError(err.message || 'Failed to delete record.');
+      setDeleteInUse(err.code === 'MASTER_IN_USE');
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Trailing edit / delete buttons, shown per the user's permissions.
+  // Trailing row actions, shown per the user's permissions. Retired rows can only be restored.
   function actionsColumn<T extends Buyer | Supplier | YarnType | Machine>(
     type: MasterType,
     getLabel: (row: T) => string
@@ -342,7 +382,23 @@ export function MasterListPage() {
         key: 'actions',
         header: '',
         align: 'right',
-        render: (r) => (
+        render: (r) =>
+          r.retiredAt ? (
+            <div className="flex justify-end items-center gap-2">
+              <Badge variant="neutral" label="Retired" />
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => handleRetire(type, r.id, getLabel(r), true)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-(--color-text-muted) hover:text-(--color-accent) hover:bg-(--color-accent-light) transition-colors"
+                  title="Restore"
+                  aria-label={`Restore ${getLabel(r)}`}
+                >
+                  <ArrowUturnLeftIcon className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          ) : (
           // Muted until the row is hovered or focused, so the row end never looks empty.
           <div className="flex justify-end gap-1 transition-opacity duration-150 [@media(hover:hover)]:opacity-50 group-hover/row:opacity-100 focus-within:opacity-100">
             {canCreate && (
@@ -359,8 +415,20 @@ export function MasterListPage() {
             {canDelete && (
               <button
                 type="button"
+                onClick={() => handleRetire(type, r.id, getLabel(r))}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-(--color-text-muted) hover:text-(--color-accent) hover:bg-(--color-accent-light) transition-colors"
+                title="Retire (hide from lists, keep history)"
+                aria-label={`Retire ${getLabel(r)}`}
+              >
+                <ArchiveBoxIcon className="w-4 h-4" />
+              </button>
+            )}
+            {canDelete && (
+              <button
+                type="button"
                 onClick={() => {
                   setDeleteError('');
+                  setDeleteInUse(false);
                   setDeleteTarget({ type, id: r.id, label: getLabel(r) });
                 }}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full text-(--color-text-muted) hover:text-(--color-danger) hover:bg-(--color-danger-light) transition-colors"
@@ -371,7 +439,7 @@ export function MasterListPage() {
               </button>
             )}
           </div>
-        ),
+          ),
       },
     ];
   }
@@ -716,7 +784,20 @@ export function MasterListPage() {
         </div>
       </div>
 
-      <p className="-mt-3 text-xs text-(--color-text-muted)">{currentTabInfo.description}</p>
+      <div className="-mt-3 flex items-center justify-between gap-3">
+        <p className="text-xs text-(--color-text-muted)">{currentTabInfo.description}</p>
+        {canDelete && (
+          <label className="flex shrink-0 items-center gap-2 text-xs text-(--color-text-muted) cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showRetired}
+              onChange={(e) => setShowRetired(e.target.checked)}
+              className="accent-(--color-accent)"
+            />
+            Show retired
+          </label>
+        )}
+      </div>
 
       {/* Table Area */}
       {activeError ? (
@@ -979,6 +1060,12 @@ export function MasterListPage() {
               This action cannot be undone.
             </p>
             {deleteError && <Callout tone="danger">{deleteError}</Callout>}
+            {deleteInUse && (
+              <p className="text-sm text-(--color-text-muted)">
+                You can retire it instead: it will be hidden from lists and dropdowns, its history is kept, and it
+                can be restored later from &quot;Show retired&quot;.
+              </p>
+            )}
             <div className="pt-3 border-t border-(--color-border) flex justify-end gap-2.5">
               <Button
                 type="button"
@@ -988,14 +1075,21 @@ export function MasterListPage() {
               >
                 Cancel
               </Button>
-              <Button
-                type="button"
-                variant="danger"
-                loading={isDeleting}
-                onClick={handleDelete}
-              >
-                Delete
-              </Button>
+              {deleteInUse ? (
+                <Button type="button" variant="primary" loading={isDeleting} onClick={handleRetireInstead}>
+                  <ArchiveBoxIcon className="w-4 h-4" />
+                  Retire instead
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="danger"
+                  loading={isDeleting}
+                  onClick={handleDelete}
+                >
+                  Delete
+                </Button>
+              )}
             </div>
           </div>
         )}

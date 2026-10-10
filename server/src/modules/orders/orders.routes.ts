@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { ordersController } from './orders.controller';
 import { authenticate, authorize } from '../../middleware/authenticate';
+import { validate } from '../../middleware/validate';
 
 export const ordersRoutes = Router();
 
@@ -42,4 +44,13 @@ ordersRoutes.post(
   authenticate,
   authorize('OWNER', 'OFFICE'),
   (req, res, next) => ordersController.startProduction(req, res, next)
+);
+
+// DELETE /orders/:id - Delete an order that has not started production
+ordersRoutes.delete(
+  '/:id',
+  authenticate,
+  authorize('OWNER', 'OFFICE'),
+  validate({ params: z.object({ id: z.string().uuid('Invalid ID format') }) }),
+  (req, res, next) => ordersController.deleteOrder(req, res, next)
 );

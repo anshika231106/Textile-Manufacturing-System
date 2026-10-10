@@ -77,7 +77,10 @@ floorRoutes.get(
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const machines = await prisma.machine.findMany({
-        where: req.authUser?.role === 'STAFF' ? { assignedStaffId: req.authUser.id } : {},
+        where: {
+          retiredAt: null,
+          ...(req.authUser?.role === 'STAFF' ? { assignedStaffId: req.authUser.id } : {}),
+        },
         include: {
           assignedStaff: { select: { id: true, name: true, email: true } },
           statusUpdatedBy: { select: { id: true, name: true } },
@@ -244,9 +247,10 @@ floorRoutes.post(
       const input = startJobBody.parse(req.body);
       const machine = await prisma.machine.findUnique({
         where: { id: input.machineId },
-        select: { id: true, stage: true, status: true },
+        select: { id: true, stage: true, status: true, retiredAt: true },
       });
       if (!machine) throw notFound('Machine not found');
+      if (machine.retiredAt) throw conflict('MASTER_RETIRED', 'Cannot start a job on a retired machine');
       if (machine.stage !== input.stage) throw badRequest('STAGE_MISMATCH', 'Job stage must match the machine stage');
       if (machine.status === 'BREAKDOWN') throw conflict('MACHINE_DAMAGED', 'Cannot start a job on a damaged machine');
 

@@ -68,6 +68,15 @@ export class OrdersController {
       next(err);
     }
   }
+
+  async deleteOrder(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await ordersService.deleteOrder(req.params.id);
+      return ok(res, result);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const ordersController = new OrdersController();
