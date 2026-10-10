@@ -8,11 +8,12 @@ import { Table, type Column } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { ErrorState } from '../../components/ui/ErrorState';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { formatCurrency, formatDate } from '../../lib/format';
 import {
   PlusIcon,
   ChevronRightIcon,
-  FunnelIcon,
 } from '@heroicons/react/24/outline';
 
 const STATUS_FILTERS: { label: string; value: string }[] = [
@@ -61,10 +62,10 @@ export function OrdersPage() {
       header: 'Order #',
       render: (row) => (
         <div>
-          <span className="font-semibold text-[#1A1714] hover:text-[#EA580C] transition-colors">
+          <span className="font-semibold text-(--color-text) hover:text-(--color-accent) transition-colors">
             {row.orderNumber}
           </span>
-          <p className="text-xs text-[#78716C] mt-0.5">{formatDate(row.createdAt)}</p>
+          <p className="text-xs text-(--color-text-muted) mt-0.5">{formatDate(row.createdAt)}</p>
         </div>
       ),
     },
@@ -73,8 +74,8 @@ export function OrdersPage() {
       header: 'Buyer',
       render: (row) => (
         <div>
-          <span className="font-medium text-[#1A1714]">{row.buyerName}</span>
-          {row.buyerPhone && <p className="text-xs text-[#78716C]">{row.buyerPhone}</p>}
+          <span className="font-medium text-(--color-text)">{row.buyerName}</span>
+          {row.buyerPhone && <p className="text-xs text-(--color-text-muted)">{row.buyerPhone}</p>}
         </div>
       ),
     },
@@ -83,8 +84,8 @@ export function OrdersPage() {
       header: 'Fabric Specification',
       render: (row) => (
         <div>
-          <span className="text-sm font-medium text-[#1A1714]">{row.fabricType}</span>
-          <p className="text-xs text-[#78716C]">Colour: {row.colour}</p>
+          <span className="text-sm font-medium text-(--color-text)">{row.fabricType}</span>
+          <p className="text-xs text-(--color-text-muted)">Colour: {row.colour}</p>
         </div>
       ),
     },
@@ -93,8 +94,8 @@ export function OrdersPage() {
       header: 'Quantity & Value',
       render: (row) => (
         <div>
-          <span className="font-semibold text-[#1A1714]">{row.metres.toLocaleString('en-IN')} m</span>
-          <p className="text-xs text-[#78716C]">
+          <span className="font-semibold text-(--color-text)">{row.metres.toLocaleString('en-IN')} m</span>
+          <p className="text-xs text-(--color-text-muted)">
             {formatCurrency(row.totalAmount)} (@ {formatCurrency(row.ratePerMetre)}/m)
           </p>
         </div>
@@ -115,9 +116,7 @@ export function OrdersPage() {
       key: 'currentStage',
       header: 'Current Stage',
       render: (row) => (
-        <span className="inline-flex items-center text-xs font-medium text-[#78716C] bg-[#FAFAF8] border border-[#E8E4DF] px-2.5 py-1 rounded-md">
-          {STAGE_LABELS[row.currentStage] ?? row.currentStage}
-        </span>
+        <Badge variant="neutral" label={STAGE_LABELS[row.currentStage] ?? row.currentStage} />
       ),
     },
     {
@@ -126,7 +125,7 @@ export function OrdersPage() {
       render: (row) => {
         const isUrgent = new Date(row.deadline).getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000;
         return (
-          <span className={`text-xs font-medium ${isUrgent ? 'text-[#DC2626]' : 'text-[#78716C]'}`}>
+          <span className={`text-xs font-medium ${isUrgent ? 'text-(--color-danger)' : 'text-(--color-text-muted)'}`}>
             {formatDate(row.deadline)}
           </span>
         );
@@ -144,7 +143,7 @@ export function OrdersPage() {
             e.stopPropagation();
             navigate(`/orders/${row.id}`);
           }}
-          className="text-xs text-[#78716C] hover:text-[#EA580C]"
+          className="text-xs text-(--color-text-muted) hover:text-(--color-accent)"
         >
           View Details
           <ChevronRightIcon className="w-3.5 h-3.5 ml-1" />
@@ -155,50 +154,28 @@ export function OrdersPage() {
 
   return (
     <div className="flex flex-col gap-6 page-content">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1A1714] tracking-tight">Orders</h1>
-          <p className="mt-1 text-sm text-[#78716C]">
-            Track buyer orders, feasibility, stage progress, and roll production.
-          </p>
-        </div>
-
-        {canCreate && (
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => navigate('/orders/new')}
-            className="self-start sm:self-auto shadow-xs"
-          >
-            <PlusIcon className="w-4 h-4 mr-1.5 stroke-2" />
-            New Order
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Orders"
+        description="Track buyer orders, feasibility, stage progress, and roll production."
+        actions={
+          canCreate ? (
+            <Button variant="primary" size="md" onClick={() => navigate('/orders/new')} className="shadow-xs">
+              <PlusIcon className="w-4 h-4 mr-1.5 stroke-2" />
+              New Order
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* Filter Chips */}
-      <Card className="p-3">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-          <FunnelIcon className="w-4 h-4 text-[#78716C] ml-2 mr-1 shrink-0" />
-          <div className="flex items-center gap-1.5 flex-nowrap">
-            {STATUS_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setSelectedStatus(f.value)}
-                className={[
-                  'px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-all duration-150',
-                  selectedStatus === f.value
-                    ? 'bg-[#EA580C] text-white shadow-xs'
-                    : 'bg-[#FAFAF8] text-[#78716C] border border-[#E8E4DF] hover:border-[#EA580C]/30 hover:bg-[#FFF7ED]/50',
-                ].join(' ')}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </Card>
+      <div className="overflow-x-auto pb-1">
+        <SegmentedControl
+          value={selectedStatus}
+          onChange={setSelectedStatus}
+          options={STATUS_FILTERS}
+          size="sm"
+        />
+      </div>
 
       {/* Error state */}
       {error && (

@@ -8,12 +8,13 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Dialog } from '../../components/ui/Dialog';
 import { Badge } from '../../components/ui/Badge';
-import { Spinner } from '../../components/ui/Spinner';
+import { Table, type Column } from '../../components/ui/Table';
+import { Callout } from '../../components/ui/Callout';
+import { PageHeader } from '../../components/ui/PageHeader';
 import {
   UserPlusIcon,
   EnvelopeIcon,
   TrashIcon,
-  CheckCircleIcon,
   ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 
@@ -142,143 +143,131 @@ export function StaffPage() {
     }
   };
 
+  const columns: Column<StaffUser>[] = [
+    {
+      key: 'employee',
+      header: 'Employee',
+      render: (u) => {
+        const isCurrent = currentUser?.id === u.id;
+        return (
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-(--color-accent)/10 text-(--color-accent) font-semibold flex items-center justify-center text-xs">
+              {u.name.slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <div className="font-medium text-(--color-text)">{u.name}</div>
+              {isCurrent && (
+                <span className="text-[10px] text-(--color-accent) font-semibold uppercase tracking-wider">
+                  (You)
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'email',
+      header: 'Email Address',
+      render: (u) => (
+        <div className="flex items-center gap-1.5 text-(--color-text-dark) font-mono text-xs">
+          <EnvelopeIcon className="w-4 h-4 text-(--color-text-subtle)" />
+          {u.email}
+        </div>
+      ),
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      render: (u) => <Badge variant={ROLE_BADGE_VARIANT[u.role] || 'neutral'} label={u.role} />,
+    },
+    {
+      key: 'joined',
+      header: 'Joined Date',
+      render: (u) => (
+        <span className="text-(--color-text-muted) text-xs">
+          {new Date(u.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (u) => {
+        const isCurrent = currentUser?.id === u.id;
+        return (
+          !isCurrent &&
+          u.role !== 'OWNER' && (
+            <button
+              onClick={() => handleDelete(u.id, u.name)}
+              className="p-1 text-(--color-text-muted) hover:text-(--color-danger) rounded hover:bg-(--color-danger-light) transition-colors"
+              title="Remove employee"
+            >
+              <TrashIcon className="w-4 h-4" />
+            </button>
+          )
+        );
+      },
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E8E4DF]">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1A1714] tracking-tight">Staff & Employee Management</h1>
-          <p className="mt-1 text-sm text-[#78716C]">
-            Manage authorized staff members. New employees automatically receive login credentials via email.
-          </p>
-        </div>
-        <Button
-          onClick={handleOpenModal}
-          variant="primary"
-          className="flex items-center gap-2 self-start sm:self-auto shadow-xs"
-        >
-          <UserPlusIcon className="w-4 h-4" />
-          Add Employee
-        </Button>
-      </div>
+      <PageHeader
+        title="Staff & Employee Management"
+        description="Manage authorized staff members. New employees automatically receive login credentials via email."
+        actions={
+          <Button
+            onClick={handleOpenModal}
+            variant="primary"
+            className="flex items-center gap-2 shadow-xs"
+          >
+            <UserPlusIcon className="w-4 h-4" />
+            Add Employee
+          </Button>
+        }
+      />
 
       {/* Success banner after creation - never displays password */}
       {latestCreated && (
-        <div className="rounded-xl bg-[#F0FDF4] border border-[#86EFAC] p-4 text-[#166534] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <CheckCircleIcon className="w-6 h-6 text-[#16A34A] shrink-0 mt-0.5" />
+        <Callout tone="success">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-semibold text-sm">
+              <p className="font-semibold text-sm text-(--color-text)">
                 Employee added successfully: {latestCreated.name} ({latestCreated.role})
               </p>
-              <p className="text-xs text-[#15803D] mt-0.5 flex items-center gap-1.5">
+              <p className="text-xs mt-0.5 flex items-center gap-1.5">
                 <EnvelopeIcon className="w-4 h-4" />
                 Login credentials have been automatically dispatched to <strong>{latestCreated.email}</strong>.
               </p>
             </div>
+            <button
+              onClick={() => setLatestCreated(null)}
+              className="text-xs hover:underline font-medium shrink-0"
+            >
+              Dismiss
+            </button>
           </div>
-          <button
-            onClick={() => setLatestCreated(null)}
-            className="text-xs text-[#166534] hover:text-[#14532D] underline font-medium"
-          >
-            Dismiss
-          </button>
-        </div>
+        </Callout>
       )}
 
       {/* Error state */}
-      {error && (
-        <div className="rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] p-4 text-sm text-[#DC2626]">
-          {error}
-        </div>
-      )}
+      {error && <Callout tone="danger">{error}</Callout>}
 
       {/* Staff Table */}
-      <div className="bg-white rounded-xl border border-[#E8E4DF] shadow-xs overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-16 gap-3 text-sm text-[#78716C]">
-            <Spinner size="md" />
-            <span>Loading staff members from database...</span>
-          </div>
-        ) : staff.length === 0 ? (
-          <div className="text-center py-16 px-4">
-            <ShieldCheckIcon className="w-12 h-12 mx-auto text-[#A8A29E] mb-3" />
-            <h3 className="text-base font-medium text-[#1A1714]">No staff members found</h3>
-            <p className="text-sm text-[#78716C] mt-1">Get started by creating your first employee account.</p>
-            <Button onClick={handleOpenModal} variant="secondary" className="mt-4">
-              Add First Staff
-            </Button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="bg-[#FBFBF9] border-b border-[#E8E4DF] text-xs font-semibold text-[#78716C] uppercase tracking-wider">
-                  <th className="py-3 px-4">Employee</th>
-                  <th className="py-3 px-4">Email Address</th>
-                  <th className="py-3 px-4">Role</th>
-                  <th className="py-3 px-4">Joined Date</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E8E4DF]/70">
-                {staff.map((u) => {
-                  const isCurrent = currentUser?.id === u.id;
-                  return (
-                    <tr key={u.id} className="hover:bg-[#FAFAF8] transition-colors">
-                      <td className="py-3.5 px-4 font-medium text-[#1A1714]">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-[#EA580C]/10 text-[#EA580C] font-semibold flex items-center justify-center text-xs">
-                            {u.name.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <div>{u.name}</div>
-                            {isCurrent && (
-                              <span className="text-[10px] text-[#EA580C] font-semibold uppercase tracking-wider">
-                                (You)
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-[#44403C] font-mono text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <EnvelopeIcon className="w-4 h-4 text-[#A8A29E]" />
-                          {u.email}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <Badge
-                          variant={ROLE_BADGE_VARIANT[u.role] || 'neutral'}
-                          label={u.role}
-                        />
-                      </td>
-                      <td className="py-3.5 px-4 text-[#78716C] text-xs">
-                        {new Date(u.createdAt).toLocaleDateString(undefined, {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        {!isCurrent && u.role !== 'OWNER' && (
-                          <button
-                            onClick={() => handleDelete(u.id, u.name)}
-                            className="p-1 text-[#78716C] hover:text-[#DC2626] rounded hover:bg-[#FEF2F2] transition-colors"
-                            title="Remove employee"
-                          >
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {staff.length === 0 && !loading ? (
+        <div className="bg-white rounded-xl border border-(--color-border) shadow-xs text-center py-16 px-4">
+          <ShieldCheckIcon className="w-12 h-12 mx-auto text-(--color-text-subtle) mb-3" />
+          <h3 className="text-base font-medium text-(--color-text)">No staff members found</h3>
+          <p className="text-sm text-(--color-text-muted) mt-1">Get started by creating your first employee account.</p>
+          <Button onClick={handleOpenModal} variant="secondary" className="mt-4">
+            Add First Staff
+          </Button>
+        </div>
+      ) : (
+        <Table columns={columns} rows={staff} loading={loading} rowKey={(u) => u.id} />
+      )}
 
       {/* Add Staff Modal */}
       <Dialog
@@ -288,15 +277,11 @@ export function StaffPage() {
         width="max-w-md"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <p className="text-xs text-[#78716C]">
+          <p className="text-xs text-(--color-text-muted)">
             A secure temporary login password will be automatically generated and sent to the employee's email.
           </p>
 
-          {formError && (
-            <div className="rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] p-3 text-xs text-[#DC2626]">
-              {formError}
-            </div>
-          )}
+          {formError && <Callout tone="danger">{formError}</Callout>}
 
           <Input
             id="staff-name"
@@ -329,7 +314,7 @@ export function StaffPage() {
             disabled={submitting}
           />
 
-          <div className="pt-3 border-t border-[#E8E4DF] flex justify-end gap-2.5">
+          <div className="pt-3 border-t border-(--color-border) flex justify-end gap-2.5">
             <Button
               type="button"
               variant="secondary"

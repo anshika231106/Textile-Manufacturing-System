@@ -3,7 +3,8 @@ import { useAuth } from '../../lib/auth';
 import { useToast } from '../../components/ui/Toast';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { Spinner } from '../../components/ui/Spinner';
+import { StatCard, StatGrid } from '../../components/ui/StatCard';
+import { Table, type Column } from '../../components/ui/Table';
 import { formatCurrency, formatApiMonth } from '../../lib/format';
 import {
   getAttendance,
@@ -17,6 +18,8 @@ import {
   CheckCircleIcon,
   ArrowPathIcon,
   BanknotesIcon,
+  UsersIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -130,17 +133,78 @@ export function AttendancePage() {
   const absentCount = records.filter((record) => record.present === false).length;
   const unmarkedCount = records.filter((record) => record.present === null).length;
 
+  const dailyColumns: Column<WorkerAttendanceRecord>[] = [
+    { key: 'code', header: 'Code', render: (w) => <span className="font-mono font-semibold text-(--color-text)">{w.workerCode}</span> },
+    { key: 'name', header: 'Worker Name', render: (w) => <span className="font-semibold text-sm text-(--color-text)">{w.workerName}</span> },
+    { key: 'role', header: 'Role / Department', render: (w) => <span className="text-(--color-text-muted)">{w.workerRole}</span> },
+    ...(canSeeWages
+      ? [{
+          key: 'wage',
+          header: 'Daily Wage',
+          align: 'right' as const,
+          render: (w: WorkerAttendanceRecord) => (
+            <span className="font-mono font-medium text-(--color-text)">{formatCurrency(w.dailyWage ?? 0)}</span>
+          ),
+        }]
+      : []),
+    {
+      key: 'status',
+      header: 'Status',
+      align: 'center',
+      render: (w) =>
+        w.present === true ? (
+          <Badge variant="success" label="PRESENT" dot />
+        ) : w.present === false ? (
+          <Badge variant="danger" label="ABSENT" dot />
+        ) : (
+          <Badge variant="warning" label="NOT MARKED" dot />
+        ),
+    },
+    ...(canMarkAttendance
+      ? [{
+          key: 'toggle',
+          header: 'Toggle Presence',
+          align: 'right' as const,
+          render: (w: WorkerAttendanceRecord) => (
+            <button
+              type="button"
+              onClick={() => toggleStatus(w.workerId)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                w.present === true
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs hover:bg-emerald-700'
+                  : 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100'
+              }`}
+            >
+              {w.present === true ? 'Present' : w.present === false ? 'Absent' : 'Mark Present'}
+            </button>
+          ),
+        }]
+      : []),
+  ];
+
+  const wageColumns: Column<MonthlyWagesResponse['workers'][number]>[] = [
+    { key: 'code', header: 'Code', render: (w) => <span className="font-mono font-medium text-(--color-text)">{w.workerCode}</span> },
+    { key: 'name', header: 'Worker Name', render: (w) => <span className="font-semibold text-(--color-text)">{w.workerName}</span> },
+    { key: 'role', header: 'Role', render: (w) => <span className="text-(--color-text-muted)">{w.workerRole}</span> },
+    { key: 'rate', header: 'Daily Rate', align: 'right', render: (w) => <span className="font-mono text-(--color-text-muted)">{formatCurrency(w.dailyWage)}</span> },
+    { key: 'present', header: 'Days Present', align: 'right', render: (w) => <span className="font-mono font-bold text-emerald-700">{w.presentDays}</span> },
+    { key: 'absent', header: 'Days Absent', align: 'right', render: (w) => <span className="font-mono text-rose-700">{w.absentDays}</span> },
+    { key: 'total', header: 'Wages Earned', align: 'right', render: (w) => <span className="font-mono font-bold text-sm text-emerald-800">{formatCurrency(w.totalWage)}</span> },
+  ];
+
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#E8E4DF]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-(--color-border)">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold text-[#1A1714] tracking-tight">Attendance & Wages</h1>
+            <h1 className="text-2xl font-bold text-(--color-text) tracking-tight">
+              Plant Attendance & Wage Management
+            </h1>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
               {isStaff ? 'My Attendance' : canMarkAttendance ? 'Daily Roster' : 'Staff Roster'}
             </span>
           </div>
-          <p className="text-sm text-[#78716C] mt-1">
+          <p className="text-sm text-(--color-text-muted) mt-1">
             {isStaff
               ? 'View your recorded attendance and wages earned from days present.'
               : canMarkAttendance
@@ -157,21 +221,22 @@ export function AttendancePage() {
           }}
           className="text-xs self-start sm:self-auto"
         >
-          <ArrowPathIcon className="w-4 h-4 text-[#78716C]" />
+          <ArrowPathIcon className="w-4 h-4 text-(--color-text-muted)" />
           Refresh
         </Button>
       </div>
 
-      <section className="bg-white rounded-2xl border border-[#E8E4DF] p-6 shadow-xs space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#F5F4F2]">
+      {/* SECTION 1: Daily Attendance */}
+      <section className="bg-white rounded-2xl border border-(--color-border) p-6 shadow-xs space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-(--color-surface-sunken)">
           <div className="flex items-center gap-2.5">
-            <CalendarDaysIcon className="w-5 h-5 text-[#EA580C]" />
-            <h2 className="text-base font-semibold text-[#1A1714]">
+            <CalendarDaysIcon className="w-5 h-5 text-(--color-accent)" />
+            <h2 className="text-base font-semibold text-(--color-text)">
               {isStaff ? 'My Daily Attendance' : canMarkAttendance ? 'Mark Today’s Attendance' : 'Daily Attendance'}
             </h2>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <label htmlFor="attendance-date" className="text-xs font-medium text-[#78716C]">
+            <label htmlFor="attendance-date" className="text-xs font-medium text-(--color-text-muted)">
               {canMarkAttendance ? 'Attendance Date:' : 'Select Date:'}
             </label>
             <input
@@ -181,21 +246,29 @@ export function AttendancePage() {
               max={canMarkAttendance ? today : undefined}
               disabled={canMarkAttendance}
               onChange={(event) => setSelectedDate(event.target.value)}
-              className="rounded-lg border border-[#E8E4DF] bg-white py-1.5 px-3 text-xs font-medium text-[#1A1714] focus:outline-none focus:ring-1 focus:ring-[#EA580C] disabled:bg-[#F5F4F2]"
+              className="rounded-lg border border-(--color-border) bg-white py-1.5 px-3 text-xs font-medium text-(--color-text) focus:outline-none focus:ring-1 focus:ring-(--color-accent) disabled:bg-(--color-surface-sunken)"
             />
-            {canMarkAttendance && (
-              <span className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#F5F4F2] text-[#44403C]">
+            {canMarkAttendance ? (
+              <span className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-(--color-surface-sunken) text-(--color-text-dark)">
                 Today
               </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSelectedDate(today)}
+                className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-(--color-surface-sunken) text-(--color-text-dark) hover:bg-(--color-border) transition-colors"
+              >
+                Today
+              </button>
             )}
           </div>
         </div>
 
         {!dailyLoading && !dailyError && (
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[#FBFBFA] rounded-xl border border-[#E8E4DF]">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-(--color-surface-alt) rounded-xl border border-(--color-border)">
             <div className="flex flex-wrap items-center gap-4 text-xs">
-              <span className="text-[#78716C]">
-                Total Staff: <strong className="text-[#1A1714] font-mono">{records.length}</strong>
+              <span className="text-(--color-text-muted)">
+                Total Staff: <strong className="text-(--color-text) font-mono">{records.length}</strong>
               </span>
               <span className="text-emerald-700 font-medium">
                 Present: <strong className="font-mono">{presentCount}</strong>
@@ -231,78 +304,20 @@ export function AttendancePage() {
           </div>
         )}
 
-        {dailyError && (
+        {dailyError ? (
           <div className="rounded-lg bg-rose-50 border border-rose-200 p-4 text-sm text-rose-700" role="alert">
             {dailyError}
           </div>
+        ) : (
+          <Table
+            columns={dailyColumns}
+            rows={records}
+            loading={dailyLoading}
+            rowKey={(w) => w.workerId}
+            emptyTitle="No staff found"
+            emptyDescription="No staff attendance records are available."
+          />
         )}
-
-        {dailyLoading ? (
-          <div className="flex flex-col items-center justify-center py-16 text-[#78716C]">
-            <Spinner />
-            <p className="text-sm mt-3">Loading attendance...</p>
-          </div>
-        ) : !dailyError && records.length === 0 ? (
-          <div className="p-8 text-center text-sm text-[#78716C]">No staff attendance records are available.</div>
-        ) : !dailyError ? (
-          <div className="border border-[#E8E4DF] rounded-xl overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#F5F4F2] text-[#78716C] font-semibold border-b border-[#E8E4DF]">
-                <tr>
-                  <th className="py-3 px-4">Code</th>
-                  <th className="py-3 px-4">Worker Name</th>
-                  <th className="py-3 px-4">Role / Department</th>
-                  {canSeeWages && <th className="py-3 px-4 text-right">Daily Wage</th>}
-                  <th className="py-3 px-4 text-center">Status</th>
-                  {canMarkAttendance && <th className="py-3 px-4 text-right">Toggle Presence</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F5F4F2]">
-                {records.map((record) => (
-                  <tr
-                    key={record.workerId}
-                    className={`hover:bg-[#FBFBFA] transition-colors ${
-                      record.present === false ? 'bg-rose-50/20' : ''
-                    }`}
-                  >
-                    <td className="py-3 px-4 font-mono font-semibold text-[#1A1714]">{record.workerCode}</td>
-                    <td className="py-3 px-4 font-semibold text-sm text-[#1A1714]">{record.workerName}</td>
-                    <td className="py-3 px-4 text-[#78716C]">{record.workerRole}</td>
-                    {canSeeWages && (
-                      <td className="py-3 px-4 text-right font-mono font-medium text-[#1A1714]">
-                        {formatCurrency(record.dailyWage ?? 0)}
-                      </td>
-                    )}
-                    <td className="py-3 px-4 text-center">
-                      {record.present === true ? (
-                        <Badge variant="success" label="PRESENT" dot />
-                      ) : record.present === false ? (
-                        <Badge variant="danger" label="ABSENT" dot />
-                      ) : (
-                        <Badge variant="warning" label="NOT MARKED" dot />
-                      )}
-                    </td>
-                    {canMarkAttendance && (
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => toggleStatus(record.workerId)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                            record.present === true
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs hover:bg-emerald-700'
-                              : 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100'
-                          }`}
-                        >
-                          {record.present === true ? 'Present' : record.present === false ? 'Absent' : 'Mark Present'}
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
 
         {canMarkAttendance && !dailyError && (
           <div className="flex justify-end pt-2">
@@ -320,107 +335,72 @@ export function AttendancePage() {
         )}
       </section>
 
+      {/* SECTION 2: Monthly Wages */}
       {canSeeWages && (
-        <section className="bg-white rounded-2xl border border-[#E8E4DF] p-6 shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#F5F4F2]">
+        <section className="bg-white rounded-2xl border border-(--color-border) p-6 shadow-xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-(--color-surface-sunken)">
             <div className="flex items-center gap-2.5">
               <BanknotesIcon className="w-5 h-5 text-emerald-600" />
               <div>
-                <h2 className="text-base font-semibold text-[#1A1714]">
+                <h2 className="text-base font-semibold text-(--color-text)">
                   {isStaff ? 'My Monthly Wages' : 'Monthly Wage Summary'}
                 </h2>
-                <p className="text-xs text-[#78716C]">
+                <p className="text-xs text-(--color-text-muted)">
                   Wages are calculated as daily wage × recorded days present.
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <label htmlFor="attendance-month" className="text-xs font-medium text-[#78716C]">Month:</label>
+              <label htmlFor="attendance-month" className="text-xs font-medium text-(--color-text-muted)">Month:</label>
               <input
                 id="attendance-month"
                 type="month"
                 value={selectedMonth}
                 onChange={(event) => setSelectedMonth(event.target.value)}
-                className="rounded-lg border border-[#E8E4DF] bg-white py-1.5 px-3 text-xs font-medium text-[#1A1714] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
+                className="rounded-lg border border-(--color-border) bg-white py-1.5 px-3 text-xs font-medium text-(--color-text) focus:outline-none focus:ring-1 focus:ring-(--color-accent)"
               />
             </div>
           </div>
 
-          {wagesError && (
+          {wagesData && !wagesError && (
+            <StatGrid columns={3}>
+              <StatCard
+                icon={UsersIcon}
+                label={isStaff ? 'Staff Member' : 'Active Staff'}
+                value={wagesData.activeWorkers}
+                sub="Staff on shift roster"
+                tone="neutral"
+              />
+              <StatCard
+                icon={ClockIcon}
+                label="Days Present"
+                value={`${wagesData.totalPresentDays} days`}
+                sub={`Accumulated for ${wagesData.month}`}
+                tone="neutral"
+              />
+              <StatCard
+                icon={BanknotesIcon}
+                label="Wages Earned"
+                value={formatCurrency(wagesData.totalWages)}
+                sub="Calculated by server wage ledger"
+                tone="success"
+              />
+            </StatGrid>
+          )}
+
+          {wagesError ? (
             <div className="rounded-lg bg-rose-50 border border-rose-200 p-4 text-sm text-rose-700" role="alert">
               {wagesError}
             </div>
-          )}
-
-          {wagesLoading ? (
-            <div className="flex flex-col items-center justify-center py-12 text-[#78716C]">
-              <Spinner />
-              <p className="text-sm mt-3">Calculating monthly wages...</p>
-            </div>
-          ) : wagesError ? null : !wagesData || wagesData.workers.length === 0 ? (
-            <div className="p-8 text-center text-xs text-[#78716C]">
-              No wage records are available for {selectedMonth}.
-            </div>
           ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-[#FBFBFA] rounded-xl border border-[#E8E4DF] p-4">
-                  <span className="text-xs text-[#78716C] uppercase font-semibold">
-                    {isStaff ? 'Staff Member' : 'Active Staff'}
-                  </span>
-                  <div className="text-2xl font-bold text-[#1A1714] font-mono mt-1">
-                    {wagesData.activeWorkers}
-                  </div>
-                </div>
-                <div className="bg-[#FBFBFA] rounded-xl border border-[#E8E4DF] p-4">
-                  <span className="text-xs text-[#78716C] uppercase font-semibold">Days Present</span>
-                  <div className="text-2xl font-bold text-[#1A1714] font-mono mt-1">
-                    {wagesData.totalPresentDays}
-                  </div>
-                </div>
-                <div className="bg-emerald-50/40 rounded-xl border border-emerald-200 p-4">
-                  <span className="text-xs text-emerald-800 uppercase font-semibold">Wages Earned</span>
-                  <div className="text-2xl font-bold text-emerald-900 font-mono mt-1">
-                    {formatCurrency(wagesData.totalWages)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="border border-[#E8E4DF] rounded-xl overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#F5F4F2] text-[#78716C] font-semibold border-b border-[#E8E4DF]">
-                    <tr>
-                      <th className="py-3 px-4">Code</th>
-                      <th className="py-3 px-4">Worker Name</th>
-                      <th className="py-3 px-4">Role</th>
-                      <th className="py-3 px-4 text-right">Daily Rate</th>
-                      <th className="py-3 px-4 text-right">Days Present</th>
-                      <th className="py-3 px-4 text-right">Days Absent</th>
-                      <th className="py-3 px-4 text-right">Wages Earned</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#F5F4F2]">
-                    {wagesData.workers.map((worker) => (
-                      <tr key={worker.workerId} className="hover:bg-[#FBFBFA]">
-                        <td className="py-3 px-4 font-mono font-medium text-[#1A1714]">{worker.workerCode}</td>
-                        <td className="py-3 px-4 font-semibold text-[#1A1714]">{worker.workerName}</td>
-                        <td className="py-3 px-4 text-[#78716C]">{worker.workerRole}</td>
-                        <td className="py-3 px-4 text-right font-mono text-[#78716C]">
-                          {formatCurrency(worker.dailyWage)}
-                        </td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
-                          {worker.presentDays}
-                        </td>
-                        <td className="py-3 px-4 text-right font-mono text-rose-700">{worker.absentDays}</td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-sm text-emerald-800">
-                          {formatCurrency(worker.totalWage)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+            <Table
+              columns={wageColumns}
+              rows={wagesData?.workers ?? []}
+              loading={wagesLoading}
+              rowKey={(w) => w.workerId}
+              emptyTitle="No records"
+              emptyDescription={`No wage records are available for ${selectedMonth}.`}
+            />
           )}
         </section>
       )}

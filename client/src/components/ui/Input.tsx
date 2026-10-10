@@ -14,28 +14,28 @@ export function Input({ label, error, hint, id, className = '', ...props }: Inpu
       {label && (
         <label
           htmlFor={inputId}
-          className="text-sm font-medium text-[#1A1714]"
+          className="text-sm font-medium text-(--color-text)"
         >
           {label}
-          {props.required && <span className="text-[#DC2626] ml-0.5">*</span>}
+          {props.required && <span className="text-(--color-danger) ml-0.5">*</span>}
         </label>
       )}
       <input
         id={inputId}
         className={[
-          'w-full rounded-lg border px-3.5 py-2.5 text-sm text-[#1A1714] bg-white',
-          'placeholder:text-[#A8A29E] transition-colors duration-150 shadow-xs',
-          'focus:outline-none focus:ring-2 focus:ring-[#EA580C]/30 focus:border-[#EA580C]',
+          'w-full rounded-lg border px-3.5 py-2.5 text-sm text-(--color-text) bg-white',
+          'placeholder:text-(--color-text-subtle) transition-colors duration-150 shadow-xs',
+          'focus:outline-none focus:ring-2 focus:ring-(--color-accent)/30 focus:border-(--color-accent)',
           error
-            ? 'border-[#DC2626] focus:ring-[#DC2626]/20 focus:border-[#DC2626]'
-            : 'border-[#E8E4DF] hover:border-[#A8A29E]',
-          props.disabled ? 'bg-[#F5F4F2] text-[#78716C] cursor-not-allowed' : '',
+            ? 'border-(--color-danger) focus:ring-(--color-danger)/20 focus:border-(--color-danger)'
+            : 'border-(--color-border) hover:border-(--color-text-subtle)',
+          props.disabled ? 'bg-(--color-surface-sunken) text-(--color-text-muted) cursor-not-allowed' : '',
           className,
         ].join(' ')}
         {...props}
       />
-      {error && <p className="text-xs text-[#DC2626]">{error}</p>}
-      {hint && !error && <p className="text-xs text-[#78716C]">{hint}</p>}
+      {error && <p className="text-xs text-(--color-danger)">{error}</p>}
+      {hint && !error && <p className="text-xs text-(--color-text-muted)">{hint}</p>}
     </div>
   );
 }

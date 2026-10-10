@@ -2,6 +2,8 @@ type Size = 'sm' | 'md' | 'lg';
 
 interface SpinnerProps {
   size?: Size;
+  /** Use currentColor instead of the accent token - for spinners on colored backgrounds (e.g. buttons). */
+  inherit?: boolean;
 }
 
 const sizeStyles: Record<Size, string> = {
@@ -10,16 +12,16 @@ const sizeStyles: Record<Size, string> = {
   lg: 'w-8 h-8 border-[3px]',
 };
 
-export function Spinner({ size = 'md' }: SpinnerProps) {
+export function Spinner({ size = 'md', inherit = false }: SpinnerProps) {
   return (
     <span
       role="status"
       aria-label="Loading"
       className={[
-        'inline-block rounded-full border-[#EA580C] border-t-transparent',
+        'inline-block rounded-full border-t-transparent animate-spin',
+        inherit ? 'border-current' : 'border-(--color-accent)',
         sizeStyles[size],
       ].join(' ')}
-      style={{ animation: 'spin 0.7s linear infinite' }}
     />
   );
 }

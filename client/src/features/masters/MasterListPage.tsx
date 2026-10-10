@@ -28,6 +28,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Dialog } from '../../components/ui/Dialog';
 import { ErrorState } from '../../components/ui/ErrorState';
+import { Callout } from '../../components/ui/Callout';
 import { formatCurrency } from '../../lib/format';
 import {
   UsersIcon,
@@ -205,25 +206,25 @@ export function MasterListPage() {
       header: 'Company / Mill Name',
       render: (r) => (
         <div>
-          <span className="font-semibold text-[#1A1714]">{r.name}</span>
-          {r.address && <p className="text-xs text-[#78716C]">{r.address}</p>}
+          <span className="font-semibold text-(--color-text)">{r.name}</span>
+          {r.address && <p className="text-xs text-(--color-text-muted)">{r.address}</p>}
         </div>
       ),
     },
     {
       key: 'contact',
       header: 'Contact Person',
-      render: (r) => <span className="font-medium text-sm text-[#1A1714]">{r.contactName || '—'}</span>,
+      render: (r) => <span className="font-medium text-sm text-(--color-text)">{r.contactName || '—'}</span>,
     },
     {
       key: 'phone',
       header: 'Phone Number',
-      render: (r) => <span className="font-mono text-xs text-[#1A1714]">{r.phone || '—'}</span>,
+      render: (r) => <span className="font-mono text-xs text-(--color-text)">{r.phone || '—'}</span>,
     },
     {
       key: 'email',
       header: 'Email',
-      render: (r) => <span className="text-xs text-[#78716C]">{r.email || '—'}</span>,
+      render: (r) => <span className="text-xs text-(--color-text-muted)">{r.email || '—'}</span>,
     },
   ];
 
@@ -234,20 +235,20 @@ export function MasterListPage() {
       header: 'Supplier / Vendor',
       render: (r) => (
         <div>
-          <span className="font-semibold text-[#1A1714]">{r.name}</span>
-          {r.contactName && <p className="text-xs text-[#78716C]">Attn: {r.contactName}</p>}
+          <span className="font-semibold text-(--color-text)">{r.name}</span>
+          {r.contactName && <p className="text-xs text-(--color-text-muted)">Attn: {r.contactName}</p>}
         </div>
       ),
     },
     {
       key: 'phone',
       header: 'Contact Phone',
-      render: (r) => <span className="font-mono text-xs text-[#1A1714]">{r.phone || '—'}</span>,
+      render: (r) => <span className="font-mono text-xs text-(--color-text)">{r.phone || '—'}</span>,
     },
     {
       key: 'email',
       header: 'Email',
-      render: (r) => <span className="text-xs text-[#78716C]">{r.email || '—'}</span>,
+      render: (r) => <span className="text-xs text-(--color-text-muted)">{r.email || '—'}</span>,
     },
   ];
 
@@ -258,10 +259,10 @@ export function MasterListPage() {
       header: 'Code & Count',
       render: (r) => (
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-semibold bg-[#F5F4F2] px-2 py-0.5 rounded border border-[#E8E4DF] text-[#1A1714]">
+          <span className="font-mono text-xs font-semibold bg-(--color-surface-sunken) px-2 py-0.5 rounded border border-(--color-border) text-(--color-text)">
             {r.code}
           </span>
-          {r.countLabel && <span className="text-xs text-[#78716C]">({r.countLabel})</span>}
+          {r.countLabel && <span className="text-xs text-(--color-text-muted)">({r.countLabel})</span>}
         </div>
       ),
     },
@@ -270,8 +271,8 @@ export function MasterListPage() {
       header: 'Yarn Material',
       render: (r) => (
         <div>
-          <span className="font-semibold text-sm text-[#1A1714]">{r.name}</span>
-          <p className="text-xs text-[#78716C]">Shade: {r.colour}</p>
+          <span className="font-semibold text-sm text-(--color-text)">{r.name}</span>
+          <p className="text-xs text-(--color-text-muted)">Shade: {r.colour}</p>
         </div>
       ),
     },
@@ -280,7 +281,7 @@ export function MasterListPage() {
       header: 'Reorder Level (kg)',
       align: 'right',
       render: (r) => (
-        <span className="font-semibold text-sm text-[#1A1714] block text-right">
+        <span className="font-semibold text-sm text-(--color-text) block text-right">
           {r.reorderLevelKg.toLocaleString('en-IN')} kg
         </span>
       ),
@@ -290,7 +291,7 @@ export function MasterListPage() {
       header: 'Current Available',
       align: 'right',
       render: (r) => (
-        <span className="text-sm font-medium text-[#16A34A] block text-right">
+        <span className="text-sm font-medium text-(--color-success) block text-right">
           {(r.availableKg ?? 0).toLocaleString('en-IN')} kg
         </span>
       ),
@@ -303,7 +304,7 @@ export function MasterListPage() {
       key: 'code',
       header: 'Machine Code',
       render: (r) => (
-        <span className="font-mono text-xs font-semibold bg-[#F5F4F2] px-2 py-0.5 rounded border border-[#E8E4DF] text-[#1A1714]">
+        <span className="font-mono text-xs font-semibold bg-(--color-surface-sunken) px-2 py-0.5 rounded border border-(--color-border) text-(--color-text)">
           {r.code}
         </span>
       ),
@@ -311,7 +312,7 @@ export function MasterListPage() {
     {
       key: 'name',
       header: 'Machine Name',
-      render: (r) => <span className="font-medium text-[#1A1714]">{r.name}</span>,
+      render: (r) => <span className="font-medium text-(--color-text)">{r.name}</span>,
     },
     {
       key: 'stage',
@@ -339,7 +340,7 @@ export function MasterListPage() {
       header: 'Rate / Metre',
       align: 'right',
       render: (r) => (
-        <span className="font-semibold text-sm text-[#1A1714] block text-right">
+        <span className="font-semibold text-sm text-(--color-text) block text-right">
           {formatCurrency(r.ratePerMetre)}/m
         </span>
       ),
@@ -352,7 +353,7 @@ export function MasterListPage() {
       key: 'code',
       header: 'Worker ID',
       render: (r) => (
-        <span className="font-mono text-xs font-semibold bg-[#F5F4F2] px-2 py-0.5 rounded border border-[#E8E4DF] text-[#1A1714]">
+        <span className="font-mono text-xs font-semibold bg-(--color-surface-sunken) px-2 py-0.5 rounded border border-(--color-border) text-(--color-text)">
           {r.code || 'EMP'}
         </span>
       ),
@@ -360,24 +361,24 @@ export function MasterListPage() {
     {
       key: 'name',
       header: 'Worker Name',
-      render: (r) => <span className="font-semibold text-[#1A1714]">{r.name}</span>,
+      render: (r) => <span className="font-semibold text-(--color-text)">{r.name}</span>,
     },
     {
       key: 'role',
       header: 'Role / Designation',
-      render: (r) => <span className="text-sm text-[#78716C]">{r.role}</span>,
+      render: (r) => <span className="text-sm text-(--color-text-muted)">{r.role}</span>,
     },
     {
       key: 'phone',
       header: 'Phone Number',
-      render: (r) => <span className="font-mono text-xs text-[#1A1714]">{r.phone || '—'}</span>,
+      render: (r) => <span className="font-mono text-xs text-(--color-text)">{r.phone || '—'}</span>,
     },
     {
       key: 'wage',
       header: 'Daily Wage Rate',
       align: 'right',
       render: (r) => (
-        <span className="font-semibold text-sm text-[#1A1714] block text-right">
+        <span className="font-semibold text-sm text-(--color-text) block text-right">
           {formatCurrency(r.dailyWage)} / day
         </span>
       ),
@@ -434,8 +435,8 @@ export function MasterListPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A1714]">Masters Management</h1>
-          <p className="text-sm text-[#78716C] mt-0.5">
+          <h1 className="text-2xl font-bold text-(--color-text)">Masters Management</h1>
+          <p className="text-sm text-(--color-text-muted) mt-0.5">
             Everest Textile Mills core master data for entities, inventory catalogs, machines and workforce.
           </p>
         </div>
@@ -447,7 +448,7 @@ export function MasterListPage() {
             onClick={reloadCurrent}
             title="Refresh current list"
           >
-            <ArrowPathIcon className="w-4 h-4 text-[#78716C]" />
+            <ArrowPathIcon className="w-4 h-4 text-(--color-text-muted)" />
           </Button>
 
           {canCreate && (
@@ -467,7 +468,7 @@ export function MasterListPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-[#E8E4DF] overflow-x-auto pb-px">
+      <div className="flex items-center gap-1 border-b border-(--color-border) overflow-x-auto pb-px">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = tab.id === currentType;
@@ -477,8 +478,8 @@ export function MasterListPage() {
               onClick={() => handleTabChange(tab.id)}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                 isActive
-                  ? 'border-[#EA580C] text-[#EA580C]'
-                  : 'border-transparent text-[#78716C] hover:text-[#1A1714]'
+                  ? 'border-(--color-accent) text-(--color-accent)'
+                  : 'border-transparent text-(--color-text-muted) hover:text-(--color-text)'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -491,17 +492,17 @@ export function MasterListPage() {
       {/* Search and Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative max-w-sm w-full">
-          <MagnifyingGlassIcon className="w-4 h-4 text-[#78716C] absolute left-3 top-1/2 -translate-y-1/2" />
+          <MagnifyingGlassIcon className="w-4 h-4 text-(--color-text-muted) absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder={`Search ${currentTabInfo.label.toLowerCase()}...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-[#E8E4DF] bg-white placeholder:text-[#A8A29E] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20 focus:border-[#EA580C]"
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-(--color-border) bg-white placeholder:text-(--color-text-subtle) focus:outline-none focus:ring-2 focus:ring-(--color-accent)/20 focus:border-(--color-accent)"
           />
         </div>
 
-        <span className="text-xs text-[#78716C]">
+        <span className="text-xs text-(--color-text-muted)">
           Showing {filteredData.length} records
         </span>
       </div>
@@ -510,7 +511,7 @@ export function MasterListPage() {
       {activeError ? (
         <ErrorState message={activeError.message} code={activeError.code} onRetry={reloadCurrent} />
       ) : (
-        <Card className="p-0 border border-[#E8E4DF] overflow-hidden shadow-xs">
+        <Card className="p-0 border border-(--color-border) overflow-hidden shadow-xs">
           {currentType === 'buyers' && (
             <Table
               columns={buyerCols}
@@ -576,11 +577,7 @@ export function MasterListPage() {
         width="max-w-lg"
       >
         <form onSubmit={handleCreateSubmit} className="p-6 space-y-4">
-          {formErrors.general && (
-            <div className="p-3 rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] text-xs text-[#991B1B]">
-              {formErrors.general}
-            </div>
-          )}
+          {formErrors.general && <Callout tone="danger">{formErrors.general}</Callout>}
 
           {/* Form for Buyers */}
           {currentType === 'buyers' && (
@@ -793,7 +790,7 @@ export function MasterListPage() {
             </>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E8E4DF]">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-(--color-border)">
             <Button
               type="button"
               variant="secondary"

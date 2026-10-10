@@ -71,11 +71,11 @@ export function LedgerPanel({
       header: 'Date & Time',
       render: (row) => (
         <div>
-          <span className="font-medium text-[#1A1714]">
+          <span className="font-medium text-(--color-text)">
             {formatTimestamp(row.occurredAt)}
           </span>
           {row.reference && (
-            <p className="text-xs text-[#78716C] mt-0.5">Ref: {row.reference}</p>
+            <p className="text-xs text-(--color-text-muted) mt-0.5">Ref: {row.reference}</p>
           )}
         </div>
       ),
@@ -103,10 +103,10 @@ export function LedgerPanel({
       header: 'Yarn Material',
       render: (row) => (
         <div>
-          <span className="font-semibold text-[#1A1714] font-mono text-xs">
+          <span className="font-semibold text-(--color-text) font-mono text-xs">
             {row.yarnCode}
           </span>
-          <p className="text-xs text-[#78716C]">{row.yarnName}</p>
+          <p className="text-xs text-(--color-text-muted)">{row.yarnName}</p>
         </div>
       ),
     },
@@ -120,7 +120,7 @@ export function LedgerPanel({
           <div className="text-right">
             <span
               className={`font-semibold inline-flex items-center gap-1 ${
-                isReceipt ? 'text-[#16A34A]' : 'text-[#EA580C]'
+                isReceipt ? 'text-(--color-success)' : 'text-(--color-accent)'
               }`}
             >
               {isReceipt ? (
@@ -140,7 +140,7 @@ export function LedgerPanel({
       header: 'Rate / kg',
       align: 'right',
       render: (row) => (
-        <span className="text-[#1A1714] font-medium text-right block">
+        <span className="text-(--color-text) font-medium text-right block">
           {formatCurrency(row.ratePerKg)}
         </span>
       ),
@@ -150,7 +150,7 @@ export function LedgerPanel({
       header: 'Total Value',
       align: 'right',
       render: (row) => (
-        <span className="text-[#1A1714] font-semibold text-right block">
+        <span className="text-(--color-text) font-semibold text-right block">
           {formatCurrency(row.kg * row.ratePerKg)}
         </span>
       ),
@@ -161,17 +161,17 @@ export function LedgerPanel({
       render: (row) => (
         <div>
           {row.supplierName && (
-            <span className="text-sm font-medium text-[#1A1714]">
+            <span className="text-sm font-medium text-(--color-text)">
               {row.supplierName}
             </span>
           )}
           {row.orderNo && (
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#EA580C] bg-[#FFF7ED] px-2 py-0.5 rounded border border-[#EA580C]/20">
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-(--color-accent) bg-(--color-accent-light) px-2 py-0.5 rounded border border-(--color-accent)/20">
               Order: {row.orderNo}
             </span>
           )}
           {!row.supplierName && !row.orderNo && (
-            <span className="text-xs text-[#78716C]">—</span>
+            <span className="text-xs text-(--color-text-muted)">—</span>
           )}
         </div>
       ),
@@ -187,17 +187,17 @@ export function LedgerPanel({
   }
 
   return (
-    <Card className="p-0 overflow-hidden border border-[#E8E4DF] shadow-xs">
+    <Card className="p-0 overflow-hidden border border-(--color-border) shadow-xs">
       {/* Panel Header & Filters */}
-      <div className="p-5 border-b border-[#E8E4DF] bg-[#FAFAF8] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-5 border-b border-(--color-border) bg-(--color-bg) flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-semibold text-[#1A1714]">Yarn Movement Ledger</h3>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E8E4DF] text-[#78716C]">
+            <h3 className="text-base font-semibold text-(--color-text)">Yarn Movement Ledger</h3>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-(--color-border) text-(--color-text-muted)">
               {totalCount} events
             </span>
           </div>
-          <p className="text-xs text-[#78716C] mt-0.5">
+          <p className="text-xs text-(--color-text-muted) mt-0.5">
             Audit trail of all gate receipts from suppliers and yarn issued to production floor.
           </p>
         </div>
@@ -238,7 +238,7 @@ export function LedgerPanel({
 
       {/* Pagination Footer */}
       {totalPages > 1 && (
-        <div className="px-5 py-3 border-t border-[#E8E4DF] bg-[#FAFAF8] flex items-center justify-between text-xs text-[#78716C]">
+        <div className="px-5 py-3 border-t border-(--color-border) bg-(--color-bg) flex items-center justify-between text-xs text-(--color-text-muted)">
           <span>
             Showing {displayRows.length > 0 ? page * pageSize + 1 : 0} to{' '}
             {Math.min((page + 1) * pageSize, totalCount)} of {totalCount} records
@@ -253,7 +253,7 @@ export function LedgerPanel({
               <ChevronLeftIcon className="w-4 h-4 mr-1" />
               Previous
             </Button>
-            <span className="px-2 font-medium text-[#1A1714]">
+            <span className="px-2 font-medium text-(--color-text)">
               Page {page + 1} of {totalPages}
             </span>
             <Button

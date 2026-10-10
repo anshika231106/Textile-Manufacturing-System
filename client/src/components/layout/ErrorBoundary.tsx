@@ -28,19 +28,19 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-[#FAFAF8] p-6">
-          <div className="w-full max-w-lg bg-white border border-[#E8E4DF] rounded-2xl p-8 shadow-sm text-center flex flex-col items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-[#FEF2F2] flex items-center justify-center text-[#DC2626]">
+        <div className="min-h-screen flex items-center justify-center bg-(--color-bg) p-6">
+          <div className="w-full max-w-lg bg-white border border-(--color-border) rounded-2xl p-8 shadow-sm text-center flex flex-col items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-(--color-danger-light) flex items-center justify-center text-(--color-danger)">
               <ExclamationTriangleIcon className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[#1A1714]">Something went wrong</h2>
-              <p className="text-xs text-[#78716C] mt-1">
+              <h2 className="text-lg font-bold text-(--color-text)">Something went wrong</h2>
+              <p className="text-xs text-(--color-text-muted) mt-1">
                 An unexpected interface error occurred.
               </p>
             </div>
             {this.state.error && (
-              <div className="w-full p-3 rounded-xl bg-[#FAFAF8] border border-[#E8E4DF] text-left text-xs font-mono text-[#DC2626] overflow-x-auto">
+              <div className="w-full p-3 rounded-xl bg-(--color-bg) border border-(--color-border) text-left text-xs font-mono text-(--color-danger) overflow-x-auto">
                 {this.state.error.message || String(this.state.error)}
               </div>
             )}

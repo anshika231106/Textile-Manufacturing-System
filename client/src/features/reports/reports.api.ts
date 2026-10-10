@@ -1,13 +1,118 @@
 import { api } from '../../lib/api';
 
-export interface DashboardReportData {
-  ordersByStatus: { status: string; count: number }[];
-  machinesRunning: number;
-  machinesIdle: number;
-  machinesBreakdown: number;
-  lowStockYarnCount: number;
-  rollsAwaitingQc: number;
-  metresTodayProduced: number;
+export type Stage = 'SPINNING' | 'WEAVING' | 'DYEING';
+export type MachineStatus = 'IDLE' | 'RUNNING' | 'BREAKDOWN';
+export type OrderClientStatus = 'PENDING' | 'IN_PRODUCTION' | 'QC' | 'READY' | 'DISPATCHED' | 'COMPLETED';
+export type ActivityType = 'PRODUCTION' | 'QC' | 'DISPATCH' | 'RECEIPT' | 'PAYMENT';
+
+export interface ProductionDay {
+  date: string; // YYYY-MM-DD
+  SPINNING: number;
+  WEAVING: number;
+  DYEING: number;
+  total: number;
+}
+
+export interface DashboardUpcomingOrder {
+  id: string;
+  orderNo: string;
+  buyerName: string;
+  fabricType: string;
+  colour: string;
+  metres: number;
+  deadline: string;
+  daysLeft: number;
+  status: OrderClientStatus;
+  stageMetres: Record<Stage, number>;
+  dispatchedMetres: number;
+  progressPercent: number;
+}
+
+export interface DashboardLowStockYarn {
+  id: string;
+  code: string;
+  name: string;
+  colour: string;
+  onHandKg: number;
+  reservedKg: number;
+  reorderLevelKg: number;
+  availableKg: number;
+  shortfallKg: number;
+  isLow: boolean;
+}
+
+export interface DashboardActivity {
+  type: ActivityType;
+  at: string;
+  title: string;
+  detail: string;
+  tone: 'neutral' | 'success' | 'warning' | 'danger' | 'info';
+  href?: string;
+}
+
+export interface DashboardData {
+  generatedAt: string;
+  ordersByStatus: { status: OrderClientStatus; count: number }[];
+  production: {
+    today: number;
+    yesterday: number;
+    last7Days: number;
+    prev7Days: number;
+    byShiftToday: Record<'MORNING' | 'EVENING' | 'NIGHT', number>;
+    trend: ProductionDay[];
+  };
+  machines: {
+    total: number;
+    running: number;
+    idle: number;
+    breakdown: number;
+    utilizationRate: number;
+    byStage: {
+      stage: Stage;
+      total: number;
+      running: number;
+      idle: number;
+      breakdown: number;
+      metresToday: number;
+      machines: { id: string; code: string; name: string; status: MachineStatus }[];
+    }[];
+    breakdowns: {
+      id: string;
+      code: string;
+      name: string;
+      stage: Stage;
+      note: string | null;
+      since: string | null;
+      assignedTo: string | null;
+    }[];
+  };
+  orders: {
+    total: number;
+    active: number;
+    activeMetres: number;
+    overdue: number;
+    dueThisWeek: number;
+    upcoming: DashboardUpcomingOrder[];
+  };
+  quality: {
+    awaitingRolls: number;
+    awaitingMetres: number;
+    last7Days: { inspected: number; pass: number; rework: number; reject: number; passRate: number | null };
+    defects: { type: string; count: number }[];
+  };
+  stock: { yarnTypes: number; totalOnHandKg: number; lowStock: DashboardLowStockYarn[] };
+  finishedGoods: { readyRolls: number; readyMetres: number };
+  workforce: { totalStaff: number; markedToday: number; presentToday: number; absentToday: number };
+  /** null for SUPERVISOR - finance is OWNER / OFFICE only */
+  finance: {
+    invoicedThisMonth: number;
+    collectedThisMonth: number;
+    purchasesThisMonth: number;
+    outstanding: number;
+    unpaidInvoices: number;
+    topReceivables: { buyerName: string; amount: number }[];
+  } | null;
+  activity: DashboardActivity[];
 }
 
 export interface OrderCostItem {
@@ -43,22 +148,6 @@ export interface MonthEndReport {
   costPerOrder: OrderCostItem[];
   metresPerMachine: MachineMetresItem[];
 }
-
-const MOCK_DASHBOARD_DATA: DashboardReportData = {
-  ordersByStatus: [
-    { status: 'PENDING', count: 3 },
-    { status: 'IN_PRODUCTION', count: 5 },
-    { status: 'QC', count: 2 },
-    { status: 'READY', count: 4 },
-    { status: 'DISPATCHED', count: 8 },
-  ],
-  machinesRunning: 5,
-  machinesIdle: 2,
-  machinesBreakdown: 1,
-  lowStockYarnCount: 1,
-  rollsAwaitingQc: 2,
-  metresTodayProduced: 3850,
-};
 
 const MOCK_MONTH_END: MonthEndReport = {
   month: '2026-10',
@@ -146,18 +235,11 @@ const MOCK_MONTH_END: MonthEndReport = {
 };
 
 /**
- * GET /api/v1/reports/dashboard
+ * GET /api/v1/reports/dashboard (OWNER / OFFICE / SUPERVISOR).
+ * No mock fallback: the dashboard must show real failures rather than stale sample numbers.
  */
-export async function getDashboard(): Promise<DashboardReportData> {
-  try {
-    const res = await api<DashboardReportData>('/reports/dashboard');
-    if (res && Array.isArray(res.ordersByStatus)) {
-      return res;
-    }
-  } catch {
-    // fallback
-  }
-  return MOCK_DASHBOARD_DATA;
+export function getDashboard(): Promise<DashboardData> {
+  return api<DashboardData>('/reports/dashboard');
 }
 
 /**

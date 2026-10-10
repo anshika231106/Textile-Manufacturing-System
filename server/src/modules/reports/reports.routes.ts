@@ -5,97 +5,21 @@ import { ok } from '../../lib/respond';
 import { authenticate, authorize } from '../../middleware/authenticate';
 import { validate } from '../../middleware/validate';
 import { round2, toDecimal } from '../../lib/numbers';
-import { computeYarnStock } from '../../domain/stock';
-import { deriveOrderStatus } from '../../domain/orderStatus';
+import { buildDashboard } from './dashboard.service';
 
 export const reportsRoutes = Router();
 
 const DEFAULT_DAILY_WAGE = 550;
 
-// GET /reports/dashboard - live operational snapshot for the home screen
+// GET /reports/dashboard - live operational snapshot for the home screen.
+// Mounted under /reports in routes.ts, so paths here are relative to that prefix.
 reportsRoutes.get(
-  '/reports/dashboard',
+  '/dashboard',
   authenticate,
   authorize('OWNER', 'OFFICE', 'SUPERVISOR'),
-  async (_req, res, next) => {
+  async (req, res, next) => {
     try {
-      const today = new Date();
-      today.setUTCHours(0, 0, 0, 0);
-
-      const [orders, machines, rollsAwaitingQc, metresTodayAgg, yarnTypes, allMovements, unstartedOrders] =
-        await Promise.all([
-          prisma.order.findMany({
-            select: {
-              startedAt: true,
-              stageJobs: { select: { id: true } },
-              rolls: { select: { status: true } },
-            },
-          }),
-          prisma.machine.findMany({ select: { status: true } }),
-          prisma.roll.count({ where: { status: { in: ['PENDING_QC', 'REWORK'] } } }),
-          prisma.productionLog.aggregate({
-            where: { loggedAt: { gte: today } },
-            _sum: { metres: true },
-          }),
-          prisma.yarnType.findMany({ select: { id: true, reorderLevelKg: true } }),
-          prisma.stockMovement.findMany({ select: { yarnTypeId: true, type: true, kg: true } }),
-          prisma.order.findMany({
-            where: { stageJobs: { none: {} } },
-            select: { metres: true, requirements: { select: { yarnTypeId: true, kgPerMetre: true } } },
-          }),
-        ]);
-
-      const statusCounts = new Map<string, number>();
-      for (const order of orders) {
-        let pendingQc = 0, rework = 0, passed = 0, rejected = 0, dispatched = 0;
-        for (const r of order.rolls) {
-          if (r.status === 'PENDING_QC') pendingQc++;
-          else if (r.status === 'REWORK') rework++;
-          else if (r.status === 'PASSED') passed++;
-          else if (r.status === 'REJECTED') rejected++;
-          else if (r.status === 'DISPATCHED') dispatched++;
-        }
-        const derived = deriveOrderStatus({
-          startedAt: order.startedAt,
-          hasJobs: order.stageJobs.length > 0,
-          rolls: { total: order.rolls.length, pendingQc, rework, passed, rejected, dispatched },
-        });
-        statusCounts.set(derived.clientStatus, (statusCounts.get(derived.clientStatus) || 0) + 1);
-      }
-
-      const onHandMap = new Map<string, number>();
-      for (const m of allMovements) {
-        const qty = toDecimal(m.kg);
-        const current = onHandMap.get(m.yarnTypeId) || 0;
-        onHandMap.set(m.yarnTypeId, m.type === 'RECEIPT' ? current + qty : current - qty);
-      }
-      const reservedMap = new Map<string, number>();
-      for (const order of unstartedOrders) {
-        const orderMetres = toDecimal(order.metres);
-        for (const req of order.requirements) {
-          const requiredKg = toDecimal(req.kgPerMetre) * orderMetres;
-          reservedMap.set(req.yarnTypeId, (reservedMap.get(req.yarnTypeId) || 0) + requiredKg);
-        }
-      }
-      let lowStockYarnCount = 0;
-      for (const yt of yarnTypes) {
-        const computed = computeYarnStock({
-          onHandKg: onHandMap.get(yt.id) || 0,
-          reservedKg: reservedMap.get(yt.id) || 0,
-          reorderLevelKg: Number(yt.reorderLevelKg),
-        });
-        if (computed.isLow) lowStockYarnCount++;
-      }
-
-      return ok(res, {
-        ordersByStatus: Array.from(statusCounts.entries()).map(([status, count]) => ({ status, count })),
-        machinesRunning: machines.filter((m) => m.status === 'RUNNING').length,
-        machinesIdle: machines.filter((m) => m.status === 'IDLE').length,
-        machinesBreakdown: machines.filter((m) => m.status === 'BREAKDOWN').length,
-        lowStockYarnCount,
-        rollsAwaitingQc,
-        metresTodayProduced: round2(toDecimal(metresTodayAgg._sum.metres)),
-      });
+      return ok(res, await buildDashboard(req.authUser!.role));
     } catch (err) {
       next(err);
     }
@@ -106,7 +30,7 @@ const monthQuery = z.object({ month: z.string().regex(/^\d{4}-\d{2}$/, 'month mu
 
 // GET /reports/month-end?month=YYYY-MM - purchases, wages, invoiced, received, profit, cost per order (API-44)
 reportsRoutes.get(
-  '/reports/month-end',
+  '/month-end',
   authenticate,
   authorize('OWNER', 'OFFICE'),
   validate({ query: monthQuery }),

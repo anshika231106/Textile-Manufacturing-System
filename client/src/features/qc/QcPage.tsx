@@ -5,6 +5,10 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Dialog } from '../../components/ui/Dialog';
 import { Spinner } from '../../components/ui/Spinner';
+import { Callout } from '../../components/ui/Callout';
+import { StatCard, StatGrid } from '../../components/ui/StatCard';
+import { SegmentedControl } from '../../components/ui/SegmentedControl';
+import { Table, type Column } from '../../components/ui/Table';
 import {
   getQcQueue,
   recordResult,
@@ -24,6 +28,9 @@ import {
   WrenchIcon,
   ShieldCheckIcon,
   MagnifyingGlassIcon,
+  Square3Stack3DIcon,
+  ClockIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 
 const DEFECT_OPTIONS: { value: DefectType; label: string; description: string }[] = [
@@ -31,6 +38,18 @@ const DEFECT_OPTIONS: { value: DefectType; label: string; description: string }[
   { value: 'COLOUR_MISMATCH', label: 'Colour Mismatch', description: 'Uneven shade, patchiness, or off-spec lab dip' },
   { value: 'UNEVEN_WEAVE', label: 'Uneven Weave / Selvedge', description: 'Tension variation, reed marks, or slack selvedge' },
   { value: 'OTHER', label: 'Other Visual Defect', description: 'Oil stain, slub irregularity, or foreign yarn debris' },
+];
+
+const VERDICT_OPTIONS: {
+  value: QcResult;
+  label: string;
+  icon: React.ElementType;
+  tone: 'success' | 'warning' | 'danger';
+  description: string;
+}[] = [
+  { value: 'PASS', label: 'PASS', icon: CheckCircleIcon, tone: 'success', description: 'Ready for Dispatch' },
+  { value: 'REWORK', label: 'REWORK', icon: WrenchIcon, tone: 'warning', description: 'Mending / Correction' },
+  { value: 'REJECT', label: 'REJECT', icon: XCircleIcon, tone: 'danger', description: 'Scrap / Downgrade' },
 ];
 
 export function QcPage() {
@@ -126,20 +145,146 @@ export function QcPage() {
     });
   }, [rolls, selectedStatusTab, searchQuery]);
 
+  const statusTabOptions: { value: 'ALL' | RollStatus; label: string; count: number }[] = [
+    { value: 'ALL', label: 'All Rolls', count: stats.totalRolls },
+    { value: 'PENDING_QC', label: 'Pending QC', count: stats.pendingQc },
+    { value: 'PASSED', label: 'Passed', count: stats.passed },
+    { value: 'REWORK', label: 'Rework', count: stats.rework },
+    { value: 'REJECTED', label: 'Rejected', count: stats.rejected },
+  ];
+
+  const rollColumns: Column<QcRollItem>[] = [
+    {
+      key: 'roll',
+      header: 'Roll Identifier',
+      render: (roll) => (
+        <div>
+          <div className="font-mono font-bold text-sm text-(--color-text)">{roll.rollNo}</div>
+          <div className="text-[11px] text-(--color-text-subtle)">
+            Created: {new Date(roll.createdAt).toLocaleDateString()}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'order',
+      header: 'Linked Order',
+      render: (roll) => (
+        <div>
+          <div className="font-mono font-semibold text-(--color-text)">{roll.orderNumber}</div>
+          <div className="text-[11px] font-medium text-(--color-text-dark)">{roll.buyerName}</div>
+          <div className="text-[11px] text-(--color-text-muted)">{roll.fabricType} ({roll.colour})</div>
+        </div>
+      ),
+    },
+    {
+      key: 'length',
+      header: 'Length',
+      align: 'right',
+      render: (roll) => (
+        <span className="font-mono font-bold text-sm text-(--color-text) whitespace-nowrap">
+          {roll.metres} <span className="text-xs font-sans font-normal text-(--color-text-muted)">m</span>
+        </span>
+      ),
+    },
+    {
+      key: 'machines',
+      header: 'Machine Sources',
+      render: (roll) => (
+        <div className="text-[11px]">
+          <div className="text-(--color-text-dark)">
+            <span className="text-(--color-text-muted)">Loom:</span> {roll.weavingMachineName}
+          </div>
+          <div className="text-(--color-text-dark) mt-0.5">
+            <span className="text-(--color-text-muted)">Dyeing:</span> {roll.dyeingMachineName}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'QC Status',
+      render: (roll) => (
+        <>
+          {roll.status === 'PENDING_QC' && <Badge variant="warning" label="PENDING QC" dot />}
+          {roll.status === 'PASSED' && <Badge variant="success" label="PASSED" dot />}
+          {roll.status === 'REWORK' && <Badge variant="warning" label="REWORK" dot />}
+          {roll.status === 'REJECTED' && <Badge variant="danger" label="REJECTED" dot />}
+          {roll.status === 'DISPATCHED' && <Badge variant="info" label="DISPATCHED" />}
+        </>
+      ),
+    },
+    {
+      key: 'result',
+      header: 'Last Result / Defects',
+      render: (roll) =>
+        roll.defectType ? (
+          <div className="space-y-0.5">
+            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+              {roll.defectType.replace('_', ' ')}
+            </span>
+            {roll.notes && (
+              <p className="text-[11px] text-(--color-text-muted) line-clamp-1 italic max-w-xs">"{roll.notes}"</p>
+            )}
+          </div>
+        ) : roll.lastResult === 'PASS' ? (
+          <div className="text-emerald-700 font-medium text-xs flex items-center gap-1">
+            <CheckCircleIcon className="w-3.5 h-3.5" />
+            Grade A Quality
+          </div>
+        ) : (
+          <span className="text-(--color-text-subtle) italic text-[11px]">Not inspected yet</span>
+        ),
+    },
+    {
+      key: 'inspector',
+      header: 'Inspector',
+      render: (roll) =>
+        roll.inspectorName ? (
+          <div className="text-[11px]">
+            <div className="text-(--color-text) font-medium">{roll.inspectorName}</div>
+            {roll.inspectedAt && (
+              <div className="text-[10px] text-(--color-text-subtle)">
+                {new Date(roll.inspectedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            )}
+          </div>
+        ) : (
+          <span className="text-(--color-text-subtle) text-[11px]">—</span>
+        ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (roll) => (
+        <Button
+          size="sm"
+          variant={roll.status === 'PENDING_QC' || roll.status === 'REWORK' ? 'primary' : 'secondary'}
+          onClick={() => openInspection(roll)}
+          className="text-xs shadow-2xs"
+        >
+          <ShieldCheckIcon className="w-3.5 h-3.5" />
+          {roll.status === 'PENDING_QC' ? 'Inspect' : 'Re-inspect'}
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#E8E4DF]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-(--color-border)">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold text-[#1A1714] tracking-tight">
+            <h1 className="text-2xl font-bold text-(--color-text) tracking-tight">
               Quality Control & Roll Inspection
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
               QC Station
             </span>
           </div>
-          <p className="text-sm text-[#78716C] mt-1">
+          <p className="text-sm text-(--color-text-muted) mt-1">
             Inspect woven and dyed fabric rolls, record defect categories, and approve rolls for dispatch.
           </p>
         </div>
@@ -151,7 +296,7 @@ export function QcPage() {
             onClick={() => loadQueue()}
             className="text-xs"
           >
-            <ArrowPathIcon className="w-4 h-4 text-[#78716C]" />
+            <ArrowPathIcon className="w-4 h-4 text-(--color-text-muted)" />
             Refresh
           </Button>
 
@@ -168,102 +313,52 @@ export function QcPage() {
       </div>
 
       {/* QC Stats Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3.5">
-        <div className="bg-white rounded-xl border border-[#E8E4DF] p-3.5 shadow-2xs">
-          <div className="text-xs font-medium text-[#78716C] uppercase tracking-wider">Total Rolls</div>
-          <div className="text-2xl font-bold text-[#1A1714] mt-1 font-mono">{stats.totalRolls}</div>
-          <div className="text-[11px] text-[#A8A29E] mt-0.5">Woven batches</div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-amber-200 p-3.5 shadow-2xs bg-amber-50/30">
-          <div className="text-xs font-medium text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
-            <span>Pending QC</span>
-            {stats.pendingQc > 0 && (
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-            )}
-          </div>
-          <div className="text-2xl font-bold text-amber-900 mt-1 font-mono">{stats.pendingQc}</div>
-          <div className="text-[11px] text-amber-700 mt-0.5">Awaiting inspection</div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-emerald-200 p-3.5 shadow-2xs bg-emerald-50/30">
-          <div className="text-xs font-medium text-emerald-800 uppercase tracking-wider">Passed</div>
-          <div className="text-2xl font-bold text-emerald-900 mt-1 font-mono">{stats.passed}</div>
-          <div className="text-[11px] text-emerald-700 mt-0.5">Ready for dispatch</div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-amber-200 p-3.5 shadow-2xs bg-amber-50/20">
-          <div className="text-xs font-medium text-amber-700 uppercase tracking-wider">In Rework</div>
-          <div className="text-2xl font-bold text-amber-800 mt-1 font-mono">{stats.rework}</div>
-          <div className="text-[11px] text-amber-600 mt-0.5">Mending required</div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-rose-200 p-3.5 shadow-2xs bg-rose-50/30">
-          <div className="text-xs font-medium text-rose-800 uppercase tracking-wider">Rejected</div>
-          <div className="text-2xl font-bold text-rose-900 mt-1 font-mono">{stats.rejected}</div>
-          <div className="text-[11px] text-rose-700 mt-0.5">Scrap / downgraded</div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-blue-200 p-3.5 shadow-2xs bg-blue-50/30">
-          <div className="text-xs font-medium text-blue-800 uppercase tracking-wider">Pass Rate</div>
-          <div className="text-2xl font-bold text-blue-900 mt-1 font-mono">{stats.passRate}%</div>
-          <div className="text-[11px] text-blue-700 mt-0.5">Inspection yield</div>
-        </div>
-      </div>
+      <StatGrid columns={6}>
+        <StatCard icon={Square3Stack3DIcon} label="Total Rolls" value={stats.totalRolls} sub="Woven batches" tone="neutral" />
+        <StatCard
+          icon={ClockIcon}
+          label="Pending QC"
+          value={stats.pendingQc}
+          sub="Awaiting inspection"
+          tone="warning"
+          live={stats.pendingQc > 0}
+        />
+        <StatCard icon={CheckCircleIcon} label="Passed" value={stats.passed} sub="Ready for dispatch" tone="success" />
+        <StatCard icon={WrenchIcon} label="In Rework" value={stats.rework} sub="Mending required" tone="warning" />
+        <StatCard icon={XCircleIcon} label="Rejected" value={stats.rejected} sub="Scrap / downgraded" tone="danger" />
+        <StatCard icon={ChartBarIcon} label="Pass Rate" value={`${stats.passRate}%`} sub="Inspection yield" tone="info" />
+      </StatGrid>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white rounded-xl border border-[#E8E4DF] p-3.5 flex flex-col md:flex-row items-center justify-between gap-3 shadow-2xs">
+      <div className="bg-white rounded-xl border border-(--color-border) p-3.5 flex flex-col md:flex-row items-center justify-between gap-3 shadow-2xs">
         {/* Status Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
-          {[
-            { key: 'ALL', label: 'All Rolls', count: stats.totalRolls },
-            { key: 'PENDING_QC', label: 'Pending QC', count: stats.pendingQc },
-            { key: 'PASSED', label: 'Passed', count: stats.passed },
-            { key: 'REWORK', label: 'Rework', count: stats.rework },
-            { key: 'REJECTED', label: 'Rejected', count: stats.rejected },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setSelectedStatusTab(tab.key as any)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                selectedStatusTab === tab.key
-                  ? 'bg-[#1A1714] text-white shadow-2xs'
-                  : 'bg-[#F5F4F2] text-[#78716C] hover:bg-[#E8E4DF] hover:text-[#1A1714]'
-              }`}
-            >
-              <span>{tab.label}</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                selectedStatusTab === tab.key ? 'bg-white/20 text-white' : 'bg-black/5 text-[#78716C]'
-              }`}>
-                {tab.count}
-              </span>
-            </button>
-          ))}
+        <div className="w-full md:w-auto overflow-x-auto">
+          <SegmentedControl value={selectedStatusTab} onChange={setSelectedStatusTab} options={statusTabOptions} size="sm" />
         </div>
 
         {/* Search */}
         <div className="relative w-full md:w-64">
-          <MagnifyingGlassIcon className="w-4 h-4 text-[#A8A29E] absolute left-3 top-2.5" />
+          <MagnifyingGlassIcon className="w-4 h-4 text-(--color-text-subtle) absolute left-3 top-2.5" />
           <input
             type="text"
             placeholder="Search roll, order, buyer..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full text-xs rounded-lg border border-[#E8E4DF] bg-white py-2 pl-9 pr-3 text-[#1A1714] placeholder-[#A8A29E] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
+            className="w-full text-xs rounded-lg border border-(--color-border) bg-white py-2 pl-9 pr-3 text-(--color-text) placeholder-(--color-text-subtle) focus:outline-none focus:ring-1 focus:ring-(--color-accent)"
           />
         </div>
       </div>
 
       {/* Main QC Rolls Queue Table */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-[#78716C]">
+        <div className="flex flex-col items-center justify-center py-20 text-(--color-text-muted)">
           <Spinner />
           <p className="text-sm mt-3 font-medium">Loading roll inspection queue...</p>
         </div>
       ) : filteredRolls.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-dashed border-[#E8E4DF] p-12 text-center text-sm text-[#78716C] space-y-3">
-          <p className="font-semibold text-[#44403C]">No rolls match current filter criteria.</p>
-          <p className="text-xs text-[#A8A29E]">
+        <div className="bg-white rounded-2xl border border-dashed border-(--color-border) p-12 text-center text-sm text-(--color-text-muted) space-y-3">
+          <p className="font-semibold text-(--color-text-dark)">No rolls match current filter criteria.</p>
+          <p className="text-xs text-(--color-text-subtle)">
             Create a new roll using the button above or change your filter selection.
           </p>
           <Button
@@ -276,138 +371,7 @@ export function QcPage() {
           </Button>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-[#E8E4DF] shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-[#E8E4DF] bg-[#FBFBFA] text-[#78716C] font-semibold">
-                  <th className="py-3 px-4">Roll Identifier</th>
-                  <th className="py-3 px-4">Linked Order</th>
-                  <th className="py-3 px-4 text-right">Length</th>
-                  <th className="py-3 px-4">Machine Sources</th>
-                  <th className="py-3 px-4">QC Status</th>
-                  <th className="py-3 px-4">Last Result / Defects</th>
-                  <th className="py-3 px-4">Inspector</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F5F4F2]">
-                {filteredRolls.map((roll) => {
-                  const isPending = roll.status === 'PENDING_QC';
-                  const isPassed = roll.status === 'PASSED';
-                  const isRework = roll.status === 'REWORK';
-                  const isRejected = roll.status === 'REJECTED';
-
-                  return (
-                    <tr
-                      key={roll.id}
-                      className="hover:bg-[#FBFBFA] transition-colors"
-                    >
-                      {/* Roll Code */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="font-mono font-bold text-sm text-[#1A1714]">
-                          {roll.rollNo}
-                        </div>
-                        <div className="text-[11px] text-[#A8A29E]">
-                          Created: {new Date(roll.createdAt).toLocaleDateString()}
-                        </div>
-                      </td>
-
-                      {/* Linked Order */}
-                      <td className="py-3.5 px-4">
-                        <div className="font-mono font-semibold text-[#1A1714]">
-                          {roll.orderNumber}
-                        </div>
-                        <div className="text-[11px] font-medium text-[#44403C]">
-                          {roll.buyerName}
-                        </div>
-                        <div className="text-[11px] text-[#78716C]">
-                          {roll.fabricType} ({roll.colour})
-                        </div>
-                      </td>
-
-                      {/* Length in metres */}
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-sm text-[#1A1714] whitespace-nowrap">
-                        {roll.metres} <span className="text-xs font-sans font-normal text-[#78716C]">m</span>
-                      </td>
-
-                      {/* Machines */}
-                      <td className="py-3.5 px-4 text-[11px]">
-                        <div className="text-[#44403C]">
-                          <span className="text-[#78716C]">Loom:</span> {roll.weavingMachineName}
-                        </div>
-                        <div className="text-[#44403C] mt-0.5">
-                          <span className="text-[#78716C]">Dyeing:</span> {roll.dyeingMachineName}
-                        </div>
-                      </td>
-
-                      {/* QC Status Badge */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        {isPending && <Badge variant="warning" label="PENDING QC" dot />}
-                        {isPassed && <Badge variant="success" label="PASSED" dot />}
-                        {isRework && <Badge variant="warning" label="REWORK" dot />}
-                        {isRejected && <Badge variant="danger" label="REJECTED" dot />}
-                        {roll.status === 'DISPATCHED' && <Badge variant="info" label="DISPATCHED" />}
-                      </td>
-
-                      {/* Last Result & Defects */}
-                      <td className="py-3.5 px-4">
-                        {roll.defectType ? (
-                          <div className="space-y-0.5">
-                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                              {roll.defectType.replace('_', ' ')}
-                            </span>
-                            {roll.notes && (
-                              <p className="text-[11px] text-[#78716C] line-clamp-1 italic max-w-xs">
-                                "{roll.notes}"
-                              </p>
-                            )}
-                          </div>
-                        ) : roll.lastResult === 'PASS' ? (
-                          <div className="text-emerald-700 font-medium text-xs flex items-center gap-1">
-                            <CheckCircleIcon className="w-3.5 h-3.5" />
-                            Grade A Quality
-                          </div>
-                        ) : (
-                          <span className="text-[#A8A29E] italic text-[11px]">Not inspected yet</span>
-                        )}
-                      </td>
-
-                      {/* Inspector */}
-                      <td className="py-3.5 px-4 text-[11px] text-[#78716C] whitespace-nowrap">
-                        {roll.inspectorName ? (
-                          <div>
-                            <div className="text-[#1A1714] font-medium">{roll.inspectorName}</div>
-                            {roll.inspectedAt && (
-                              <div className="text-[10px] text-[#A8A29E]">
-                                {new Date(roll.inspectedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-[#A8A29E]">—</span>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <Button
-                          size="sm"
-                          variant={isPending || isRework ? 'primary' : 'secondary'}
-                          onClick={() => openInspection(roll)}
-                          className="text-xs shadow-2xs"
-                        >
-                          <ShieldCheckIcon className="w-3.5 h-3.5" />
-                          {isPending ? 'Inspect' : 'Re-inspect'}
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <Table columns={rollColumns} rows={filteredRolls} rowKey={(r) => r.id} />
       )}
 
       {/* Create Fabric Roll Dialog */}
@@ -434,86 +398,43 @@ export function QcPage() {
         <div className="space-y-4">
           {/* Roll Context Banner */}
           {inspectingRoll && (
-            <div className="p-3 bg-[#F5F4F2] rounded-xl border border-[#E8E4DF] text-xs space-y-1.5 text-[#44403C]">
+            <div className="p-3 bg-(--color-surface-sunken) rounded-xl border border-(--color-border) text-xs space-y-1.5 text-(--color-text-dark)">
               <div className="flex justify-between font-semibold">
-                <span className="font-mono text-[#1A1714]">{inspectingRoll.rollNo}</span>
+                <span className="font-mono text-(--color-text)">{inspectingRoll.rollNo}</span>
                 <span className="font-mono text-emerald-800">{inspectingRoll.metres} metres</span>
               </div>
               <div className="flex justify-between">
                 <span>Order:</span>
-                <span className="font-mono font-medium text-[#1A1714]">{inspectingRoll.orderNumber} ({inspectingRoll.buyerName})</span>
+                <span className="font-mono font-medium text-(--color-text)">{inspectingRoll.orderNumber} ({inspectingRoll.buyerName})</span>
               </div>
-              <div className="flex justify-between text-[#78716C]">
+              <div className="flex justify-between text-(--color-text-muted)">
                 <span>Fabric Spec:</span>
                 <span>{inspectingRoll.fabricType} • {inspectingRoll.colour}</span>
               </div>
             </div>
           )}
 
-          {/* Verdict Radio Selector */}
+          {/* Verdict Selector */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
-              QC Inspection Verdict <span className="text-rose-500">*</span>
+            <label className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted)">
+              QC Inspection Verdict <span className="text-(--color-danger)">*</span>
             </label>
-            <div className="grid grid-cols-3 gap-2.5">
-              {/* Pass */}
-              <button
-                type="button"
-                onClick={() => {
-                  setQcResult('PASS');
-                  setDefectType('');
-                }}
-                className={`p-3 rounded-xl border text-center transition-all ${
-                  qcResult === 'PASS'
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                    : 'bg-white text-[#44403C] border-[#E8E4DF] hover:border-emerald-300'
-                }`}
-              >
-                <CheckCircleIcon className="w-5 h-5 mx-auto mb-1" />
-                <div className="text-xs font-bold">PASS</div>
-                <div className="text-[10px] opacity-80 mt-0.5">Ready for Dispatch</div>
-              </button>
-
-              {/* Rework */}
-              <button
-                type="button"
-                onClick={() => setQcResult('REWORK')}
-                className={`p-3 rounded-xl border text-center transition-all ${
-                  qcResult === 'REWORK'
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                    : 'bg-white text-[#44403C] border-[#E8E4DF] hover:border-amber-300'
-                }`}
-              >
-                <WrenchIcon className="w-5 h-5 mx-auto mb-1" />
-                <div className="text-xs font-bold">REWORK</div>
-                <div className="text-[10px] opacity-80 mt-0.5">Mending / Correction</div>
-              </button>
-
-              {/* Reject */}
-              <button
-                type="button"
-                onClick={() => setQcResult('REJECT')}
-                className={`p-3 rounded-xl border text-center transition-all ${
-                  qcResult === 'REJECT'
-                    ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                    : 'bg-white text-[#44403C] border-[#E8E4DF] hover:border-rose-300'
-                }`}
-              >
-                <XCircleIcon className="w-5 h-5 mx-auto mb-1" />
-                <div className="text-xs font-bold">REJECT</div>
-                <div className="text-[10px] opacity-80 mt-0.5">Scrap / Downgrade</div>
-              </button>
-            </div>
+            <SegmentedControl
+              value={qcResult}
+              onChange={(v) => {
+                setQcResult(v);
+                if (v === 'PASS') setDefectType('');
+              }}
+              options={VERDICT_OPTIONS}
+              fullWidth
+              size="md"
+            />
           </div>
 
           {/* Defect Type selector (Visible & Required unless PASS) */}
           {qcResult !== 'PASS' && (
-            <div className="space-y-2 p-3 bg-rose-50/50 rounded-xl border border-rose-200">
-              <label className="text-xs font-bold uppercase tracking-wider text-rose-800 flex items-center justify-between">
-                <span>Primary Defect Observed <span className="text-rose-600">*</span></span>
-                <span className="text-[10px] font-normal lowercase">(Required for non-pass verdicts)</span>
-              </label>
-
+            <Callout tone="danger" title="Primary Defect Observed *">
+              <p className="mb-2 text-[11px]">(Required for non-pass verdicts)</p>
               <div className="space-y-1.5">
                 {DEFECT_OPTIONS.map((opt) => (
                   <label
@@ -521,7 +442,7 @@ export function QcPage() {
                     className={`flex items-start gap-2.5 p-2 rounded-lg border cursor-pointer transition-colors ${
                       defectType === opt.value
                         ? 'bg-rose-100/70 border-rose-400 text-rose-950 font-medium'
-                        : 'bg-white border-[#E8E4DF] text-[#44403C] hover:bg-[#FBFBFA]'
+                        : 'bg-white border-(--color-border) text-(--color-text-dark) hover:bg-(--color-surface-alt)'
                     }`}
                   >
                     <input
@@ -534,17 +455,17 @@ export function QcPage() {
                     />
                     <div className="text-xs">
                       <div className="font-semibold">{opt.label}</div>
-                      <div className="text-[11px] text-[#78716C]">{opt.description}</div>
+                      <div className="text-[11px] text-(--color-text-muted)">{opt.description}</div>
                     </div>
                   </label>
                 ))}
               </div>
-            </div>
+            </Callout>
           )}
 
           {/* Observations and notes */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
+            <label className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted)">
               Inspection Notes / Lab Observations
             </label>
             <textarea
@@ -552,17 +473,17 @@ export function QcPage() {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g. Minor warp slub observed between 35m - 40m; selvedge tightness within acceptable tolerance..."
-              className="w-full rounded-lg border border-[#E8E4DF] bg-white py-2 px-3 text-xs text-[#1A1714] focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
+              className="w-full rounded-lg border border-(--color-border) bg-white py-2 px-3 text-xs text-(--color-text) focus:outline-none focus:ring-2 focus:ring-(--color-accent)"
             />
           </div>
 
           {/* Inspector footer info */}
-          <div className="flex items-center justify-between text-xs text-[#78716C] pt-2">
-            <span>Inspector: <strong className="text-[#1A1714]">{user?.name || 'Suresh Patil'}</strong></span>
-            <span>Role: <strong className="text-[#1A1714]">{user?.role || 'SUPERVISOR'}</strong></span>
+          <div className="flex items-center justify-between text-xs text-(--color-text-muted) pt-2">
+            <span>Inspector: <strong className="text-(--color-text)">{user?.name || 'Suresh Patil'}</strong></span>
+            <span>Role: <strong className="text-(--color-text)">{user?.role || 'SUPERVISOR'}</strong></span>
           </div>
 
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-[#E8E4DF]">
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-(--color-border)">
             <Button
               variant="secondary"
               onClick={() => setInspectingRoll(null)}
