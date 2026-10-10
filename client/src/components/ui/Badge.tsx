@@ -7,26 +7,26 @@ interface BadgeProps {
 }
 
 const styles: Record<Variant, string> = {
-  success: 'bg-[#F0FDF4] text-[#16A34A] border-[#86EFAC]',
-  warning: 'bg-[#FFFBEB] text-[#D97706] border-[#FCD34D]',
-  danger:  'bg-[#FEF2F2] text-[#DC2626] border-[#FCA5A5]',
-  info:    'bg-[#EFF6FF] text-[#2563EB] border-[#BFDBFE]',
-  neutral: 'bg-[#F5F4F2] text-[#78716C] border-[#E8E4DF]',
+  success: 'bg-(--color-success-light) text-(--color-success) border-(--color-success-border)',
+  warning: 'bg-(--color-warning-light) text-(--color-warning) border-(--color-warning-border)',
+  danger:  'bg-(--color-danger-light) text-(--color-danger) border-(--color-danger-border)',
+  info:    'bg-(--color-info-light) text-(--color-info) border-(--color-info-border)',
+  neutral: 'bg-(--color-surface-sunken) text-(--color-text-muted) border-(--color-border)',
 };
 
 const dotColors: Record<Variant, string> = {
-  success: 'bg-[#16A34A]',
-  warning: 'bg-[#D97706]',
-  danger:  'bg-[#DC2626]',
-  info:    'bg-[#2563EB]',
-  neutral: 'bg-[#78716C]',
+  success: 'bg-(--color-success)',
+  warning: 'bg-(--color-warning)',
+  danger:  'bg-(--color-danger)',
+  info:    'bg-(--color-info)',
+  neutral: 'bg-(--color-text-muted)',
 };
 
 export function Badge({ variant = 'neutral', label, dot = false }: BadgeProps) {
   return (
     <span
       className={[
-        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-medium whitespace-nowrap',
+        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-medium whitespace-nowrap transition-colors duration-150',
         styles[variant],
       ].join(' ')}
     >

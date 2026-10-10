@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import {
+  ShieldCheckIcon,
+  ClipboardDocumentListIcon,
+  WrenchScrewdriverIcon,
+  UserGroupIcon,
+} from '@heroicons/react/24/outline';
 import { useAuth } from '../../lib/auth';
 import { ApiError } from '../../lib/api';
 import { Input } from '../../components/ui/Input';
@@ -12,6 +19,13 @@ const ROLE_HOME: Record<string, string> = {
   SUPERVISOR:  '/floor',
   STAFF:       '/floor',
 };
+
+const DEMO_ACCOUNTS = [
+  { label: 'Admin / Owner', email: 'owner@everest.com', icon: ShieldCheckIcon },
+  { label: 'Office Staff', email: 'office@everest.com', icon: ClipboardDocumentListIcon },
+  { label: 'Supervisor', email: 'supervisor@everest.com', icon: WrenchScrewdriverIcon },
+  { label: 'Staff', email: 'staff1@everest.com', icon: UserGroupIcon },
+];
 
 export function LoginPage() {
   const { login, user } = useAuth();
@@ -28,6 +42,12 @@ export function LoginPage() {
       navigate(ROLE_HOME[user.role] ?? '/', { replace: true });
     }
   }, [user, navigate]);
+
+  function fillDemoAccount(demoEmail: string) {
+    setEmail(demoEmail);
+    setPassword('password');
+    setError('');
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -53,31 +73,38 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FAFAF8] px-4 py-12">
-      <div className="w-full max-w-[460px]">
+    <div className="relative min-h-screen flex items-center justify-center bg-(--color-bg) px-4 py-12 overflow-hidden textile-dots">
+      {/* Soft brand glow, echoing the Landing hero without competing with the form */}
+      <div
+        className="absolute -top-32 left-1/2 -translate-x-1/2 w-[640px] h-[320px] rounded-full bg-(--color-accent)/10 blur-3xl pointer-events-none"
+        aria-hidden
+      />
+
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        className="relative w-full max-w-[460px]"
+      >
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#EA580C] mb-4 shadow-md shadow-[#EA580C]/20">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-(--color-accent) mb-4 shadow-lg shadow-(--color-accent)/25">
             <span className="text-white text-xl font-bold tracking-tight">MT</span>
           </div>
-          <h1 className="text-3xl font-bold text-[#1A1714] tracking-tight">MillTrace</h1>
-          <p className="mt-1.5 text-sm text-[#78716C] font-normal">
+          <h1 className="text-3xl font-bold text-(--color-text) tracking-tight">MillTrace</h1>
+          <p className="mt-1.5 text-sm text-(--color-text-muted) font-normal">
             Everest Textile Mills — Staff Portal
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-white border border-[#E8E4DF] rounded-2xl shadow-sm p-8 sm:p-10">
+        <div className="bg-white border border-(--color-border) rounded-3xl shadow-xl p-8 sm:p-10">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-[#1A1714]">Sign in to continue</h2>
+            <h2 className="text-lg font-semibold text-(--color-text)">Sign in to continue</h2>
             <button
               type="button"
-              onClick={() => {
-                setEmail('owner@everest.com');
-                setPassword('password');
-                setError('');
-              }}
-              className="text-xs font-medium text-[#EA580C] bg-[#FFF7ED] border border-[#EA580C]/20 hover:bg-[#FFEDD5] px-2.5 py-1 rounded-md transition-colors"
+              onClick={() => fillDemoAccount('owner@everest.com')}
+              className="text-xs font-medium text-(--color-accent) bg-(--color-accent-light) border border-(--color-accent)/20 hover:bg-[#FFEDD5] px-2.5 py-1 rounded-md transition-colors"
             >
               Fill Admin
             </button>
@@ -108,8 +135,8 @@ export function LoginPage() {
             />
 
             {error && (
-              <div className="rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] px-4 py-3">
-                <p className="text-sm text-[#DC2626]">{error}</p>
+              <div className="rounded-lg bg-(--color-danger-light) border border-(--color-danger-border) px-4 py-3">
+                <p className="text-sm text-(--color-danger)">{error}</p>
               </div>
             )}
 
@@ -126,65 +153,33 @@ export function LoginPage() {
           </form>
 
           {/* Quick Demo Selector */}
-          <div className="mt-6 pt-5 border-t border-[#E8E4DF]/70">
-            <p className="text-xs font-medium text-[#78716C] mb-2.5">Demo Accounts (Click to fill):</p>
+          <div className="mt-6 pt-5 border-t border-(--color-border)/70">
+            <p className="text-xs font-medium text-(--color-text-muted) mb-2.5">Demo Accounts (Click to fill):</p>
             <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('owner@everest.com');
-                  setPassword('password');
-                  setError('');
-                }}
-                className="text-left px-2.5 py-1.5 rounded-lg border border-[#E8E4DF] hover:border-[#EA580C]/40 hover:bg-[#FFF7ED]/50 transition-colors"
-              >
-                <p className="text-xs font-semibold text-[#1A1714]">👑 Admin / Owner</p>
-                <p className="text-[11px] text-[#78716C] truncate">owner@everest.com</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('office@everest.com');
-                  setPassword('password');
-                  setError('');
-                }}
-                className="text-left px-2.5 py-1.5 rounded-lg border border-[#E8E4DF] hover:border-[#EA580C]/40 hover:bg-[#FFF7ED]/50 transition-colors"
-              >
-                <p className="text-xs font-semibold text-[#1A1714]">📋 Office Staff</p>
-                <p className="text-[11px] text-[#78716C] truncate">office@everest.com</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('supervisor@everest.com');
-                  setPassword('password');
-                  setError('');
-                }}
-                className="text-left px-2.5 py-1.5 rounded-lg border border-[#E8E4DF] hover:border-[#EA580C]/40 hover:bg-[#FFF7ED]/50 transition-colors"
-              >
-                <p className="text-xs font-semibold text-[#1A1714]">🏭 Supervisor</p>
-                <p className="text-[11px] text-[#78716C] truncate">supervisor@everest.com</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('staff1@everest.com');
-                  setPassword('password');
-                  setError('');
-                }}
-                className="text-left px-2.5 py-1.5 rounded-lg border border-[#E8E4DF] hover:border-[#EA580C]/40 hover:bg-[#FFF7ED]/50 transition-colors"
-              >
-                <p className="text-xs font-semibold text-[#1A1714]">👷 Staff</p>
-                <p className="text-[11px] text-[#78716C] truncate">staff1@everest.com</p>
-              </button>
+              {DEMO_ACCOUNTS.map(({ label, email: demoEmail, icon: Icon }) => (
+                <button
+                  key={demoEmail}
+                  type="button"
+                  onClick={() => fillDemoAccount(demoEmail)}
+                  className="flex items-center gap-2.5 text-left px-2.5 py-2 rounded-lg border border-(--color-border) hover:border-(--color-accent)/40 hover:bg-(--color-accent-light)/50 transition-colors"
+                >
+                  <span className="flex items-center justify-center w-7 h-7 rounded-md bg-(--color-accent-light) text-(--color-accent) shrink-0">
+                    <Icon className="w-4 h-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <p className="text-xs font-semibold text-(--color-text) truncate">{label}</p>
+                    <p className="text-[11px] text-(--color-text-muted) truncate">{demoEmail}</p>
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        <p className="text-center text-xs text-[#A8A29E] mt-6">
+        <p className="text-center text-xs text-(--color-text-subtle) mt-6">
           Internal staff access only. Contact your manager for credentials.
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }

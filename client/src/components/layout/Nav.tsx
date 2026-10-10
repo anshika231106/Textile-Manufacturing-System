@@ -1,7 +1,9 @@
 import { NavLink } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../lib/auth';
 import type { Role } from '../../lib/auth';
 import { ROUTES } from '../../routes';
+import { springIndicator } from '../../lib/motion';
 
 interface NavProps {
   collapsed: boolean;
@@ -28,22 +30,26 @@ export function Nav({ collapsed }: NavProps) {
               'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-150',
               'relative group',
               isActive
-                ? 'bg-[#FFF7ED] text-[#EA580C] font-medium'
-                : 'text-[#78716C] hover:bg-[#F5F4F2] hover:text-[#1A1714]',
+                ? 'bg-(--color-accent-light) text-(--color-accent) font-medium'
+                : 'text-(--color-text-muted) hover:bg-(--color-surface-sunken) hover:text-(--color-text)',
               collapsed ? 'justify-center' : '',
             ].join(' ')
           }
         >
           {({ isActive }) => (
             <>
-              {/* Active left border indicator */}
+              {/* Active left border indicator - a single shared layoutId slides between nav items */}
               {isActive && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[#EA580C] rounded-r-full" />
+                <motion.span
+                  layoutId="nav-active-indicator"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-(--color-accent) rounded-r-full"
+                  transition={springIndicator}
+                />
               )}
               <route.icon
                 className={[
                   'w-5 h-5 shrink-0',
-                  isActive ? 'text-[#EA580C]' : 'text-[#78716C] group-hover:text-[#1A1714]',
+                  isActive ? 'text-(--color-accent)' : 'text-(--color-text-muted) group-hover:text-(--color-text)',
                 ].join(' ')}
               />
               {!collapsed && (

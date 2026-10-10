@@ -1,10 +1,10 @@
 import { useAuth } from '../../lib/auth';
-import { Card } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { useApi } from '../../lib/useApi';
 import { api } from '../../lib/api';
 import { Badge } from '../../components/ui/Badge';
+import { StatCard, StatGrid } from '../../components/ui/StatCard';
 import {
   CubeIcon,
   WrenchScrewdriverIcon,
@@ -21,34 +21,6 @@ interface DashboardData {
   lowStockYarnCount: number;
   rollsAwaitingQc: number;
   metresTodayProduced: number;
-}
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  accent = false,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  sub?: string;
-  accent?: boolean;
-}) {
-  return (
-    <Card className="p-5 flex flex-col gap-3 relative overflow-hidden">
-      {accent && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#EA580C] rounded-l-xl" />
-      )}
-      <div className="flex items-center gap-2 text-[#78716C]">
-        <Icon className="w-5 h-5" />
-        <span className="text-xs font-medium uppercase tracking-wide">{label}</span>
-      </div>
-      <p className="text-3xl font-bold text-[#1A1714] leading-none">{value}</p>
-      {sub && <p className="text-xs text-[#78716C]">{sub}</p>}
-    </Card>
-  );
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -69,6 +41,15 @@ const STATUS_VARIANT: Record<string, 'neutral' | 'warning' | 'info' | 'success' 
   DISPATCHED:    'success',
   COMPLETED:     'success',
   CANCELLED:     'danger',
+};
+
+// Segment colors for the proportional status bar - mirrors Badge's dot-color mapping.
+const SEGMENT_COLOR: Record<string, string> = {
+  neutral: 'bg-(--color-text-muted)',
+  warning: 'bg-(--color-warning)',
+  info:    'bg-(--color-info)',
+  success: 'bg-(--color-success)',
+  danger:  'bg-(--color-danger)',
 };
 
 const MOCK_DASHBOARD: DashboardData = {
@@ -102,14 +83,16 @@ export function HomePage() {
     []
   );
 
+  const totalOrders = data?.ordersByStatus.reduce((sum, s) => sum + s.count, 0) ?? 0;
+
   return (
     <div className="flex flex-col gap-8 page-content">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold text-[#1A1714]">
+        <h2 className="text-2xl font-bold tracking-tight text-(--color-text)">
           Good {getGreeting()}, {user?.name?.split(' ')[0]}
         </h2>
-        <p className="mt-1 text-sm text-[#78716C]">
+        <p className="mt-1 text-sm text-(--color-text-muted)">
           Here's what's happening at the mill today.
         </p>
       </div>
@@ -127,57 +110,74 @@ export function HomePage() {
       {!loading && !error && data && (
         <>
           {/* KPI tiles */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatGrid columns={4}>
             <StatCard
               icon={WrenchScrewdriverIcon}
               label="Machines Running"
               value={data.machinesRunning}
               sub={`${data.machinesIdle} idle · ${data.machinesBreakdown} down`}
-              accent
+              tone="accent"
+              live
             />
             <StatCard
               icon={CubeIcon}
               label="Rolls Awaiting QC"
               value={data.rollsAwaitingQc}
-              accent={data.rollsAwaitingQc > 0}
+              tone={data.rollsAwaitingQc > 0 ? 'accent' : 'neutral'}
             />
             <StatCard
               icon={BeakerIcon}
               label="Low Stock Yarns"
               value={data.lowStockYarnCount}
-              accent={data.lowStockYarnCount > 0}
+              tone={data.lowStockYarnCount > 0 ? 'accent' : 'neutral'}
             />
             <StatCard
               icon={SwatchIcon}
               label="Metres Today"
               value={`${data.metresTodayProduced.toLocaleString('en-IN')} m`}
+              tone="neutral"
             />
-          </div>
+          </StatGrid>
 
           {/* Orders by status */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <ChartBarIcon className="w-5 h-5 text-[#78716C]" />
-              <h3 className="text-sm font-semibold text-[#1A1714]">Orders by Status</h3>
+              <ChartBarIcon className="w-5 h-5 text-(--color-text-muted)" />
+              <h3 className="text-sm font-semibold text-(--color-text)">Orders by Status</h3>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {data.ordersByStatus.length === 0 ? (
-                <p className="text-sm text-[#78716C]">No orders yet.</p>
-              ) : (
-                data.ordersByStatus.map((s) => (
-                  <div
-                    key={s.status}
-                    className="flex items-center gap-2 bg-white border border-[#E8E4DF] rounded-lg px-4 py-2"
-                  >
-                    <Badge
-                      variant={STATUS_VARIANT[s.status] ?? 'neutral'}
-                      label={STATUS_LABEL[s.status] ?? s.status}
+
+            {totalOrders === 0 ? (
+              <p className="text-sm text-(--color-text-muted)">No orders yet.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {/* Proportional breakdown bar */}
+                <div className="flex w-full h-3 rounded-full overflow-hidden bg-(--color-surface-sunken)">
+                  {data.ordersByStatus.map((s) => (
+                    <div
+                      key={s.status}
+                      style={{ width: `${(s.count / totalOrders) * 100}%` }}
+                      className={[SEGMENT_COLOR[STATUS_VARIANT[s.status] ?? 'neutral'], 'transition-all duration-300'].join(' ')}
+                      title={`${STATUS_LABEL[s.status] ?? s.status}: ${s.count}`}
                     />
-                    <span className="text-sm font-semibold text-[#1A1714]">{s.count}</span>
-                  </div>
-                ))
-              )}
-            </div>
+                  ))}
+                </div>
+                {/* Legend */}
+                <div className="flex flex-wrap gap-2">
+                  {data.ordersByStatus.map((s) => (
+                    <div
+                      key={s.status}
+                      className="flex items-center gap-2 bg-white border border-(--color-border) rounded-lg px-4 py-2"
+                    >
+                      <Badge
+                        variant={STATUS_VARIANT[s.status] ?? 'neutral'}
+                        label={STATUS_LABEL[s.status] ?? s.status}
+                      />
+                      <span className="text-sm font-semibold text-(--color-text)">{s.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
