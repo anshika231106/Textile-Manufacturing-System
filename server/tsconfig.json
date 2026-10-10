@@ -9,7 +9,16 @@
     "resolveJsonModule": true,
     "noEmit": true,
     "baseUrl": ".",
-    "paths": { "@shared/*": ["../shared/*"] }
+    "paths": {
+      "@shared/*": [
+        "../shared/*"
+      ]
+    },
+    "ignoreDeprecations": "5.0"
   },
-  "include": ["src", "scripts", "prisma/seed.ts"]
+  "include": [
+    "src",
+    "scripts",
+    "prisma/seed.ts"
+  ]
 }

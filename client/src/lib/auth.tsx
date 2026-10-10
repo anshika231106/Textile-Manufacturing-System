@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import type { ReactNode } from 'react';
 import { api } from './api';
 
-export type Role = 'OWNER' | 'OFFICE' | 'SUPERVISOR' | 'STOREKEEPER';
+export type Role = 'OWNER' | 'OFFICE' | 'SUPERVISOR' | 'STOREKEEPER' | 'STAFF';
 
 export interface User {
   id: string;
@@ -42,7 +42,7 @@ interface AuthState {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => void;
 }
 
@@ -96,29 +96,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    try {
-      const res = await api<{ token: string; user: User }>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-        auth: false,
-      });
-      saveToken(res.token);
-      setToken(res.token);
-      setUser(res.user);
-    } catch (err) {
-      // If backend is offline or 404, fallback to demo accounts for seamless frontend testing
-      const normalizedEmail = email.toLowerCase().trim();
-      const demoUser = DEMO_USERS[normalizedEmail];
-      if (demoUser) {
-        const demoToken = `demo_token_${demoUser.role.toLowerCase()}`;
-        saveToken(demoToken);
-        setToken(demoToken);
-        setUser(demoUser);
-        return;
-      }
-      throw err;
-    }
+  const login = useCallback(async (email: string, password: string): Promise<User> => {
+    const res = await api<{ token: string; user: User }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+      auth: false,
+    });
+    saveToken(res.token);
+    setToken(res.token);
+    setUser(res.user);
+    return res.user;
   }, []);
 
   const logout = useCallback(() => {
