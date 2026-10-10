@@ -260,9 +260,9 @@ export function RollLabelPage() {
 
           <div className="text-center pl-2">
             <span className="text-[10px] font-black text-slate-700 block uppercase tracking-wider mb-1">QC GRADE</span>
-            <div className={`inline-flex items-center gap-1 px-3 py-1 border-2 font-black text-sm uppercase rounded ${isPassed ? 'border-black bg-black text-white' : 'border-black text-black'}`}>
-              <CheckCircleIcon className="w-4 h-4 inline" />
-              {isPassed ? 'PASSED (GRADE A)' : roll.status}
+            <div className={`inline-flex items-center justify-center gap-1 px-2.5 py-1 border-2 font-black text-xs sm:text-[13px] uppercase rounded whitespace-nowrap tracking-tight ${isPassed ? 'border-black bg-black text-white' : 'border-black text-black'}`}>
+              <CheckCircleIcon className="w-3.5 h-3.5 shrink-0" />
+              <span>{isPassed ? 'PASSED (GRADE A)' : roll.status}</span>
             </div>
           </div>
         </div>

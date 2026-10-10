@@ -5,7 +5,7 @@ const inrFormatter = new Intl.NumberFormat('en-IN', {
 });
 
 export function formatCurrency(value: number): string {
-  return inrFormatter.format(value);
+  return inrFormatter.format(value).replace(/-\s+/, '-');
 }
 
 export function formatDate(iso: string): string {
