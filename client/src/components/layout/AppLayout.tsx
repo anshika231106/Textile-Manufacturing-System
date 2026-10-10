@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Nav } from './Nav';
 import { useAuth } from '../../lib/auth';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import {
   Bars3Icon,
   XMarkIcon,
@@ -141,6 +142,7 @@ export function AppLayout({ children, pageTitle }: AppLayoutProps) {
           {pageTitle && (
             <h1 className="text-sm font-semibold text-(--color-text)">{pageTitle}</h1>
           )}
+          <ThemeToggle className="ml-auto" />
         </header>
 
         {/* Content */}

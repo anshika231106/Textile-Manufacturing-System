@@ -72,11 +72,11 @@ const C = {
   warning: '#D97706',
   danger: '#DC2626',
   idle: '#C9C3BC',
-  ink: '#44403C',
-  muted: '#A8A29E',
-  grid: '#EDEAE6',
-  axis: '#D6D1CB',
-  hover: '#F5F4F2',
+  ink: 'var(--color-text-dark)',
+  muted: 'var(--color-text-subtle)',
+  grid: 'var(--color-border)',
+  axis: 'var(--color-border)',
+  hover: 'var(--color-surface-sunken)',
 };
 
 const STAGE_ORDER: Stage[] = ['SPINNING', 'WEAVING', 'DYEING'];

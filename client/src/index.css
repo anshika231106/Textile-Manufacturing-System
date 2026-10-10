@@ -9,6 +9,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --color-bg:           #FAFAF8;
     --color-surface:      #FFFFFF;
     --color-border:       #E8E4DF;
@@ -58,6 +59,42 @@
     --sidebar-w:       240px;
     --sidebar-w-mini:  64px;
     --topbar-h:        56px;
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --color-bg:           #171412;
+    --color-surface:      #211D1A;
+    --color-border:       #403832;
+
+    --color-text:         #F5F0EB;
+    --color-text-muted:   #C0B5AA;
+    --color-text-subtle:  #95897E;
+
+    --color-accent:       #FB923C;
+    --color-accent-hover: #FDBA74;
+    --color-accent-light: #3B281B;
+
+    --color-success:        #4ADE80;
+    --color-success-light:  #173222;
+    --color-success-border: #28633D;
+    --color-success-dark:   #86EFAC;
+
+    --color-warning:        #FBBF24;
+    --color-warning-light:  #382C16;
+    --color-warning-border: #71551D;
+
+    --color-danger:         #F87171;
+    --color-danger-light:   #3A2020;
+    --color-danger-border:  #713535;
+
+    --color-info:           #60A5FA;
+    --color-info-light:     #1C2D43;
+    --color-info-border:    #31527A;
+
+    --color-text-dark:      #E4D9CF;
+    --color-surface-alt:    #25211D;
+    --color-surface-sunken: #191613;
   }
 
   body {
@@ -127,14 +164,211 @@
 .textile-grid {
   background-size: 36px 36px;
   background-image: 
-    linear-gradient(to right, rgba(232, 228, 223, 0.45) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(232, 228, 223, 0.45) 1px, transparent 1px);
+    linear-gradient(to right, color-mix(in srgb, var(--color-border) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-border) 55%, transparent) 1px, transparent 1px);
 }
 
 .textile-dots {
   background-color: var(--color-bg);
-  background-image: radial-gradient(#E8E4DF 1px, transparent 1px);
+  background-image: radial-gradient(var(--color-border) 1px, transparent 1px);
   background-size: 24px 24px;
+}
+
+/* Keep legacy utility-colored surfaces readable while the tokenized UI switches themes. */
+:root[data-theme='dark'] .bg-white {
+  background-color: var(--color-surface) !important;
+}
+
+:root[data-theme='dark'] img[src="/logo.png"] {
+  filter:
+    drop-shadow(1px 0 0 rgb(255 255 255 / 75%))
+    drop-shadow(-1px 0 0 rgb(255 255 255 / 75%))
+    drop-shadow(0 1px 0 rgb(255 255 255 / 75%))
+    drop-shadow(0 -1px 0 rgb(255 255 255 / 75%));
+}
+
+:root[data-theme='dark'] .landing-hero {
+  background-color: var(--color-surface) !important;
+}
+
+:root[data-theme='dark'] .landing-header {
+  background-color: var(--color-surface) !important;
+  border-bottom-color: transparent !important;
+}
+
+:root[data-theme='dark'] .landing-hero-image {
+  opacity: 0.45;
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+:root[data-theme='dark'] .landing-hero-overlay-vertical {
+  background-image: linear-gradient(
+    to bottom,
+    var(--color-surface) 0%,
+    rgb(0 0 0 / 35%) 22%,
+    rgb(0 0 0 / 35%) 72%,
+    var(--color-surface) 100%
+  ) !important;
+}
+
+:root[data-theme='dark'] .landing-hero-overlay-horizontal {
+  background-image: linear-gradient(
+    to right,
+    var(--color-surface) 0%,
+    transparent 24%,
+    transparent 76%,
+    var(--color-surface) 100%
+  ) !important;
+}
+
+:root[data-theme='dark'] [class~="bg-white/90"] {
+  background-color: color-mix(in srgb, var(--color-surface) 90%, transparent) !important;
+}
+
+:root[data-theme='dark'] :is(
+  [class~="bg-gray-50"],
+  [class~="bg-slate-50"],
+  [class~="bg-stone-50"],
+  [class~="bg-neutral-50"],
+  [class~="bg-gray-50/50"],
+  [class~="bg-slate-50/50"],
+  [class~="bg-slate-50/70"],
+  [class~="bg-slate-50/80"]
+) {
+  background-color: var(--color-surface-alt) !important;
+}
+
+:root[data-theme='dark'] :is(
+  [class~="bg-gray-100"],
+  [class~="bg-slate-100"],
+  [class~="bg-stone-100"],
+  [class~="bg-neutral-100"],
+  [class~="bg-slate-100/50"],
+  [class~="bg-slate-200"]
+) {
+  background-color: var(--color-surface-sunken) !important;
+}
+
+:root[data-theme='dark'] .bg-emerald-50,
+:root[data-theme='dark'] .bg-green-50 {
+  background-color: #173222 !important;
+}
+
+:root[data-theme='dark'] .bg-rose-50,
+:root[data-theme='dark'] .bg-red-50 {
+  background-color: #3A2020 !important;
+}
+
+:root[data-theme='dark'] .bg-amber-50,
+:root[data-theme='dark'] .bg-yellow-50,
+:root[data-theme='dark'] .bg-orange-50 {
+  background-color: #382C16 !important;
+}
+
+:root[data-theme='dark'] .bg-blue-50 {
+  background-color: #1C2D43 !important;
+}
+
+:root[data-theme='dark'] .bg-purple-50 {
+  background-color: #302341 !important;
+}
+
+:root[data-theme='dark'] .text-emerald-700,
+:root[data-theme='dark'] .text-emerald-800,
+:root[data-theme='dark'] .text-green-700,
+:root[data-theme='dark'] .text-green-800 {
+  color: #86EFAC !important;
+}
+
+:root[data-theme='dark'] .text-rose-700,
+:root[data-theme='dark'] .text-rose-800,
+:root[data-theme='dark'] .text-red-700,
+:root[data-theme='dark'] .text-red-800 {
+  color: #FCA5A5 !important;
+}
+
+:root[data-theme='dark'] .text-amber-700,
+:root[data-theme='dark'] .text-amber-800,
+:root[data-theme='dark'] .text-yellow-700,
+:root[data-theme='dark'] .text-orange-700 {
+  color: #FCD34D !important;
+}
+
+:root[data-theme='dark'] .text-blue-700,
+:root[data-theme='dark'] .text-blue-800 {
+  color: #93C5FD !important;
+}
+
+:root[data-theme='dark'] .text-purple-700 {
+  color: #D8B4FE !important;
+}
+
+:root[data-theme='dark'] .text-gray-900,
+:root[data-theme='dark'] .text-gray-800,
+:root[data-theme='dark'] .text-slate-900,
+:root[data-theme='dark'] .text-slate-800,
+:root[data-theme='dark'] .text-stone-900,
+:root[data-theme='dark'] .text-black {
+  color: var(--color-text) !important;
+}
+
+:root[data-theme='dark'] .text-gray-700,
+:root[data-theme='dark'] .text-gray-600,
+:root[data-theme='dark'] .text-slate-700,
+:root[data-theme='dark'] .text-slate-600,
+:root[data-theme='dark'] .text-stone-700,
+:root[data-theme='dark'] .text-stone-600 {
+  color: var(--color-text-muted) !important;
+}
+
+:root[data-theme='dark'] .border-emerald-200,
+:root[data-theme='dark'] .border-emerald-300,
+:root[data-theme='dark'] .border-green-200 {
+  border-color: var(--color-success-border) !important;
+}
+
+:root[data-theme='dark'] .border-rose-200,
+:root[data-theme='dark'] .border-rose-300,
+:root[data-theme='dark'] .border-red-200 {
+  border-color: var(--color-danger-border) !important;
+}
+
+:root[data-theme='dark'] .border-amber-200,
+:root[data-theme='dark'] .border-yellow-200,
+:root[data-theme='dark'] .border-orange-200 {
+  border-color: var(--color-warning-border) !important;
+}
+
+:root[data-theme='dark'] .border-blue-200 {
+  border-color: var(--color-info-border) !important;
+}
+
+:root[data-theme='dark'] :is(
+  [class~="border-gray-200"],
+  [class~="border-slate-200"],
+  [class~="border-stone-200"],
+  [class~="border-neutral-200"],
+  [class~="border-slate-300"]
+) {
+  border-color: var(--color-border) !important;
+}
+
+:root[data-theme='dark'] :is(
+  [class~="hover:bg-gray-50"],
+  [class~="hover:bg-slate-50"],
+  [class~="hover:bg-stone-50"]
+):hover {
+  background-color: var(--color-surface-alt) !important;
+}
+
+:root[data-theme='dark'] :is(
+  [class~="hover:bg-gray-100"],
+  [class~="hover:bg-slate-100"],
+  [class~="hover:bg-stone-100"],
+  [class~="hover:bg-slate-200"]
+):hover {
+  background-color: var(--color-surface-sunken) !important;
 }
 
 /* ─── Skeleton loading shimmer ─── */
@@ -153,4 +387,3 @@
   background-size: 800px 100%;
   animation: shimmer 1.6s ease-in-out infinite;
 }
-
