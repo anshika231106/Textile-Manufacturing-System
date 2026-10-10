@@ -1,10 +1,12 @@
 import { Router, type Request } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../db/prisma';
-import { badRequest, conflict, notFound, unauthenticated } from '../../lib/httpErrors';
+import { env } from '../../config/env';
+import { badRequest, conflict, notFound, unauthenticated, unprocessable } from '../../lib/httpErrors';
 import { ok } from '../../lib/respond';
 import { authenticate, authorize } from '../../middleware/authenticate';
 import { validate } from '../../middleware/validate';
+import { checkCanStartStage, checkStageCap, type LoggedByStage } from '../../domain/stageRules';
 
 export const floorRoutes = Router();
 
@@ -31,6 +33,17 @@ const productionLogBody = z.object({
   notes: z.string().trim().max(500).optional(),
 });
 const logQuery = z.object({ limit: z.coerce.number().int().min(1).max(100).default(20) });
+
+async function loggedByStage(orderId: string): Promise<LoggedByStage> {
+  const rows = await prisma.productionLog.groupBy({
+    by: ['stage'],
+    where: { orderId },
+    _sum: { metres: true },
+  });
+  const logged: LoggedByStage = { SPINNING: 0, WEAVING: 0, DYEING: 0 };
+  for (const row of rows) logged[row.stage] = Number(row._sum.metres ?? 0);
+  return logged;
+}
 
 function actorId(req: Request): string {
   if (!req.authUser) throw unauthenticated();
@@ -243,6 +256,11 @@ floorRoutes.post(
       });
       if (activeJob) throw conflict('ACTIVE_JOB', 'This machine already has an active job');
 
+      const order = await prisma.order.findUnique({ where: { id: input.orderId }, select: { startedAt: true } });
+      if (!order) throw notFound('Order not found');
+      const notReady = checkCanStartStage(input.stage, !!order.startedAt, await loggedByStage(input.orderId));
+      if (notReady) throw unprocessable(notReady.code, notReady.message, notReady.details);
+
       const id = actorId(req);
       const createdJob = await prisma.$transaction(async (tx) => {
         const job = await tx.stageJob.create({
@@ -364,6 +382,10 @@ floorRoutes.post(
       });
       if (!job) throw conflict('ACTIVE_JOB_NOT_FOUND', 'No matching active job exists for this machine and order');
       if (job.stage !== input.stage) throw badRequest('STAGE_MISMATCH', 'Production stage does not match the active job');
+      if (env.ENFORCE_STAGE_CAP) {
+        const overCap = checkStageCap(input.stage, input.metres, await loggedByStage(input.orderId));
+        if (overCap) throw unprocessable(overCap.code, overCap.message, overCap.details);
+      }
 
       const log = await prisma.productionLog.create({
         data: {

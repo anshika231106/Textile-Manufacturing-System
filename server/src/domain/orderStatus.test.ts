@@ -1,86 +1,55 @@
 import { describe, it, expect } from 'vitest';
 import { deriveOrderStatus } from './orderStatus';
 
+type RollStatus = 'PENDING_QC' | 'REWORK' | 'PASSED' | 'REJECTED' | 'DISPATCHED';
+
+function rolls(...statuses: RollStatus[]) {
+  const count = (s: RollStatus) => statuses.filter((x) => x === s).length;
+  return {
+    total: statuses.length,
+    pendingQc: count('PENDING_QC'),
+    rework: count('REWORK'),
+    passed: count('PASSED'),
+    rejected: count('REJECTED'),
+    dispatched: count('DISPATCHED'),
+  };
+}
+
 describe('deriveOrderStatus', () => {
-  it('derives RECEIVED / PENDING when order has not started', () => {
-    const res = deriveOrderStatus({});
-    expect(res.canonicalStatus).toBe('RECEIVED');
-    expect(res.clientStatus).toBe('PENDING');
+  // MVP Section 14.3, T-03. The spec's terminal DISPATCHED state is COMPLETED here.
+  const cases: [number, boolean, boolean, RollStatus[], string][] = [
+    [1, false, false, [], 'RECEIVED'],
+    [2, true, false, [], 'IN_PRODUCTION'],
+    [3, true, false, ['PENDING_QC'], 'QUALITY_CHECK'],
+    [4, true, true, ['PASSED', 'PASSED'], 'READY_TO_SHIP'],
+    [5, true, true, ['PASSED', 'REWORK'], 'QUALITY_CHECK'],
+    [6, true, true, ['PASSED', 'REJECTED'], 'READY_TO_SHIP'],
+    [7, true, true, ['REJECTED'], 'QUALITY_CHECK'],
+    [8, true, false, ['PASSED'], 'QUALITY_CHECK'],
+    [9, true, true, ['DISPATCHED', 'PASSED'], 'PARTIALLY_DISPATCHED'],
+    [10, true, true, ['DISPATCHED', 'DISPATCHED'], 'COMPLETED'],
+    [11, true, true, ['DISPATCHED', 'REJECTED'], 'COMPLETED'],
+    [12, true, false, ['DISPATCHED'], 'PARTIALLY_DISPATCHED'],
+    [13, true, true, ['DISPATCHED', 'PENDING_QC'], 'PARTIALLY_DISPATCHED'],
+    [14, true, true, [], 'IN_PRODUCTION'],
+  ];
+
+  it.each(cases)('case %i: started=%s dyeingDone=%s rolls=%j -> %s', (_n, started, dyeingDone, statuses, expected) => {
+    const res = deriveOrderStatus({ startedAt: started ? new Date() : null, dyeingDone, rolls: rolls(...statuses) });
+    expect(res.canonicalStatus).toBe(expected);
   });
 
-  it('derives IN_PRODUCTION when startedAt is set', () => {
-    const res = deriveOrderStatus({ startedAt: new Date() });
-    expect(res.canonicalStatus).toBe('IN_PRODUCTION');
-    expect(res.clientStatus).toBe('IN_PRODUCTION');
+  it('treats an order with stage jobs as started even without startedAt', () => {
+    expect(deriveOrderStatus({ hasJobs: true }).canonicalStatus).toBe('IN_PRODUCTION');
   });
 
-  it('derives IN_PRODUCTION when hasJobs is true', () => {
-    const res = deriveOrderStatus({ hasJobs: true });
-    expect(res.canonicalStatus).toBe('IN_PRODUCTION');
-    expect(res.clientStatus).toBe('IN_PRODUCTION');
-  });
-
-  it('derives QUALITY_CHECK / QC when rolls are awaiting QC', () => {
-    const res = deriveOrderStatus({
-      hasJobs: true,
-      rolls: {
-        total: 2,
-        pendingQc: 2,
-        rework: 0,
-        passed: 0,
-        rejected: 0,
-        dispatched: 0,
-      },
-    });
-    expect(res.canonicalStatus).toBe('QUALITY_CHECK');
-    expect(res.clientStatus).toBe('QC');
-  });
-
-  it('derives READY_TO_SHIP / READY when all rolls have passed inspection', () => {
-    const res = deriveOrderStatus({
-      hasJobs: true,
-      rolls: {
-        total: 2,
-        pendingQc: 0,
-        rework: 0,
-        passed: 2,
-        rejected: 0,
-        dispatched: 0,
-      },
-    });
-    expect(res.canonicalStatus).toBe('READY_TO_SHIP');
-    expect(res.clientStatus).toBe('READY');
-  });
-
-  it('derives PARTIALLY_DISPATCHED / DISPATCHED when some rolls are dispatched', () => {
-    const res = deriveOrderStatus({
-      hasJobs: true,
-      rolls: {
-        total: 4,
-        pendingQc: 0,
-        rework: 0,
-        passed: 2,
-        rejected: 0,
-        dispatched: 2,
-      },
-    });
-    expect(res.canonicalStatus).toBe('PARTIALLY_DISPATCHED');
-    expect(res.clientStatus).toBe('DISPATCHED');
-  });
-
-  it('derives COMPLETED when all rolls are dispatched', () => {
-    const res = deriveOrderStatus({
-      hasJobs: true,
-      rolls: {
-        total: 4,
-        pendingQc: 0,
-        rework: 0,
-        passed: 0,
-        rejected: 0,
-        dispatched: 4,
-      },
-    });
-    expect(res.canonicalStatus).toBe('COMPLETED');
-    expect(res.clientStatus).toBe('COMPLETED');
+  it('maps canonical statuses to client statuses', () => {
+    const started = new Date();
+    expect(deriveOrderStatus({}).clientStatus).toBe('PENDING');
+    expect(deriveOrderStatus({ startedAt: started }).clientStatus).toBe('IN_PRODUCTION');
+    expect(deriveOrderStatus({ startedAt: started, rolls: rolls('PENDING_QC') }).clientStatus).toBe('QC');
+    expect(deriveOrderStatus({ startedAt: started, dyeingDone: true, rolls: rolls('PASSED') }).clientStatus).toBe('READY');
+    expect(deriveOrderStatus({ startedAt: started, dyeingDone: true, rolls: rolls('DISPATCHED', 'PASSED') }).clientStatus).toBe('DISPATCHED');
+    expect(deriveOrderStatus({ startedAt: started, dyeingDone: true, rolls: rolls('DISPATCHED') }).clientStatus).toBe('COMPLETED');
   });
 });

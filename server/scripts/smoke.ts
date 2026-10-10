@@ -304,7 +304,7 @@ async function workflow() {
   heading('Buyer tracking link');
   const t0 = await track(order.trackingToken);
   check('public tracking by token works without login, status PENDING', t0?.orderNo === order.orderNo && t0?.status === 'PENDING', t0);
-  check('public tracking by order number works', (await track(order.orderNo))?.id === order.id);
+  check('public tracking by order number works', (await track(order.orderNo))?.orderNo === order.orderNo);
   expectStatus('unknown tracking token is 404', await get('/public/track/does-not-exist-xyz'), 404);
   // API-46 / T-20: never returned - rates, costs, yarn, invoices, internal IDs, buyer contact details.
   const forbidden = ['ratePerMetre', 'totalAmount', 'requirements', 'yarnRequirements', 'feasibility', 'buyerPhone', 'buyerId', 'id'];

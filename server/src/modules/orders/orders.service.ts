@@ -138,9 +138,13 @@ export class OrdersService {
     };
 
     // Dynamic order status derivation
+    const latestDyeingJob = (order.stageJobs || [])
+      .filter((j: any) => j.stage === 'DYEING')
+      .sort((a: any, b: any) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())[0];
     const statusCtx = {
       startedAt: order.startedAt,
       hasJobs: (order.stageJobs || []).length > 0,
+      dyeingDone: latestDyeingJob?.status === 'COMPLETED',
       rolls: rollCounts,
     };
     const derived = deriveOrderStatus(statusCtx);
@@ -507,8 +511,41 @@ export class OrdersService {
 
     const detail = this.formatOrderDetail(order);
     const producedMetres = (detail.stages || []).reduce((acc: number, s: any) => acc + (s.producedMetres || 0), 0);
+
+    // API-46 / T-20: explicit allow-list. Never return rates, costs, yarn, invoices,
+    // internal IDs or buyer contact details on this unauthenticated endpoint.
+    const stages = detail.stages.map((s) => ({
+      stage: s.stage,
+      status: s.status,
+      producedMetres: s.producedMetres,
+      targetMetres: s.targetMetres,
+    }));
     return {
-      ...detail,
+      orderNo: detail.orderNo,
+      orderNumber: detail.orderNumber,
+      trackingToken: detail.trackingToken,
+      buyerName: detail.buyerName,
+      fabricType: detail.fabricType,
+      colour: detail.colour,
+      metres: detail.metres,
+      deadline: detail.deadline,
+      status: detail.status,
+      canonicalStatus: detail.canonicalStatus,
+      currentStage: detail.currentStage,
+      stages,
+      stageProgress: stages,
+      rollSummary: {
+        totalRolls: detail.rollSummary.totalRolls,
+        passedRolls: detail.rollSummary.passedRolls,
+        inQcRolls: detail.rollSummary.inQcRolls,
+        reworkRolls: detail.rollSummary.reworkRolls,
+        rejectedRolls: detail.rollSummary.rejectedRolls,
+        rolls: detail.rollSummary.rolls.map((r: { rollNumber: string; metres: number; qcStatus: string }) => ({
+          rollNumber: r.rollNumber,
+          metres: r.metres,
+          qcStatus: r.qcStatus,
+        })),
+      },
       orderedMetres: detail.metres,
       producedMetres,
       passedMetres: detail.rolls.passedMetres,

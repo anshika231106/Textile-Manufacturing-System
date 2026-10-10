@@ -13,7 +13,7 @@ import {
 } from '../orders/orders.api';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { formatDate, formatCurrency } from '../../lib/format';
+import { formatDate } from '../../lib/format';
 import {
   drawCheck,
   fadeUpVariants,
@@ -542,7 +542,7 @@ export function LandingPage() {
                       <p className="text-2xl font-extrabold text-(--color-text) mt-1">
                         {trackedOrder.metres.toLocaleString('en-IN')} <span className="text-sm font-normal text-(--color-text-muted)">m</span>
                       </p>
-                      <p className="text-xs text-(--color-text-muted) mt-0.5">Value: {formatCurrency(trackedOrder.totalAmount)}</p>
+                      <p className="text-xs text-(--color-text-muted) mt-0.5">{trackedOrder.fabricType} · {trackedOrder.colour}</p>
                     </div>
 
                     <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
@@ -592,7 +592,7 @@ export function LandingPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                         {trackedOrder.rollSummary.rolls.map((roll) => (
                           <div
-                            key={roll.id}
+                            key={roll.rollNumber}
                             className="p-3 rounded-xl border border-(--color-border) bg-(--color-bg) flex items-center justify-between text-xs"
                           >
                             <div>

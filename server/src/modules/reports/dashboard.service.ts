@@ -77,6 +77,7 @@ export async function buildDashboard(role: Role) {
         startedAt: true,
         buyer: { select: { name: true } },
         _count: { select: { stageJobs: true } },
+        stageJobs: { where: { stage: 'DYEING' }, orderBy: { startedAt: 'desc' }, take: 1, select: { status: true } },
       },
     }),
     prisma.productionLog.groupBy({ by: ['orderId', 'stage'], _sum: { metres: true } }),
@@ -150,6 +151,7 @@ export async function buildDashboard(role: Role) {
     const { clientStatus } = deriveOrderStatus({
       startedAt: order.startedAt,
       hasJobs: order._count.stageJobs > 0,
+      dyeingDone: order.stageJobs[0]?.status === 'COMPLETED',
       rolls,
     });
     statusCounts.set(clientStatus, (statusCounts.get(clientStatus) || 0) + 1);
