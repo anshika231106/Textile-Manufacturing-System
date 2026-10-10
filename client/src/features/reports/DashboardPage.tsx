@@ -122,7 +122,7 @@ const PAGE_ROLES: Record<string, Role[] | 'all'> = {
   '/dispatch': ['OWNER', 'SUPERVISOR'],
   '/invoices/:id': ['OWNER', 'OFFICE', 'SUPERVISOR'],
   '/attendance': ['OWNER', 'OFFICE', 'SUPERVISOR'],
-  '/reports/month-end': ['OWNER', 'OFFICE'],
+  '/reports/month-end': ['OWNER'],
 };
 
 const QUICK_ACTIONS = [
@@ -253,7 +253,7 @@ function ManagerDashboard({ data, canAccess }: { data: DashboardData; canAccess:
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         <QualityPanel quality={data.quality} canOpenQc={canAccess('/qc')} />
         <StockPanel stock={data.stock} />
-        {data.finance ? <FinancePanel finance={data.finance} /> : <ActivityPanel activity={data.activity} canAccess={canAccess} />}
+        {data.finance ? <FinancePanel finance={data.finance} canAccess={canAccess} /> : <ActivityPanel activity={data.activity} canAccess={canAccess} />}
       </div>
       {data.finance && <ActivityPanel activity={data.activity} canAccess={canAccess} />}
     </motion.div>
@@ -1056,7 +1056,7 @@ function StockPanel({ stock }: { stock: DashboardData['stock'] }) {
 // Money (Recharts bars) - OWNER / OFFICE only
 // ═════════════════════════════════════════════════════════════════════════════
 
-function FinancePanel({ finance }: { finance: NonNullable<DashboardData['finance']> }) {
+function FinancePanel({ finance, canAccess }: { finance: NonNullable<DashboardData['finance']>; canAccess?: CanAccess }) {
   const monthName = new Date().toLocaleDateString('en-IN', { month: 'long' });
   const flows = [
     { name: 'Invoiced', value: finance.invoicedThisMonth, color: C.spinning },
@@ -1067,7 +1067,12 @@ function FinancePanel({ finance }: { finance: NonNullable<DashboardData['finance
     finance.invoicedThisMonth > 0 ? Math.min(100, Math.round((finance.collectedThisMonth / finance.invoicedThisMonth) * 100)) : null;
 
   return (
-    <Panel title="Money" icon={BanknotesIcon} subtitle={`${monthName} to date`} action={{ label: 'Month-end', to: '/reports/month-end' }}>
+    <Panel
+      title="Money"
+      icon={BanknotesIcon}
+      subtitle={`${monthName} to date`}
+      action={canAccess?.('/reports/month-end') ? { label: 'Month-end', to: '/reports/month-end' } : null}
+    >
       <div className="rounded-lg bg-(--color-surface-alt) p-3">
         <p className="text-xs text-(--color-text-muted)">Outstanding receivables</p>
         <p className="text-2xl font-bold text-(--color-text)">{formatCurrency(finance.outstanding)}</p>

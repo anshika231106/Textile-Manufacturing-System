@@ -184,7 +184,7 @@ export const ROUTES: RouteConfig[] = [
     path: '/reports/month-end',
     label: 'Month-End',
     icon: ChartBarIcon,
-    roles: ['OWNER', 'OFFICE'],
+    roles: ['OWNER'],
     nav: true,
     element: <MonthEndPage />,
   },

@@ -32,7 +32,7 @@ const monthQuery = z.object({ month: z.string().regex(/^\d{4}-\d{2}$/, 'month mu
 reportsRoutes.get(
   ['/month-end', '/reports/month-end'],
   authenticate,
-  authorize('OWNER', 'OFFICE'),
+  authorize('OWNER'),
   validate({ query: monthQuery }),
   async (req, res, next) => {
     try {
