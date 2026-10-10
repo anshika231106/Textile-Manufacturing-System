@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { StatCard, StatGrid } from '../../components/ui/StatCard';
 import { Table, type Column } from '../../components/ui/Table';
+import { Pagination } from '../../components/ui/Pagination';
 import { Dialog } from '../../components/ui/Dialog';
 import { Input } from '../../components/ui/Input';
 import { Callout } from '../../components/ui/Callout';
@@ -43,6 +44,8 @@ function plantToday(): string {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
+type AttendanceFilter = 'ALL' | 'PRESENT' | 'ABSENT';
+
 export function AttendancePage() {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -54,6 +57,10 @@ export function AttendancePage() {
 
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedMonth, setSelectedMonth] = useState(formatApiMonth(new Date()));
+  const [dailyPage, setDailyPage] = useState(0);
+  const [wagePage, setWagePage] = useState(0);
+  const [attendanceFilter, setAttendanceFilter] = useState<AttendanceFilter>('ALL');
+  const pageSize = 15;
   const [records, setRecords] = useState<WorkerAttendanceRecord[]>([]);
   const [dailyLoading, setDailyLoading] = useState(true);
   const [dailyError, setDailyError] = useState('');
@@ -95,10 +102,12 @@ export function AttendancePage() {
   };
 
   useEffect(() => {
+    setDailyPage(0);
     void loadDaily(selectedDate);
   }, [selectedDate]);
 
   useEffect(() => {
+    setWagePage(0);
     void loadWages(selectedMonth);
   }, [selectedMonth, canSeeWages]);
 
@@ -164,6 +173,24 @@ export function AttendancePage() {
 
   const presentCount = records.filter((record) => record.present === true).length;
   const absentCount = records.filter((record) => record.present === false).length;
+  const filteredDailyRecords = records.filter((record) => {
+    if (attendanceFilter === 'PRESENT') return record.present === true;
+    if (attendanceFilter === 'ABSENT') return record.present === false;
+    return true;
+  });
+  const dailyPageCount = Math.ceil(filteredDailyRecords.length / pageSize);
+  const visibleDailyPage = Math.min(dailyPage, Math.max(dailyPageCount - 1, 0));
+  const visibleDailyRecords = filteredDailyRecords.slice(
+    visibleDailyPage * pageSize,
+    (visibleDailyPage + 1) * pageSize,
+  );
+  const wageWorkers = wagesData?.workers ?? [];
+  const wagePageCount = Math.ceil(wageWorkers.length / pageSize);
+  const visibleWagePage = Math.min(wagePage, Math.max(wagePageCount - 1, 0));
+  const visibleWageWorkers = wageWorkers.slice(
+    visibleWagePage * pageSize,
+    (visibleWagePage + 1) * pageSize,
+  );
 
   const dailyColumns: Column<WorkerAttendanceRecord>[] = [
     { key: 'code', header: 'Code', render: (w) => <span className="font-mono font-semibold text-(--color-text)">{w.workerCode}</span> },
@@ -320,15 +347,53 @@ export function AttendancePage() {
         {!dailyLoading && !dailyError && (
           <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-(--color-surface-alt) rounded-xl border border-(--color-border)">
             <div className="flex flex-wrap items-center gap-4 text-xs">
-              <span className="text-(--color-text-muted)">
-                Total Staff: <strong className="text-(--color-text) font-mono">{records.length}</strong>
-              </span>
-              <span className="text-emerald-700 font-medium">
-                Present: <strong className="font-mono">{presentCount}</strong>
-              </span>
-              <span className="text-rose-700 font-medium">
-                Absent: <strong className="font-mono">{absentCount}</strong>
-              </span>
+              <div className="inline-flex items-center gap-1 rounded-lg border border-(--color-border) bg-white p-1" role="group" aria-label="Filter attendance by status">
+                <button
+                  type="button"
+                  aria-pressed={attendanceFilter === 'ALL'}
+                  onClick={() => {
+                    setAttendanceFilter('ALL');
+                    setDailyPage(0);
+                  }}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                    attendanceFilter === 'ALL'
+                      ? 'bg-(--color-accent-light) text-(--color-accent)'
+                      : 'text-(--color-text-muted) hover:bg-(--color-bg)'
+                  }`}
+                >
+                  Total Staff: <span className="font-mono font-semibold">{records.length}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={attendanceFilter === 'PRESENT'}
+                  onClick={() => {
+                    setAttendanceFilter('PRESENT');
+                    setDailyPage(0);
+                  }}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                    attendanceFilter === 'PRESENT'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'text-emerald-700 hover:bg-emerald-50'
+                  }`}
+                >
+                  Present: <span className="font-mono font-semibold">{presentCount}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={attendanceFilter === 'ABSENT'}
+                  onClick={() => {
+                    setAttendanceFilter('ABSENT');
+                    setDailyPage(0);
+                  }}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                    attendanceFilter === 'ABSENT'
+                      ? 'bg-rose-100 text-rose-800'
+                      : 'text-rose-700 hover:bg-rose-50'
+                  }`}
+                >
+                  Absent: <span className="font-mono font-semibold">{absentCount}</span>
+                </button>
+              </div>
             </div>
 
             {canMarkAttendance && (
@@ -359,11 +424,20 @@ export function AttendancePage() {
         ) : (
           <Table
             columns={dailyColumns}
-            rows={records}
+            rows={visibleDailyRecords}
             loading={dailyLoading}
             rowKey={(w) => w.workerId}
             emptyTitle="No staff found"
             emptyDescription="No staff attendance records are available."
+          />
+        )}
+        {!dailyError && (
+          <Pagination
+            page={visibleDailyPage}
+            pageSize={pageSize}
+            totalCount={filteredDailyRecords.length}
+            itemLabel="staff members"
+            onPageChange={setDailyPage}
           />
         )}
 
@@ -443,11 +517,20 @@ export function AttendancePage() {
           ) : (
             <Table
               columns={wageColumns}
-              rows={wagesData?.workers ?? []}
+              rows={visibleWageWorkers}
               loading={wagesLoading}
               rowKey={(w) => w.workerId}
               emptyTitle="No records"
               emptyDescription={`No wage records are available for ${selectedMonth}.`}
+            />
+          )}
+          {!wagesError && (
+            <Pagination
+              page={visibleWagePage}
+              pageSize={pageSize}
+              totalCount={wageWorkers.length}
+              itemLabel="staff members"
+              onPageChange={setWagePage}
             />
           )}
         </section>

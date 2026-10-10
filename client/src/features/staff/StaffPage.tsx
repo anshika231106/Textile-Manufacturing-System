@@ -9,6 +9,7 @@ import { Select } from '../../components/ui/Select';
 import { Dialog } from '../../components/ui/Dialog';
 import { Badge } from '../../components/ui/Badge';
 import { Table, type Column } from '../../components/ui/Table';
+import { Pagination } from '../../components/ui/Pagination';
 import { Callout } from '../../components/ui/Callout';
 import { PageHeader } from '../../components/ui/PageHeader';
 import {
@@ -50,8 +51,10 @@ const ROLE_BADGE_VARIANT: Record<string, 'neutral' | 'info' | 'success' | 'warni
 export function StaffPage() {
   const { user: currentUser } = useAuth();
   const isOwner = currentUser?.role === 'OWNER';
+  const pageSize = 10;
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -133,6 +136,7 @@ export function StaffPage() {
       });
 
       setModalOpen(false);
+      setPage(0);
       fetchStaff();
     } catch (err: any) {
       if (err instanceof ApiError && err.code === 'CONFLICT_DUPLICATE') {
@@ -192,6 +196,9 @@ export function StaffPage() {
       value.toLowerCase().includes(query),
     );
   });
+  const pageCount = Math.ceil(filteredStaff.length / pageSize);
+  const visiblePage = Math.min(page, Math.max(pageCount - 1, 0));
+  const paginatedStaff = filteredStaff.slice(visiblePage * pageSize, (visiblePage + 1) * pageSize);
 
   const columns: Column<StaffUser>[] = [
     {
@@ -328,7 +335,10 @@ export function StaffPage() {
           <input
             type="text"
             value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
+            onChange={(event) => {
+              setSearchQuery(event.target.value);
+              setPage(0);
+            }}
             placeholder="Search employees by name, email, or role..."
             className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-(--color-border) bg-white placeholder:text-(--color-text-subtle) focus:outline-none focus:ring-2 focus:ring-(--color-accent)/20 focus:border-(--color-accent)"
           />
@@ -351,13 +361,20 @@ export function StaffPage() {
       ) : (
         <Table
           columns={columns}
-          rows={filteredStaff}
+          rows={paginatedStaff}
           loading={loading}
           rowKey={(u) => u.id}
           emptyTitle="No employees match your search"
           emptyDescription="Try a different name, email address, or role."
         />
       )}
+      <Pagination
+        page={visiblePage}
+        pageSize={pageSize}
+        totalCount={filteredStaff.length}
+        itemLabel="employees"
+        onPageChange={setPage}
+      />
 
       {/* Owner-only role confirmation */}
       <Dialog
