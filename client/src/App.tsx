@@ -1,17 +1,41 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './lib/auth';
+import { ToastProvider } from './components/ui/Toast';
+import { RequireRole } from './components/layout/RequireRole';
+import { AppLayout } from './components/layout/AppLayout';
+import { ROUTES, PUBLIC_ROUTES } from './routes';
 
-export function App() {
+export default function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
-      <div className="text-center p-8 rounded-2xl bg-slate-800/80 border border-slate-700 shadow-xl backdrop-blur-md">
-        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-          MillTrace
-        </h1>
-        <p className="mt-2 text-slate-400 text-sm">
-          Textile Manufacturing System — Everest Textile Mills
-        </p>
-      </div>
-    </div>
+    <BrowserRouter>
+      <AuthProvider>
+        <ToastProvider>
+          <Routes>
+            {/* Public routes — no auth, no AppLayout */}
+            {PUBLIC_ROUTES.map((r) => (
+              <Route key={r.path} path={r.path} element={r.element} />
+            ))}
+
+            {/* Authenticated routes — wrapped in RequireRole + AppLayout */}
+            {ROUTES.map((r) => (
+              <Route
+                key={r.path}
+                path={r.path}
+                element={
+                  <RequireRole roles={r.roles}>
+                    <AppLayout pageTitle={r.label}>
+                      {r.element}
+                    </AppLayout>
+                  </RequireRole>
+                }
+              />
+            ))}
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ToastProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
-
-export default App;
