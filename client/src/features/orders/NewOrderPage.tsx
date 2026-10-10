@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../components/ui/Toast';
 import { listBuyers, listYarnTypes, MOCK_BUYERS, MOCK_YARN_TYPES, type Buyer, type YarnType } from '../masters/masters.api';
+import { getStockSummary } from '../stock/stock.api';
 import { createOrder, checkFeasibility, type FeasibilityResult } from './orders.api';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -26,6 +27,37 @@ interface YarnRow {
   requiredKg: string;
 }
 
+export const FABRIC_SPECIFICATIONS = [
+  'Cotton Twill 2/1',
+  'Cotton Twill Premium',
+  'Cotton Poplin 40s',
+  'Poly-Cotton Blend Suiting',
+  'Pure Linen Slub 60s',
+  'Linen Slub Voile',
+  'Viscose Rayon Satin',
+  'Denim 3/1 Heavy Twill',
+  'Oxford Weave Shirting',
+  'Canvas Heavy 10oz',
+  'Cotton Cambric 60s',
+  'Viscose Georgette',
+];
+
+export const COLOUR_SHADES = [
+  'Bleached White',
+  'Optical White',
+  'Raw Natural / Off-White',
+  'Navy Blue (Navy 402)',
+  'Jet Black',
+  'Royal Blue',
+  'Olive Green',
+  'Crimson Red',
+  'Charcoal Grey',
+  'Khaki Beige',
+  'Forest Green',
+  'Mustard Yellow',
+  'Burgundy / Maroon',
+];
+
 export function NewOrderPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -37,8 +69,10 @@ export function NewOrderPage() {
 
   // Form state
   const [buyerId, setBuyerId] = useState(MOCK_BUYERS[0]?.id ?? '');
-  const [fabricType, setFabricType] = useState('');
-  const [colour, setColour] = useState('');
+  const [selectedFabricPreset, setSelectedFabricPreset] = useState('');
+  const [customFabricType, setCustomFabricType] = useState('');
+  const [selectedColourPreset, setSelectedColourPreset] = useState('');
+  const [customColour, setCustomColour] = useState('');
   const [metres, setMetres] = useState('');
   const [ratePerMetre, setRatePerMetre] = useState('');
   const [deadline, setDeadline] = useState('');
@@ -46,25 +80,47 @@ export function NewOrderPage() {
     { id: '1', yarnTypeId: MOCK_YARN_TYPES[0]?.id ?? '', requiredKg: '' },
   ]);
 
+
   // Feasibility state
   const [feasibility, setFeasibility] = useState<FeasibilityResult | null>(null);
   const [checkingFeasibility, setCheckingFeasibility] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
-  // Load buyers & yarn types
+  // Load buyers & yarn types with live stock balances
   useEffect(() => {
-    Promise.all([listBuyers(), listYarnTypes()])
-      .then(([bList, yList]) => {
+    Promise.all([
+      listBuyers(),
+      listYarnTypes(),
+      getStockSummary().catch(() => []),
+    ])
+      .then(([bList, yList, stockList]) => {
         const safeBuyers = Array.isArray(bList) && bList.length > 0 ? bList : MOCK_BUYERS;
         const safeYarns = Array.isArray(yList) && yList.length > 0 ? yList : MOCK_YARN_TYPES;
 
+        const stockMap = new Map<string, { availableKg: number; onHandKg: number; reservedKg: number }>(
+          (Array.isArray(stockList) ? stockList : []).map((s: any) => [
+            s.yarnTypeId,
+            { availableKg: s.availableKg ?? 0, onHandKg: s.onHandKg ?? 0, reservedKg: s.reservedKg ?? 0 },
+          ])
+        );
+
+        const enrichedYarns = safeYarns.map((y) => {
+          const stock = stockMap.get(y.id);
+          return {
+            ...y,
+            availableKg: stock ? stock.availableKg : (y.availableKg ?? 0),
+            onHandKg: stock ? stock.onHandKg : (y.onHandKg ?? 0),
+            reservedKg: stock ? stock.reservedKg : (y.reservedKg ?? 0),
+          };
+        });
+
         setBuyers(safeBuyers);
-        setYarnTypes(safeYarns);
+        setYarnTypes(enrichedYarns);
 
         if (safeBuyers.length > 0) setBuyerId(safeBuyers[0].id);
-        if (safeYarns.length > 0) {
-          setYarnRows([{ id: '1', yarnTypeId: safeYarns[0].id, requiredKg: '' }]);
+        if (enrichedYarns.length > 0) {
+          setYarnRows([{ id: '1', yarnTypeId: enrichedYarns[0].id, requiredKg: '' }]);
         }
       })
       .catch(() => {
@@ -73,6 +129,7 @@ export function NewOrderPage() {
       })
       .finally(() => setLoadingMasters(false));
   }, []);
+
 
   // Set default deadline (14 days from now)
   useEffect(() => {
@@ -147,9 +204,12 @@ export function NewOrderPage() {
     e.preventDefault();
     setFormError('');
 
+    const effectiveFabric = (selectedFabricPreset === 'OTHER' ? customFabricType : selectedFabricPreset).trim();
+    const effectiveColour = (selectedColourPreset === 'OTHER' ? customColour : selectedColourPreset).trim();
+
     if (!buyerId) return setFormError('Please select a buyer.');
-    if (!fabricType.trim()) return setFormError('Please enter the fabric type.');
-    if (!colour.trim()) return setFormError('Please enter the colour.');
+    if (!effectiveFabric) return setFormError('Please select or specify the fabric specification.');
+    if (!effectiveColour) return setFormError('Please select or specify the colour / shade.');
     if (numMetres <= 0) return setFormError('Metres must be greater than zero.');
     if (numRate <= 0) return setFormError('Rate per metre must be greater than zero.');
     if (!deadline) return setFormError('Please select a deadline.');
@@ -169,13 +229,14 @@ export function NewOrderPage() {
     try {
       const order = await createOrder({
         buyerId,
-        fabricType: fabricType.trim(),
-        colour: colour.trim(),
+        fabricType: effectiveFabric,
+        colour: effectiveColour,
         metres: numMetres,
         ratePerMetre: numRate,
         deadline,
         yarnRequirements: validYarn,
       });
+
 
       showToast('Order created successfully!', 'success');
       navigate(`/orders/${order.id}`);
@@ -286,23 +347,77 @@ export function NewOrderPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              id="fabric-type"
-              label="Fabric Specification"
-              placeholder="e.g. Cotton Twill 2/1, Poplin 40s"
-              required
-              value={fabricType}
-              onChange={(e) => setFabricType(e.target.value)}
-            />
+            <div>
+              <Select
+                id="fabric-type-select"
+                label="Fabric Specification"
+                required
+                placeholder="Select fabric specification..."
+                value={selectedFabricPreset}
+                onChange={(e) => {
+                  setSelectedFabricPreset(e.target.value);
+                  if (e.target.value !== 'OTHER') {
+                    setCustomFabricType('');
+                  }
+                }}
+                options={[
+                  ...FABRIC_SPECIFICATIONS.map((spec) => ({
+                    value: spec,
+                    label: spec,
+                  })),
+                  { value: 'OTHER', label: '✏️ Other / Custom Specification...' },
+                ]}
+              />
+              {selectedFabricPreset === 'OTHER' && (
+                <div className="mt-2.5">
+                  <Input
+                    id="custom-fabric-type"
+                    label="Custom Fabric Specification"
+                    placeholder="e.g. Silk Chiffon 20D, Modal Satin"
+                    required
+                    value={customFabricType}
+                    onChange={(e) => setCustomFabricType(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+              )}
+            </div>
 
-            <Input
-              id="colour"
-              label="Colour / Shade"
-              placeholder="e.g. Bleached White, Navy 402"
-              required
-              value={colour}
-              onChange={(e) => setColour(e.target.value)}
-            />
+            <div>
+              <Select
+                id="colour-select"
+                label="Colour / Shade"
+                required
+                placeholder="Select colour shade..."
+                value={selectedColourPreset}
+                onChange={(e) => {
+                  setSelectedColourPreset(e.target.value);
+                  if (e.target.value !== 'OTHER') {
+                    setCustomColour('');
+                  }
+                }}
+                options={[
+                  ...COLOUR_SHADES.map((shade) => ({
+                    value: shade,
+                    label: shade,
+                  })),
+                  { value: 'OTHER', label: '✏️ Other / Custom Shade...' },
+                ]}
+              />
+              {selectedColourPreset === 'OTHER' && (
+                <div className="mt-2.5">
+                  <Input
+                    id="custom-colour"
+                    label="Custom Colour / Shade"
+                    placeholder="e.g. Pantone 19-4052 Classic Blue, Rust 802"
+                    required
+                    value={customColour}
+                    onChange={(e) => setCustomColour(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
@@ -369,51 +484,76 @@ export function NewOrderPage() {
           </div>
 
           <div className="flex flex-col gap-3">
-            {yarnRows.map((row, idx) => (
-              <div
-                key={row.id}
-                className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end p-3.5 rounded-xl bg-(--color-bg) border border-(--color-border)"
-              >
-                <div className="sm:col-span-7">
-                  <Select
-                    id={`yarn-type-${row.id}`}
-                    label={`Yarn Material #${idx + 1}`}
-                    value={row.yarnTypeId}
-                    onChange={(e) => handleYarnChange(row.id, 'yarnTypeId', e.target.value)}
-                    options={safeYarnsList.map((y) => ({
-                      value: y.id,
-                      label: `${y.name} (${y.code}) · Avail: ${y.availableKg ?? 0} kg`,
-                    }))}
-                  />
-                </div>
+            {yarnRows.map((row, idx) => {
+              const selectedYarn = safeYarnsList.find((y) => y.id === row.yarnTypeId);
+              const avail = selectedYarn?.availableKg ?? 0;
+              const onHand = selectedYarn?.onHandKg ?? 0;
 
-                <div className="sm:col-span-4">
-                  <Input
-                    id={`yarn-kg-${row.id}`}
-                    label="Required (kg)"
-                    type="number"
-                    min="1"
-                    placeholder="e.g. 350"
-                    value={row.requiredKg}
-                    onChange={(e) => handleYarnChange(row.id, 'requiredKg', e.target.value)}
-                  />
-                </div>
+              return (
+                <div
+                  key={row.id}
+                  className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start p-4 rounded-xl bg-(--color-bg) border border-(--color-border)"
+                >
+                  <div className="sm:col-span-7">
+                    <Select
+                      id={`yarn-type-${row.id}`}
+                      label={`Yarn Material #${idx + 1}`}
+                      value={row.yarnTypeId}
+                      onChange={(e) => handleYarnChange(row.id, 'yarnTypeId', e.target.value)}
+                      options={safeYarnsList.map((y) => ({
+                        value: y.id,
+                        label: `${y.code} — ${y.name} [${y.colour}] · Avail: ${(y.availableKg ?? 0).toLocaleString('en-IN')} kg (${(y.onHandKg ?? 0).toLocaleString('en-IN')} kg in store)`,
+                      }))}
+                    />
+                    {selectedYarn && (
+                      <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
+                        <span className="text-(--color-text-muted)">Live Stock:</span>
+                        <span
+                          className={`font-semibold px-2 py-0.5 rounded text-[11px] ${
+                            avail <= 0
+                              ? 'bg-(--color-danger-light) text-(--color-danger)'
+                              : 'bg-(--color-success-light) text-(--color-success-dark)'
+                          }`}
+                        >
+                          {avail.toLocaleString('en-IN')} kg available
+                        </span>
+                        <span className="text-(--color-text-subtle)">
+                          ({onHand.toLocaleString('en-IN')} kg on-hand)
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
-                <div className="sm:col-span-1 flex justify-end pb-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={yarnRows.length <= 1}
-                    onClick={() => handleRemoveYarnRow(row.id)}
-                    className="text-(--color-danger) hover:bg-(--color-danger-light) p-2"
-                    title="Remove yarn row"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                  </Button>
+                  <div className="sm:col-span-4">
+                    <Input
+                      id={`yarn-kg-${row.id}`}
+                      label="Required (kg)"
+                      type="number"
+                      min="0.1"
+                      step="0.1"
+                      placeholder={numMetres > 0 ? `e.g. ${Math.round(numMetres * 0.15)}` : 'e.g. 350'}
+                      value={row.requiredKg}
+                      onChange={(e) => handleYarnChange(row.id, 'requiredKg', e.target.value)}
+                      hint={numMetres > 0 ? `~0.15 kg/m is ~${Math.round(numMetres * 0.15)} kg` : undefined}
+                    />
+                  </div>
+
+                  <div className="sm:col-span-1 flex justify-end pt-7">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={yarnRows.length <= 1}
+                      onClick={() => handleRemoveYarnRow(row.id)}
+                      className="text-(--color-danger) hover:bg-(--color-danger-light) p-2"
+                      title="Remove yarn row"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
 

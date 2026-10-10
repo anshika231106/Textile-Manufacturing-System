@@ -27,8 +27,11 @@ export interface YarnType {
   countLabel?: string;
   reorderLevelKg: number;
   availableKg?: number;
+  onHandKg?: number;
+  reservedKg?: number;
   createdAt?: string;
 }
+
 
 export interface Machine {
   id: string;
