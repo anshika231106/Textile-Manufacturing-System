@@ -12,6 +12,7 @@ import { Table, type Column } from '../../components/ui/Table';
 import { Pagination } from '../../components/ui/Pagination';
 import { Callout } from '../../components/ui/Callout';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import {
   UserPlusIcon,
   EnvelopeIcon,
@@ -35,6 +36,15 @@ const ROLE_OPTIONS = [
   { value: 'OFFICE', label: 'Office Staff (Orders & Invoices)' },
 ];
 
+type RoleFilter = 'ALL' | 'STAFF' | 'SUPERVISOR' | 'OFFICE';
+
+const ROLE_FILTER_OPTIONS: { value: RoleFilter; label: string }[] = [
+  { value: 'ALL', label: 'All' },
+  { value: 'STAFF', label: 'Staff' },
+  { value: 'SUPERVISOR', label: 'Supervisor' },
+  { value: 'OFFICE', label: 'Office' },
+];
+
 function nextRole(role: Role): Role | null {
   if (role === 'STAFF') return 'SUPERVISOR';
   if (role === 'SUPERVISOR') return 'OFFICE';
@@ -54,6 +64,7 @@ export function StaffPage() {
   const pageSize = 10;
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('ALL');
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -191,6 +202,7 @@ export function StaffPage() {
   };
 
   const filteredStaff = staff.filter((employee) => {
+    if (roleFilter !== 'ALL' && employee.role !== roleFilter) return false;
     const query = searchQuery.trim().toLowerCase();
     return !query || [employee.name, employee.email, employee.role].some((value) =>
       value.toLowerCase().includes(query),
@@ -343,6 +355,20 @@ export function StaffPage() {
             className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-(--color-border) bg-white placeholder:text-(--color-text-subtle) focus:outline-none focus:ring-2 focus:ring-(--color-accent)/20 focus:border-(--color-accent)"
           />
         </div>
+        <SegmentedControl
+          size="sm"
+          value={roleFilter}
+          onChange={(value) => {
+            setRoleFilter(value);
+            setPage(0);
+          }}
+          options={ROLE_FILTER_OPTIONS.map((option) => ({
+            ...option,
+            count: option.value === 'ALL'
+              ? staff.length
+              : staff.filter((employee) => employee.role === option.value).length,
+          }))}
+        />
         <span className="text-xs text-(--color-text-muted)">
           Showing {filteredStaff.length} of {staff.length} employees
         </span>
