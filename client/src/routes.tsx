@@ -30,6 +30,11 @@ import { MasterListPage }    from './features/masters/MasterListPage';
 import { BoardPage }         from './features/floor/BoardPage';
 import { LogPage }           from './features/floor/LogPage';
 import { QcPage }            from './features/qc/QcPage';
+import { DispatchPage }      from './features/dispatch/DispatchPage';
+import { InvoicesPage }      from './features/dispatch/InvoicesPage';
+import { InvoicePage }       from './features/dispatch/InvoicePage';
+import { AttendancePage }    from './features/attendance/AttendancePage';
+import { MonthEndPage }      from './features/reports/MonthEndPage';
 
 export interface RouteConfig {
   path: string;
@@ -147,7 +152,7 @@ export const ROUTES: RouteConfig[] = [
     icon: TruckIcon,
     roles: ['OWNER', 'SUPERVISOR'],
     nav: true,
-    element: <Placeholder title="Dispatch" description="Select rolls and confirm dispatch — coming in Phase 5." />,
+    element: <DispatchPage />,
   },
   {
     path: '/invoices',
@@ -155,7 +160,7 @@ export const ROUTES: RouteConfig[] = [
     icon: DocumentTextIcon,
     roles: ['OWNER', 'OFFICE', 'SUPERVISOR'],
     nav: true,
-    element: <Placeholder title="Invoices" description="Invoice list and payment recording — coming in Phase 5." />,
+    element: <InvoicesPage />,
   },
   {
     path: '/invoices/:id',
@@ -163,7 +168,7 @@ export const ROUTES: RouteConfig[] = [
     icon: DocumentTextIcon,
     roles: ['OWNER', 'OFFICE', 'SUPERVISOR'],
     nav: false,
-    element: <Placeholder title="Invoice Detail" description="Invoice details and payment entry — coming in Phase 5." />,
+    element: <InvoicePage />,
   },
   {
     path: '/attendance',
@@ -171,7 +176,7 @@ export const ROUTES: RouteConfig[] = [
     icon: ClipboardDocumentListIcon,
     roles: ['OWNER', 'OFFICE', 'SUPERVISOR'],
     nav: true,
-    element: <Placeholder title="Attendance" description="Daily attendance and wage view — coming in Phase 5." />,
+    element: <AttendancePage />,
   },
   {
     path: '/reports/month-end',
@@ -179,7 +184,7 @@ export const ROUTES: RouteConfig[] = [
     icon: ChartBarIcon,
     roles: ['OWNER', 'OFFICE'],
     nav: true,
-    element: <Placeholder title="Month-End Report" description="Purchases, wages, profit — coming in Phase 5." />,
+    element: <MonthEndPage />,
   },
   {
     path: '/reports/defects',
