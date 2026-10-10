@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../../middleware/validate';
-import { requireAuth } from '../../middleware/requireAuth';
+import { authenticate, authorize } from '../../middleware/authenticate';
 import {
   createStaffService,
   listStaffService,
   deleteStaffService,
+  updateStaffRoleService,
 } from './staff.service';
 import { ok, created } from '../../lib/respond';
 
@@ -17,7 +18,8 @@ const STAFF_ADMIN_ROLES = ['OFFICE', 'OWNER'] as const;
 // GET /api/v1/staff
 staffRoutes.get(
   '/staff',
-  requireAuth([...STAFF_ADMIN_ROLES]),
+  authenticate,
+  authorize(...STAFF_ADMIN_ROLES),
   async (_req, res, next) => {
     try {
       const staffList = await listStaffService();
@@ -31,7 +33,8 @@ staffRoutes.get(
 // POST /api/v1/staff
 staffRoutes.post(
   '/staff',
-  requireAuth([...STAFF_ADMIN_ROLES]),
+  authenticate,
+  authorize(...STAFF_ADMIN_ROLES),
   validate({
     body: z.object({
       name: z.string().min(1, 'Name is required').max(120),
@@ -51,18 +54,48 @@ staffRoutes.post(
   }
 );
 
+// PATCH /api/v1/staff/:id/role - only owners can change roles
+staffRoutes.patch(
+  '/staff/:id/role',
+  authenticate,
+  authorize('OWNER'),
+  validate({
+    params: z.object({
+      id: z.string().uuid('Invalid staff ID format'),
+    }),
+    body: z.object({
+      role: z.enum(['OFFICE', 'SUPERVISOR', 'STAFF'], {
+        message: 'Role must be OFFICE, SUPERVISOR, or STAFF',
+      }),
+    }),
+  }),
+  async (req, res, next) => {
+    try {
+      const updatedStaff = await updateStaffRoleService(
+        req.params.id,
+        req.body.role,
+        req.authUser!.id,
+      );
+      return ok(res, updatedStaff);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // DELETE /api/v1/staff/:id
 staffRoutes.delete(
   '/staff/:id',
-  requireAuth([...STAFF_ADMIN_ROLES]),
+  authenticate,
+  authorize(...STAFF_ADMIN_ROLES),
   validate({
     params: z.object({
       id: z.string().uuid('Invalid staff ID format'),
     }),
   }),
-  async (req: any, res, next) => {
+  async (req, res, next) => {
     try {
-      const result = await deleteStaffService(req.params.id, req.user.sub);
+      const result = await deleteStaffService(req.params.id, req.authUser!.id);
       return ok(res, result);
     } catch (err) {
       next(err);
