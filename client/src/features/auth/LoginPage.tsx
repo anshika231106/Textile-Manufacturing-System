@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ShieldCheckIcon,
@@ -12,13 +12,6 @@ import { useAuth } from '../../lib/auth';
 import { ApiError } from '../../lib/api';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-
-const ROLE_HOME: Record<string, string> = {
-  OWNER:       '/dashboard',
-  OFFICE:      '/orders',
-  SUPERVISOR:  '/floor',
-  STAFF:       '/floor',
-};
 
 const DEMO_ACCOUNTS = [
   { label: 'Admin / Owner', email: 'owner@everest.com', icon: ShieldCheckIcon },
@@ -39,7 +32,7 @@ export function LoginPage() {
   // Automatically forward already authenticated users
   useEffect(() => {
     if (user) {
-      navigate(ROLE_HOME[user.role] ?? '/', { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   }, [user, navigate]);
 
@@ -55,8 +48,8 @@ export function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      const loggedInUser = await login(email, password);
-      navigate(ROLE_HOME[loggedInUser.role] ?? '/', { replace: true });
+      await login(email, password);
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === 'INVALID_CREDENTIALS') {
@@ -88,10 +81,9 @@ export function LoginPage() {
       >
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-(--color-accent) mb-4 shadow-lg shadow-(--color-accent)/25">
-            <span className="text-white text-xl font-bold tracking-tight">MT</span>
-          </div>
-          <h1 className="text-3xl font-bold text-(--color-text) tracking-tight">MillTrace</h1>
+          <Link to="/dashboard" aria-label="MillTrace dashboard" className="inline-block">
+            <img src="/logo.png" alt="MillTrace" className="w-56 h-28 object-contain mx-auto" />
+          </Link>
           <p className="mt-1.5 text-sm text-(--color-text-muted) font-normal">
             Everest Textile Mills — Staff Portal
           </p>
