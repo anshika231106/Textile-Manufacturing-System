@@ -105,3 +105,36 @@ export async function deleteStaffService(id: string, currentUserId: string) {
 
   return { success: true, id };
 }
+
+export async function updateStaffRoleService(id: string, role: Role, currentUserId: string) {
+  if (id === currentUserId) {
+    throw badRequest('CANNOT_CHANGE_OWN_ROLE', 'You cannot change your own role');
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, role: true },
+  });
+
+  if (!target) {
+    throw notFound('Staff member not found');
+  }
+  if (target.role === 'OWNER') {
+    throw badRequest('CANNOT_CHANGE_OWNER_ROLE', 'Owner roles cannot be changed');
+  }
+  if (target.role === role) {
+    throw badRequest('ROLE_UNCHANGED', 'The user already has this role');
+  }
+
+  return prisma.user.update({
+    where: { id },
+    data: { role },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+    },
+  });
+}

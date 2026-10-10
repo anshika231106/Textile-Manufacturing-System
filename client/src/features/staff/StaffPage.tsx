@@ -16,6 +16,8 @@ import {
   EnvelopeIcon,
   TrashIcon,
   ShieldCheckIcon,
+  PencilSquareIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 
 interface StaffUser {
@@ -41,7 +43,9 @@ const ROLE_BADGE_VARIANT: Record<string, 'neutral' | 'info' | 'success' | 'warni
 
 export function StaffPage() {
   const { user: currentUser } = useAuth();
+  const isOwner = currentUser?.role === 'OWNER';
   const [staff, setStaff] = useState<StaffUser[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -61,6 +65,11 @@ export function StaffPage() {
     email: string;
     role: string;
   } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<StaffUser | null>(null);
+  const [roleTarget, setRoleTarget] = useState<StaffUser | null>(null);
+  const [selectedRole, setSelectedRole] = useState<Role>('STAFF');
+  const [actionSubmitting, setActionSubmitting] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   const fetchStaff = async () => {
     try {
@@ -130,18 +139,51 @@ export function StaffPage() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to remove staff member "${name}"?`)) {
-      return;
-    }
-
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setActionSubmitting(true);
+    setActionError('');
     try {
-      await api(`/staff/${id}`, { method: 'DELETE' });
-      setStaff((prev) => prev.filter((item) => item.id !== id));
-    } catch (err: any) {
-      alert(err.message || 'Failed to delete staff member');
+      await api(`/staff/${deleteTarget.id}`, { method: 'DELETE' });
+      setStaff((prev) => prev.filter((item) => item.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to delete staff member.');
+    } finally {
+      setActionSubmitting(false);
     }
   };
+
+  const openRoleDialog = (user: StaffUser) => {
+    setRoleTarget(user);
+    setSelectedRole(user.role === 'STAFF' ? 'SUPERVISOR' : 'STAFF');
+    setActionError('');
+  };
+
+  const handleRoleChange = async () => {
+    if (!roleTarget || roleTarget.role === selectedRole) return;
+    setActionSubmitting(true);
+    setActionError('');
+    try {
+      const updated = await api<StaffUser>(`/staff/${roleTarget.id}/role`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role: selectedRole }),
+      });
+      setStaff((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setRoleTarget(null);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to change employee role.');
+    } finally {
+      setActionSubmitting(false);
+    }
+  };
+
+  const filteredStaff = staff.filter((employee) => {
+    const query = searchQuery.trim().toLowerCase();
+    return !query || [employee.name, employee.email, employee.role].some((value) =>
+      value.toLowerCase().includes(query),
+    );
+  });
 
   const columns: Column<StaffUser>[] = [
     {
@@ -197,16 +239,33 @@ export function StaffPage() {
       render: (u) => {
         const isCurrent = currentUser?.id === u.id;
         return (
-          !isCurrent &&
-          u.role !== 'OWNER' && (
-            <button
-              onClick={() => handleDelete(u.id, u.name)}
-              className="p-1 text-(--color-text-muted) hover:text-(--color-danger) rounded hover:bg-(--color-danger-light) transition-colors"
-              title="Remove employee"
-            >
-              <TrashIcon className="w-4 h-4" />
-            </button>
-          )
+          <div className="flex justify-end items-center gap-2">
+            {isOwner && !isCurrent && u.role !== 'OWNER' && (
+              <button
+                type="button"
+                onClick={() => openRoleDialog(u)}
+                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-(--color-accent) hover:bg-(--color-accent-light) transition-colors"
+                title={`Change ${u.name}'s role`}
+              >
+                <PencilSquareIcon className="w-4 h-4" />
+                Change role
+              </button>
+            )}
+            {!isCurrent && u.role !== 'OWNER' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActionError('');
+                  setDeleteTarget(u);
+                }}
+                className="p-1 text-(--color-text-muted) hover:text-(--color-danger) rounded hover:bg-(--color-danger-light) transition-colors"
+                title="Remove employee"
+                aria-label={`Remove ${u.name}`}
+              >
+                <TrashIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         );
       },
     },
@@ -255,8 +314,24 @@ export function StaffPage() {
       {/* Error state */}
       {error && <Callout tone="danger">{error}</Callout>}
 
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="relative max-w-sm w-full">
+          <MagnifyingGlassIcon className="w-4 h-4 text-(--color-text-muted) absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search employees by name, email, or role..."
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-(--color-border) bg-white placeholder:text-(--color-text-subtle) focus:outline-none focus:ring-2 focus:ring-(--color-accent)/20 focus:border-(--color-accent)"
+          />
+        </div>
+        <span className="text-xs text-(--color-text-muted)">
+          Showing {filteredStaff.length} of {staff.length} employees
+        </span>
+      </div>
+
       {/* Staff Table */}
-      {staff.length === 0 && !loading ? (
+      {staff.length === 0 && !loading && searchQuery.trim() === '' ? (
         <div className="bg-white rounded-xl border border-(--color-border) shadow-xs text-center py-16 px-4">
           <ShieldCheckIcon className="w-12 h-12 mx-auto text-(--color-text-subtle) mb-3" />
           <h3 className="text-base font-medium text-(--color-text)">No staff members found</h3>
@@ -266,8 +341,100 @@ export function StaffPage() {
           </Button>
         </div>
       ) : (
-        <Table columns={columns} rows={staff} loading={loading} rowKey={(u) => u.id} />
+        <Table
+          columns={columns}
+          rows={filteredStaff}
+          loading={loading}
+          rowKey={(u) => u.id}
+          emptyTitle="No employees match your search"
+          emptyDescription="Try a different name, email address, or role."
+        />
       )}
+
+      {/* Owner-only role confirmation */}
+      <Dialog
+        open={roleTarget !== null}
+        onClose={() => !actionSubmitting && setRoleTarget(null)}
+        title="Confirm Role Change"
+        width="max-w-md"
+      >
+        {roleTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-(--color-text-muted)">
+              Are you sure you want to change the role of <strong className="text-(--color-text)">{roleTarget.name}</strong>?
+            </p>
+            <div className="rounded-lg bg-(--color-surface-sunken) p-3 text-sm">
+              <span className="text-(--color-text-muted)">Current role:</span>{' '}
+              <strong className="text-(--color-text)">{roleTarget.role}</strong>
+            </div>
+            <Select
+              id="change-staff-role"
+              label="New role"
+              options={ROLE_OPTIONS}
+              value={selectedRole}
+              onChange={(event) => setSelectedRole(event.target.value as Role)}
+              disabled={actionSubmitting}
+            />
+            {actionError && <Callout tone="danger">{actionError}</Callout>}
+            <div className="pt-3 border-t border-(--color-border) flex justify-end gap-2.5">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setRoleTarget(null)}
+                disabled={actionSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                loading={actionSubmitting}
+                disabled={selectedRole === roleTarget.role}
+                onClick={handleRoleChange}
+              >
+                Confirm Role Change
+              </Button>
+            </div>
+          </div>
+        )}
+      </Dialog>
+
+      {/* Styled delete confirmation */}
+      <Dialog
+        open={deleteTarget !== null}
+        onClose={() => !actionSubmitting && setDeleteTarget(null)}
+        title="Remove Employee"
+        width="max-w-md"
+      >
+        {deleteTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-(--color-text-muted)">
+              Are you sure you want to remove staff member{' '}
+              <strong className="text-(--color-text)">&quot;{deleteTarget.name}&quot;</strong>?
+              This action cannot be undone.
+            </p>
+            {actionError && <Callout tone="danger">{actionError}</Callout>}
+            <div className="pt-3 border-t border-(--color-border) flex justify-end gap-2.5">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setDeleteTarget(null)}
+                disabled={actionSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                loading={actionSubmitting}
+                onClick={handleDelete}
+              >
+                Remove Employee
+              </Button>
+            </div>
+          </div>
+        )}
+      </Dialog>
 
       {/* Add Staff Modal */}
       <Dialog

@@ -5,9 +5,7 @@ import { prisma } from "../src/lib/prisma";
 async function main() {
   const defaultPasswordHash = await bcrypt.hash("password", 10);
 
-  // ---------------------------------------------------------
-  // USERS (one per role — supervisor owns stock/QC, staff does floor work)
-  // ---------------------------------------------------------
+  // USERS 
   const owner = await prisma.user.upsert({
     where: { email: "owner@everest.com" },
     update: { passwordHash: defaultPasswordHash },
@@ -34,9 +32,7 @@ async function main() {
     create: { email: "staff2@everest.com", name: "Dinesh Rao", passwordHash: defaultPasswordHash, role: "STAFF", dailyWage: 550 },
   });
 
-  // ---------------------------------------------------------
   // BUYER & SUPPLIER
-  // ---------------------------------------------------------
   const buyer = await prisma.buyer.create({
     data: { name: "Nimesh Pathak Textiles", contactName: "Nimesh Pathak", phone: "9876543210" },
   });
@@ -45,9 +41,7 @@ async function main() {
     data: { name: "Azure Yarns Pvt Ltd", phone: "9123456780" },
   });
 
-  // ---------------------------------------------------------
-  // YARN TYPE + STOCK RECEIPT (now logged by supervisor, not a separate storekeeper)
-  // ---------------------------------------------------------
+  // YARN TYPE + STOCK RECEIPT 
   const yarnCotton = await prisma.yarnType.create({
     data: { code: "COT-40-WHT", name: "Cotton 40s", colour: "White", countLabel: "40s", reorderLevelKg: 100 },
   });
@@ -64,9 +58,7 @@ async function main() {
     },
   });
 
-  // ---------------------------------------------------------
   // MACHINES
-  // ---------------------------------------------------------
   const spinningMachine = await prisma.machine.create({
     data: { code: "SPIN-01", name: "Spinning Unit 1", stage: "SPINNING", status: "IDLE", assignedStaffId: staff.id, ratePerMetre: 2 },
   });
@@ -77,9 +69,7 @@ async function main() {
     data: { code: "DYE-01", name: "Dyeing Vat 1", stage: "DYEING", status: "IDLE", assignedStaffId: staff2.id, ratePerMetre: 1.5 },
   });
 
-  // ---------------------------------------------------------
-  // ORDER + YARN REQUIREMENT (started by office)
-  // ---------------------------------------------------------
+  // ORDER + YARN REQUIREMENT 
   const order = await prisma.order.create({
     data: {
       orderNo: "ORD-0001",
@@ -111,9 +101,7 @@ async function main() {
     },
   });
 
-  // ---------------------------------------------------------
-  // STAGE JOBS (logged by staff now doing the floor work)
-  // ---------------------------------------------------------
+  // STAGE JOBS 
   const spinJob = await prisma.stageJob.create({
     data: { orderId: order.id, stage: "SPINNING", machineId: spinningMachine.id, status: "COMPLETED", endedAt: new Date() },
   });
@@ -126,9 +114,7 @@ async function main() {
 
   await prisma.machine.update({ where: { id: dyeingMachine.id }, data: { status: "RUNNING" } });
 
-  // ---------------------------------------------------------
-  // PRODUCTION LOGS (staff logs metres, not supervisor)
-  // ---------------------------------------------------------
+  // PRODUCTION LOGS 
   await prisma.productionLog.createMany({
     data: [
       { stageJobId: spinJob.id, orderId: order.id, machineId: spinningMachine.id, stage: "SPINNING", shift: "MORNING", metres: 200, createdById: staff.id },
@@ -137,9 +123,7 @@ async function main() {
     ],
   });
 
-  // ---------------------------------------------------------
-  // ROLLS + QC (rolls created by staff, QC done by supervisor)
-  // ---------------------------------------------------------
+  // ROLLS + QC 
   const rollPass = await prisma.roll.create({
     data: {
       rollNo: "ROLL-0001",
@@ -170,9 +154,7 @@ async function main() {
     data: { rollId: rollRework.id, result: "REWORK", defectType: "UNEVEN_WEAVE", notes: "Uneven tension on left edge", inspectorId: supervisor.id },
   });
 
-  // ---------------------------------------------------------
-  // DISPATCH + INVOICE + PAYMENT (dispatch done by supervisor now)
-  // ---------------------------------------------------------
+  // DISPATCH + INVOICE + PAYMENT 
   const dispatch = await prisma.dispatch.create({
     data: { dispatchNo: "DSP-0001", orderId: order.id, vehicleNo: "MH-12-AB-1234", createdById: supervisor.id },
   });
@@ -196,9 +178,8 @@ async function main() {
     data: { invoiceId: invoice.id, amount: invoice.amount, paidOn: new Date(), method: "Bank Transfer", createdById: office.id },
   });
 
-  // ---------------------------------------------------------
+  
   // ATTENDANCE (supervisor marks staff present)
-  // ---------------------------------------------------------
   await prisma.attendance.create({
     data: { staffId: staff.id, markedById: supervisor.id, date: new Date(), present: true },
   });
@@ -206,9 +187,7 @@ async function main() {
     data: { staffId: staff2.id, markedById: supervisor.id, date: new Date(), present: true },
   });
 
-  // ---------------------------------------------------------
   // COUNTERS (so generated numbers continue after the seeded ones)
-  // ---------------------------------------------------------
   await prisma.counter.createMany({
     data: [
       { key: "order", value: 1 },
