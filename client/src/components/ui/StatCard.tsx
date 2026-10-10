@@ -52,20 +52,20 @@ export function StatCard({ icon: Icon, label, value, sub, tone = 'neutral', live
         wash,
       ].join(' ')}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-(--color-text-muted)">{label}</p>
-          <p className="mt-1.5 text-2xl font-bold text-(--color-text) tabular-nums">{value}</p>
-          {sub && <p className="mt-0.5 text-xs text-(--color-text-subtle)">{sub}</p>}
-        </div>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-(--color-text-muted) truncate">{label}</p>
         {Icon && (
-          <span className={['relative flex items-center justify-center w-9 h-9 rounded-lg shrink-0', chip].join(' ')}>
-            <Icon className="w-4.5 h-4.5" />
+          <span className={['relative flex items-center justify-center w-8 h-8 rounded-lg shrink-0', chip].join(' ')}>
+            <Icon className="w-4 h-4" />
             {live && (
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-(--color-success) animate-ping" />
             )}
           </span>
         )}
+      </div>
+      <div className="mt-2 min-w-0">
+        <p className="text-xl sm:text-2xl font-bold text-(--color-text) tabular-nums tracking-tight whitespace-nowrap truncate">{value}</p>
+        {sub && <p className="mt-0.5 text-xs text-(--color-text-subtle) truncate">{sub}</p>}
       </div>
     </motion.div>
   );
@@ -77,10 +77,10 @@ export interface StatGridProps {
 }
 
 const columnClasses: Record<NonNullable<StatGridProps['columns']>, string> = {
-  2: 'grid-cols-2',
-  3: 'grid-cols-2 lg:grid-cols-3',
-  4: 'grid-cols-2 lg:grid-cols-4',
-  5: 'grid-cols-2 lg:grid-cols-5',
+  2: 'grid-cols-1 sm:grid-cols-2',
+  3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+  4: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
+  5: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5',
   6: 'grid-cols-2 md:grid-cols-3 2xl:grid-cols-6',
 };
 
