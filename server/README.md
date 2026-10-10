@@ -72,6 +72,14 @@ npx prisma db seed
 
 Populates a full sample chain: Buyer → Order → yarn stock → machines → stage jobs → rolls → QC → dispatch → invoice → payment, plus staff assignments and attendance. Demo users use the password `password`.
 
+To add a larger operational demo dataset to a database that already has the demo users, run this from the server folder:
+
+```bash
+npm run seed:demo-orders
+```
+
+This creates 45 linked orders dated across the last seven days, including 11 completed orders and realistic production/QC/dispatch records. It also adds enough invoiced demo sales to target at least ₹17,500 current-month operating profit using the existing month-to-date purchases and attendance wages. It is safe to rerun after a successful run; it will detect the seeded orders and make no duplicate records. Run only against the intended development/demo database, not production.
+
 ## Attendance and wages
 
 Attendance is stored per staff member and date. A date with no saved attendance defaults to everyone absent in the roster; Supervisors can mark staff present and save the full roster for today. Office and Owner can review attendance and monthly wage totals, while each Staff user can view only their own attendance and wage summary. Wage totals are calculated as the staff member's daily wage multiplied by recorded present days. Office and Owner can update a staff member's daily wage, which is stored on the user record and used to recalculate wage totals. Supervisors cannot access wage data, and attendance changes are rejected for roles other than Supervisor.

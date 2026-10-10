@@ -3,6 +3,7 @@ import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard, StatGrid } from '../../components/ui/StatCard';
 import { Table, type Column } from '../../components/ui/Table';
+import { Pagination } from '../../components/ui/Pagination';
 import { formatCurrency, formatApiMonth } from '../../lib/format';
 import { getMonthEnd, type MonthEndReport } from './reports.api';
 import {
@@ -18,8 +19,10 @@ import {
 
 export function MonthEndPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(formatApiMonth(new Date()));
+  const [orderPage, setOrderPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<MonthEndReport | null>(null);
+  const orderPageSize = 10;
 
   const loadReport = async (monthStr: string) => {
     try {
@@ -34,6 +37,7 @@ export function MonthEndPage() {
   };
 
   useEffect(() => {
+    setOrderPage(0);
     loadReport(selectedMonth);
   }, [selectedMonth]);
 
@@ -177,7 +181,18 @@ export function MonthEndPage() {
               </span>
             </div>
 
-            <Table columns={costColumns} rows={report.costPerOrder} rowKey={(row) => row.orderId} />
+            <Table
+              columns={costColumns}
+              rows={report.costPerOrder.slice(orderPage * orderPageSize, (orderPage + 1) * orderPageSize)}
+              rowKey={(row) => row.orderId}
+            />
+            <Pagination
+              page={orderPage}
+              pageSize={orderPageSize}
+              totalCount={report.costPerOrder.length}
+              itemLabel="orders"
+              onPageChange={setOrderPage}
+            />
           </div>
 
           {/* TABLE 2: Output Metres Per Machine */}

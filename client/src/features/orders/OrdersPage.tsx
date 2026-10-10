@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { useApi } from '../../lib/useApi';
-import { listOrders, type Order, type OrderStatus } from './orders.api';
+import { listOrdersPage, type Order, type OrderStatus } from './orders.api';
 import { Card } from '../../components/ui/Card';
 import { Table, type Column } from '../../components/ui/Table';
+import { Pagination } from '../../components/ui/Pagination';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -48,12 +49,20 @@ export function OrdersPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [selectedStatus, setSelectedStatus] = useState('ALL');
+  const [page, setPage] = useState(0);
+  const pageSize = 10;
 
-  const { data: orders, loading, error, reload } = useApi<Order[]>(
-    () => listOrders(selectedStatus === 'ALL' ? undefined : { status: selectedStatus }),
-    [selectedStatus]
+  const { data, loading, error, reload } = useApi(
+    () => listOrdersPage({
+      ...(selectedStatus === 'ALL' ? {} : { status: selectedStatus }),
+      limit: pageSize,
+      offset: page * pageSize,
+    }),
+    [selectedStatus, page]
   );
 
+  const orders = data?.items ?? [];
+  const totalOrders = data?.meta.total ?? 0;
   const canCreate = user?.role === 'OWNER' || user?.role === 'OFFICE';
 
   const columns: Column<Order>[] = [
@@ -171,7 +180,10 @@ export function OrdersPage() {
       <div className="overflow-x-auto pb-1">
         <SegmentedControl
           value={selectedStatus}
-          onChange={setSelectedStatus}
+          onChange={(status) => {
+            setSelectedStatus(status);
+            setPage(0);
+          }}
           options={STATUS_FILTERS}
           size="sm"
         />
@@ -197,6 +209,13 @@ export function OrdersPage() {
                 ? 'Create a new order to schedule yarn requirements and production.'
                 : 'No orders match the selected filter.'
             }
+          />
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            totalCount={totalOrders}
+            itemLabel="orders"
+            onPageChange={setPage}
           />
         </Card>
       )}

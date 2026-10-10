@@ -409,35 +409,39 @@ export class OrdersService {
       where.buyerId = query.buyerId;
     }
 
+    const include = {
+      buyer: true,
+      requirements: { include: { yarnType: true } },
+      stageJobs: { include: { machine: true, logs: true } },
+      rolls: true,
+    };
+    const hasStatusFilter = Boolean(query.status);
     const [total, orders] = await Promise.all([
-      prisma.order.count({ where }),
+      hasStatusFilter ? Promise.resolve(0) : prisma.order.count({ where }),
       prisma.order.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        skip: query.offset,
-        take: query.limit,
-        include: {
-          buyer: true,
-          requirements: { include: { yarnType: true } },
-          stageJobs: { include: { machine: true, logs: true } },
-          rolls: true,
-        },
+        ...(hasStatusFilter ? {} : { skip: query.offset, take: query.limit }),
+        include,
       }),
     ]);
 
     let formattedList = orders.map((o) => this.formatOrderDetail(o));
-
     if (query.status) {
       const allowed = query.status.split(',').map((s) => s.trim().toUpperCase());
       formattedList = formattedList.filter(
         (o) => allowed.includes(o.status) || allowed.includes(o.canonicalStatus)
       );
     }
+    const filteredTotal = hasStatusFilter ? formattedList.length : total;
+    if (hasStatusFilter) {
+      formattedList = formattedList.slice(query.offset, query.offset + query.limit);
+    }
 
     return {
       items: formattedList,
       meta: {
-        total,
+        total: filteredTotal,
         limit: query.limit,
         offset: query.offset,
       },
