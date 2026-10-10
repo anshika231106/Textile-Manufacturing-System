@@ -139,18 +139,12 @@ export function LandingPage() {
       <header className="sticky top-0 z-40 bg-(--color-bg)/85 backdrop-blur-md border-b border-(--color-border) px-4 sm:px-8 py-3.5 transition-all">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* Brand */}
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-xl bg-(--color-accent) flex items-center justify-center shadow-sm shadow-(--color-accent)/25 group-hover:scale-105 transition-transform duration-200">
-              <span className="text-white text-sm font-bold tracking-tight">MT</span>
-            </div>
-            <div>
-              <span className="text-base font-bold tracking-tight text-(--color-text) block leading-none">
-                MillTrace
-              </span>
-              <span className="text-[11px] text-(--color-text-muted) tracking-wide font-normal">
-                Everest Textile Mills
-              </span>
-            </div>
+          <Link to="/dashboard" className="flex items-center gap-3 group" aria-label="MillTrace dashboard">
+            <img
+              src="/logo.png"
+              alt="MillTrace"
+              className="w-44 h-16 object-contain group-hover:scale-[1.02] transition-transform duration-200"
+            />
           </Link>
 
           {/* Navigation Links (Desktop) */}
@@ -696,9 +690,9 @@ export function LandingPage() {
       <footer className="mt-auto bg-(--color-bg) border-t border-(--color-border) py-12 px-4 sm:px-8 text-xs text-(--color-text-muted)">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg bg-(--color-accent) flex items-center justify-center text-white text-xs font-bold">
-              MT
-            </div>
+            <Link to="/dashboard" aria-label="MillTrace dashboard" className="inline-block">
+              <img src="/logo.png" alt="MillTrace" className="w-36 h-12 object-contain" />
+            </Link>
             <div>
               <p className="font-bold text-(--color-text)">Everest Textile Mills</p>
               <p className="text-[11px] text-(--color-text-subtle)">Powered by MillTrace Operating System</p>

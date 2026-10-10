@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { usePolling } from '../../lib/usePolling';
 import { api } from '../../lib/api';
 import { useState, useCallback } from 'react';
@@ -76,10 +76,10 @@ export function TrackPage() {
       >
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-(--color-accent) mb-3 shadow-md shadow-(--color-accent)/20">
-            <span className="text-white text-sm font-bold">MT</span>
-          </div>
-          <p className="text-sm text-(--color-text-muted)">MillTrace Order Tracker</p>
+          <Link to="/dashboard" aria-label="MillTrace dashboard" className="inline-block">
+            <img src="/logo.png" alt="MillTrace" className="w-48 h-24 object-contain mx-auto" />
+          </Link>
+          <p className="text-sm text-(--color-text-muted)">Order Tracker</p>
         </div>
 
         {loading && (

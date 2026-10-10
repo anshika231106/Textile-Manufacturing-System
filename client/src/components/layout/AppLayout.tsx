@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Nav } from './Nav';
 import { useAuth } from '../../lib/auth';
@@ -50,14 +50,18 @@ export function AppLayout({ children, pageTitle }: AppLayoutProps) {
           className="flex items-center gap-3 px-4 border-b border-(--color-border)"
           style={{ height: 'var(--topbar-h)', minHeight: 'var(--topbar-h)' }}
         >
-          <div className="flex-shrink-0 w-7 h-7 rounded-md bg-(--color-accent) flex items-center justify-center">
-            <span className="text-white text-xs font-bold tracking-tight">MT</span>
-          </div>
-          {!collapsed && (
-            <span className="text-sm font-bold text-(--color-text) tracking-tight whitespace-nowrap overflow-hidden">
-              MillTrace
-            </span>
-          )}
+          <Link
+            to="/dashboard"
+            onClick={() => setMobileOpen(false)}
+            aria-label="MillTrace dashboard"
+            className="flex min-w-0 items-center"
+          >
+            <img
+              src="/logo.png"
+              alt="MillTrace"
+              className={`flex-shrink-0 object-contain ${collapsed ? 'w-8 h-8' : 'w-36 h-12'}`}
+            />
+          </Link>
           <button
             onClick={() => setMobileOpen(false)}
             className="ml-auto lg:hidden text-(--color-text-muted) hover:text-(--color-text) p-1 rounded-md"

@@ -404,7 +404,9 @@ function Donut({
         </PieChart>
       </ResponsiveContainer>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold text-(--color-text)">{center}</span>
+        <span className="max-w-[90%] whitespace-nowrap text-center text-lg font-bold leading-none tracking-tight text-(--color-text)">
+          {center}
+        </span>
         <span className="text-[11px] text-(--color-text-muted)">{caption}</span>
       </div>
     </div>
@@ -957,9 +959,9 @@ function QualityPanel({ quality, canOpenQc }: { quality: DashboardData['quality'
 
   return (
     <Panel title="Quality" icon={BeakerIcon} subtitle="Inspections over the last 7 days" action={canOpenQc ? { label: 'QC queue', to: '/qc' } : null}>
-      <div className="flex items-center gap-5">
+      <div className="flex min-w-0 flex-wrap items-center gap-4 sm:flex-nowrap">
         <Donut data={results} center={passRate == null ? '—' : `${passRate}%`} caption="pass rate" tooltipTitle="QC results" unit=" rolls" />
-        <div className="flex flex-1 flex-col gap-1.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           {results.map((r) => (
             <div key={r.name} className="flex items-center justify-between text-xs">
               <span className="flex items-center gap-1.5 text-(--color-text-muted)">
@@ -975,16 +977,16 @@ function QualityPanel({ quality, canOpenQc }: { quality: DashboardData['quality'
         </div>
       </div>
 
-      <div className="mt-4 border-t border-(--color-border) pt-3">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-(--color-text-muted)">Defects found</p>
+      <div className="mt-5 border-t border-(--color-border) pt-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-(--color-text-muted)">Defects found</p>
         {defects.length === 0 ? (
           <p className="text-xs text-(--color-text-subtle)">No defects recorded this week.</p>
         ) : (
-          <div style={{ height: Math.max(56, defects.length * 30) }}>
+          <div className="min-w-0 px-1" style={{ height: Math.max(64, defects.length * 36) }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={defects} layout="vertical" margin={{ top: 0, right: 24, bottom: 0, left: 0 }} barCategoryGap={6}>
+              <BarChart data={defects} layout="vertical" margin={{ top: 4, right: 20, bottom: 4, left: 4 }} barCategoryGap={8}>
                 <XAxis type="number" hide allowDecimals={false} />
-                <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11, fill: C.ink }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="name" width={96} tickMargin={8} tick={{ fontSize: 11, fill: C.ink }} tickLine={false} axisLine={false} />
                 <Tooltip
                   cursor={{ fill: C.hover }}
                   content={({ active, payload }) =>
