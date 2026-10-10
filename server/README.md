@@ -51,15 +51,18 @@ Never guess these or reuse an old project's values — get the real ones from th
 npx prisma generate
 ```
 
-## 6. Apply existing migrations
+## 6. Apply Prisma migrations
+
+This repository includes a baseline snapshot (`20261010143000_existing_database_baseline`) and a machine assignment/status migration. For an existing database that matches the baseline snapshot, register it once and then deploy the feature migration:
 
 ```bash
-npx prisma migrate dev
+npx prisma migrate resolve --applied 20261010143000_existing_database_baseline
+npx prisma migrate deploy
 ```
 
-This applies migrations already committed under `prisma/migrations/` that you don't have locally yet.
+For a new, empty database, run `npx prisma migrate deploy` directly; it creates the baseline schema and applies the later migrations. Do not run the baseline resolve command on an empty database.
 
-**Only the DB owner creates new migrations.** If you're not making schema changes, don't run `migrate dev --name ...` — just plain `migrate dev` to sync.
+The baseline was generated from the existing database schema. Only resolve it as applied after verifying the target database matches that schema. For shared databases, use `migrate deploy`; do not use `migrate dev` to change the live schema.
 
 ## 7. Seed sample data (optional, but recommended)
 
@@ -67,7 +70,7 @@ This applies migrations already committed under `prisma/migrations/` that you do
 npx prisma db seed
 ```
 
-Populates a full sample chain: Buyer → Order → yarn stock → machines → stage jobs → rolls → QC → dispatch → invoice → payment, plus a worker and attendance record. Good for testing your own module against realistic, connected data.
+Populates a full sample chain: Buyer → Order → yarn stock → machines → stage jobs → rolls → QC → dispatch → invoice → payment, plus staff assignments and attendance. Demo users use the password `password`.
 
 ## 8. Verify it worked
 

@@ -11,7 +11,6 @@ const ROLE_HOME: Record<string, string> = {
   OFFICE:      '/orders',
   SUPERVISOR:  '/floor',
   STAFF:       '/floor',
-  STOREKEEPER: '/stock',
 };
 
 export function LoginPage() {
@@ -169,14 +168,14 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setEmail('store@everest.com');
+                  setEmail('staff1@everest.com');
                   setPassword('password');
                   setError('');
                 }}
                 className="text-left px-2.5 py-1.5 rounded-lg border border-[#E8E4DF] hover:border-[#EA580C]/40 hover:bg-[#FFF7ED]/50 transition-colors"
               >
-                <p className="text-xs font-semibold text-[#1A1714]">📦 Storekeeper</p>
-                <p className="text-[11px] text-[#78716C] truncate">store@everest.com</p>
+                <p className="text-xs font-semibold text-[#1A1714]">👷 Staff</p>
+                <p className="text-[11px] text-[#78716C] truncate">staff1@everest.com</p>
               </button>
             </div>
           </div>
