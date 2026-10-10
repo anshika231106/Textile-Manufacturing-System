@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from '../../lib/auth';
 import {
   lookupOrderForPublic,
@@ -14,12 +15,19 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { formatDate, formatCurrency } from '../../lib/format';
 import {
+  drawCheck,
+  fadeUpVariants,
+  revealContainer,
+  sequenceItem,
+  springIndicator,
+  staggerItem,
+  transitionSmooth,
+} from '../../lib/motion';
+import {
   MagnifyingGlassIcon,
   SparklesIcon,
   CheckCircleIcon,
   ArrowRightIcon,
-  ClipboardDocumentIcon,
-  CheckIcon,
   ArrowPathIcon,
   ShieldCheckIcon,
   CubeIcon,
@@ -53,6 +61,135 @@ const STAGES = [
   { key: 'QC', label: 'QC & Rolls', desc: '100% inspection & roll grading' },
 ];
 
+// Pipeline reveal timeline (seconds): cards enter one by one, then finished stages
+// turn green in order until the active stage lands.
+const STAGE_ENTER_START = 0.25;
+const STAGE_ENTER_GAP = 0.07;
+const STAGE_FILL_START = STAGE_ENTER_START + STAGES.length * STAGE_ENTER_GAP + 0.1;
+const STAGE_FILL_GAP = 0.15;
+
+function PipelineStepper({ activeIdx }: { activeIdx: number }) {
+  // Collapse the whole timeline when the user prefers reduced motion
+  const t = useReducedMotion() ? 0 : 1;
+  const fillAt = (idx: number) => (STAGE_FILL_START + idx * STAGE_FILL_GAP) * t;
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 relative">
+      {/* Connector thread between stage centres (desktop only), filling up to the active stage */}
+      <div
+        aria-hidden
+        className="hidden sm:block absolute top-7 left-[calc(10%-0.3rem)] right-[calc(10%-0.3rem)] h-0.5 rounded-full bg-(--color-border)"
+      >
+        {activeIdx > 0 && (
+          <motion.div
+            className="h-full w-full rounded-full origin-left bg-gradient-to-r from-(--color-success) to-(--color-accent)"
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: activeIdx / (STAGES.length - 1) }}
+            transition={{ delay: fillAt(0), duration: activeIdx * STAGE_FILL_GAP * t, ease: 'linear' }}
+          />
+        )}
+      </div>
+
+      {STAGES.map((stg, idx) => {
+        const isPassed = idx < activeIdx;
+        const isCurrent = idx === activeIdx;
+
+        return (
+          <motion.div
+            key={stg.key}
+            custom={(STAGE_ENTER_START + idx * STAGE_ENTER_GAP) * t}
+            variants={sequenceItem}
+            initial="initial"
+            animate="animate"
+            className={[
+              'p-4 rounded-2xl border flex flex-col justify-between relative z-10 bg-(--color-bg) border-(--color-border)',
+            ].join(' ')}
+          >
+            {/* Stage colour washes in when the fill sweep reaches this card */}
+            {(isPassed || isCurrent) && (
+              <motion.div
+                aria-hidden
+                className={[
+                  'absolute -inset-px rounded-2xl border',
+                  isCurrent
+                    ? 'bg-(--color-accent-light) border-(--color-accent)/40 shadow-sm shadow-(--color-accent)/10 ring-1 ring-(--color-accent)/20'
+                    : 'bg-(--color-success-light) border-(--color-success-border)',
+                ].join(' ')}
+                initial={{ opacity: 0 }}
+                animate={isCurrent ? { opacity: 1, scale: [1, 1.03, 1] } : { opacity: 1 }}
+                transition={{ delay: fillAt(idx), duration: 0.45 * t, ease: 'easeOut' }}
+              />
+            )}
+
+            <div className={`relative ${!isPassed && !isCurrent ? 'opacity-75' : ''}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="relative w-6 h-6">
+                  <span className="absolute inset-0 rounded-full bg-(--color-border) text-(--color-text-muted) text-xs font-bold font-mono flex items-center justify-center">
+                    {idx + 1}
+                  </span>
+                  {(isPassed || isCurrent) && (
+                    <motion.span
+                      className="absolute inset-0"
+                      initial={{ scale: 0.4, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ ...springIndicator, delay: fillAt(idx) }}
+                    >
+                      {isPassed ? (
+                        <span className="w-full h-full rounded-full bg-(--color-success) flex items-center justify-center">
+                          <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
+                            <motion.path
+                              d="M3.5 8.5l3 3 6-7"
+                              stroke="white"
+                              strokeWidth={2.2}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              custom={fillAt(idx) + 0.1 * t}
+                              variants={drawCheck}
+                              initial="initial"
+                              animate="animate"
+                            />
+                          </svg>
+                        </span>
+                      ) : (
+                        <span className="w-full h-full rounded-full bg-(--color-accent) text-white text-xs font-bold font-mono flex items-center justify-center animate-pulse-subtle">
+                          {idx + 1}
+                        </span>
+                      )}
+                    </motion.span>
+                  )}
+                </span>
+
+                {isCurrent && (
+                  <motion.span
+                    className="text-[10px] uppercase font-bold text-(--color-accent) bg-white px-2 py-0.5 rounded-full border border-(--color-accent)/20"
+                    initial={{ opacity: 0, x: 6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: fillAt(idx) + 0.15 * t, duration: 0.25 * t }}
+                  >
+                    Active
+                  </motion.span>
+                )}
+              </div>
+
+              <p className="text-sm font-bold text-(--color-text)">{stg.label}</p>
+              <p className="text-[11px] text-(--color-text-muted) mt-0.5 leading-snug">{stg.desc}</p>
+            </div>
+
+            {/* Micro progress bar for current stage */}
+            {isCurrent && (
+              <div className="relative mt-3 pt-2 border-t border-(--color-accent)/20">
+                <div className="w-full bg-[#FED7AA] h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-(--color-accent) h-full w-2/3 rounded-full animate-pulse" />
+                </div>
+              </div>
+            )}
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function LandingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -61,7 +198,6 @@ export function LandingPage() {
   const [searching, setSearching] = useState(false);
   const [trackedOrder, setTrackedOrder] = useState<Order | null>(null);
   const [searchError, setSearchError] = useState('');
-  const [copiedLink, setCopiedLink] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [sampleOrders, setSampleOrders] = useState<PublicSampleOrder[]>(DEFAULT_QUICK_SEARCHES);
   const [millStats, setMillStats] = useState<PublicMillStats | null>(null);
@@ -112,14 +248,6 @@ export function LandingPage() {
     } finally {
       setSearching(false);
     }
-  }
-
-  function handleCopyTrackUrl() {
-    if (!trackedOrder) return;
-    const url = `${window.location.origin}/track/${trackedOrder.trackingToken}`;
-    navigator.clipboard.writeText(url);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
   }
 
   // Calculate active stage index
@@ -312,17 +440,38 @@ export function LandingPage() {
             </div>
 
             {/* ─── Unfolded Live Order Tracking Details (JUST BELOW LOOKUP) ─── */}
+            <MotionConfig reducedMotion="user">
+            <AnimatePresence mode="wait">
             {trackedOrder && (
-              <div
+              <motion.div
+                key={trackedOrder.orderNumber}
                 ref={trackingResultRef}
-                className="mt-6 sm:mt-8 transition-all animate-fade-in text-left"
+                className="mt-6 sm:mt-8 text-left"
+                variants={fadeUpVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={transitionSmooth}
               >
-                <div className="bg-white border-2 border-(--color-accent)/20 rounded-3xl p-6 sm:p-8 shadow-xl shadow-(--color-accent)/5 relative overflow-hidden">
-                  {/* Top decorative accent bar */}
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-(--color-accent) via-[#F97316] to-(--color-accent)" />
+                <motion.div
+                  className="bg-white border-2 border-(--color-accent)/20 rounded-3xl p-6 sm:p-8 shadow-xl shadow-(--color-accent)/5 relative overflow-hidden"
+                  variants={revealContainer}
+                  initial="initial"
+                  animate="animate"
+                >
+                  {/* Top decorative accent bar, drawn left to right */}
+                  <motion.div
+                    className="absolute top-0 left-0 right-0 h-1.5 origin-left bg-gradient-to-r from-(--color-accent) via-[#F97316] to-(--color-accent)"
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ delay: 0.05, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  />
 
                   {/* Header info */}
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-6 border-b border-(--color-border)">
+                  <motion.div
+                    variants={staggerItem}
+                    className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-6 border-b border-(--color-border)"
+                  >
                     <div>
                       <div className="flex items-center gap-2.5 flex-wrap">
                         <h2 className="text-2xl font-extrabold text-(--color-text) tracking-tight">
@@ -344,24 +493,6 @@ export function LandingPage() {
                     </div>
 
                     <div className="flex items-center gap-2 self-start sm:self-auto">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={handleCopyTrackUrl}
-                        className="text-xs"
-                      >
-                        {copiedLink ? (
-                          <>
-                            <CheckIcon className="w-3.5 h-3.5 mr-1 text-(--color-success)" />
-                            Copied Link
-                          </>
-                        ) : (
-                          <>
-                            <ClipboardDocumentIcon className="w-3.5 h-3.5 mr-1" />
-                            Copy Buyer Link
-                          </>
-                        )}
-                      </Button>
                       <button
                         type="button"
                         onClick={() => handleSearch(trackedOrder.orderNumber, false)}
@@ -382,10 +513,10 @@ export function LandingPage() {
                         <XMarkIcon className="w-4 h-4" />
                       </button>
                     </div>
-                  </div>
+                  </motion.div>
 
                   {/* ─── Animated Milestone Pipeline Stepper ─── */}
-                  <div className="py-8">
+                  <motion.div variants={staggerItem} className="py-8">
                     <div className="flex items-center justify-between mb-4">
                       <span className="text-xs font-bold uppercase tracking-wider text-(--color-text-muted)">
                         Live Manufacturing Pipeline
@@ -396,66 +527,14 @@ export function LandingPage() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 relative">
-                      {STAGES.map((stg, idx) => {
-                        const activeIdx = getActiveStageIndex(trackedOrder);
-                        const isPassed = idx < activeIdx;
-                        const isCurrent = idx === activeIdx;
-
-                        return (
-                          <div
-                            key={stg.key}
-                            className={[
-                              'p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between relative',
-                              isCurrent
-                                ? 'bg-(--color-accent-light) border-(--color-accent)/40 shadow-sm shadow-(--color-accent)/10 ring-1 ring-(--color-accent)/20'
-                                : isPassed
-                                ? 'bg-(--color-success-light) border-(--color-success-border)'
-                                : 'bg-(--color-bg) border-(--color-border) opacity-75',
-                            ].join(' ')}
-                          >
-                            <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <span
-                                  className={[
-                                    'text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center font-mono',
-                                    isPassed
-                                      ? 'bg-(--color-success) text-white'
-                                      : isCurrent
-                                      ? 'bg-(--color-accent) text-white animate-pulse-subtle'
-                                      : 'bg-(--color-border) text-(--color-text-muted)',
-                                  ].join(' ')}
-                                >
-                                  {isPassed ? '✓' : idx + 1}
-                                </span>
-
-                                {isCurrent && (
-                                  <span className="text-[10px] uppercase font-bold text-(--color-accent) bg-white px-2 py-0.5 rounded-full border border-(--color-accent)/20">
-                                    Active
-                                  </span>
-                                )}
-                              </div>
-
-                              <p className="text-sm font-bold text-(--color-text)">{stg.label}</p>
-                              <p className="text-[11px] text-(--color-text-muted) mt-0.5 leading-snug">{stg.desc}</p>
-                            </div>
-
-                            {/* Micro progress bar for current stage */}
-                            {isCurrent && (
-                              <div className="mt-3 pt-2 border-t border-(--color-accent)/20">
-                                <div className="w-full bg-[#FED7AA] h-1.5 rounded-full overflow-hidden">
-                                  <div className="bg-(--color-accent) h-full w-2/3 rounded-full animate-pulse" />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                    <PipelineStepper activeIdx={getActiveStageIndex(trackedOrder)} />
+                  </motion.div>
 
                   {/* ─── Metres & Quantitative Progress Counters ─── */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-4 border-t border-(--color-border)">
+                  <motion.div
+                    variants={staggerItem}
+                    className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-4 border-t border-(--color-border)"
+                  >
                     <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
                       <span className="text-[11px] uppercase tracking-wider font-semibold text-(--color-text-muted) block">
                         Ordered Quantity
@@ -497,11 +576,11 @@ export function LandingPage() {
                       </p>
                       <p className="text-xs text-(--color-text-muted) mt-0.5">Scheduled dispatch</p>
                     </div>
-                  </div>
+                  </motion.div>
 
                   {/* Rolls Grid if rolls exist */}
                   {trackedOrder.rollSummary && trackedOrder.rollSummary.rolls.length > 0 && (
-                    <div className="mt-6 pt-5 border-t border-(--color-border)">
+                    <motion.div variants={staggerItem} className="mt-6 pt-5 border-t border-(--color-border)">
                       <div className="flex items-center justify-between mb-3">
                         <p className="text-xs font-bold uppercase tracking-wider text-(--color-text-muted)">
                           Individual Fabric Roll Inspect Log
@@ -527,20 +606,25 @@ export function LandingPage() {
                           </div>
                         ))}
                       </div>
-                    </div>
+                    </motion.div>
                   )}
 
                   {/* Bottom status refresh indicator */}
-                  <div className="mt-6 pt-4 border-t border-(--color-border)/60 flex items-center justify-between text-xs text-(--color-text-subtle)">
+                  <motion.div
+                    variants={staggerItem}
+                    className="mt-6 pt-4 border-t border-(--color-border)/60 flex items-center justify-between text-xs text-(--color-text-subtle)"
+                  >
                     <span className="flex items-center gap-1.5">
                       <ShieldCheckIcon className="w-4 h-4 text-(--color-success)" />
                       Direct live synchronization with Everest Textile Mills ERP
                     </span>
                     <span>Updated {lastRefreshed.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                  </div>
-                </div>
-              </div>
+                  </motion.div>
+                </motion.div>
+              </motion.div>
             )}
+            </AnimatePresence>
+            </MotionConfig>
           </div>
         </div>
       </section>

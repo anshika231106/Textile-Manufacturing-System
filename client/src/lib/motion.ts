@@ -50,3 +50,29 @@ export const staggerItem: Variants = {
   initial: { opacity: 0, y: 6 },
   animate: { opacity: 1, y: 0 },
 };
+
+/** Slower cascade for a large card revealing its sections one after another. */
+export const revealContainer: Variants = {
+  initial: {},
+  animate: { transition: { staggerChildren: 0.08, delayChildren: 0.08 } },
+};
+
+/** Entrance for an item in a sequence; pass its start delay (seconds) as `custom`. */
+export const sequenceItem: Variants = {
+  initial: { opacity: 0, y: 10 },
+  animate: (delay: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay, duration: 0.3, ease: [0.16, 1, 0.3, 1] },
+  }),
+};
+
+/** SVG stroke that draws itself (checkmarks); pass its start delay as `custom`. */
+export const drawCheck: Variants = {
+  initial: { pathLength: 0, opacity: 0 },
+  animate: (delay: number) => ({
+    pathLength: 1,
+    opacity: 1,
+    transition: { delay, duration: 0.3, ease: 'easeOut' },
+  }),
+};
