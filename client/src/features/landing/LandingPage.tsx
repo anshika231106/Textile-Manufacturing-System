@@ -44,13 +44,13 @@ const DEFAULT_QUICK_SEARCHES: PublicSampleOrder[] = [
 ];
 
 const STATUS_VARIANTS: Record<OrderStatus, 'neutral' | 'warning' | 'info' | 'success' | 'danger'> = {
-  PENDING:       'neutral',
+  PENDING: 'neutral',
   IN_PRODUCTION: 'info',
-  QC:            'warning',
-  READY:         'success',
-  DISPATCHED:    'success',
-  COMPLETED:     'success',
-  CANCELLED:     'danger',
+  QC: 'warning',
+  READY: 'success',
+  DISPATCHED: 'success',
+  COMPLETED: 'success',
+  CANCELLED: 'danger',
 };
 
 const STAGES = [
@@ -319,20 +319,20 @@ export function LandingPage() {
       </header>
 
       {/* ─── Hero Section with Live Search ─── */}
-      <section className="relative pt-12 pb-16 sm:pt-20 sm:pb-24 px-4 sm:px-8 textile-grid overflow-hidden">
+      <section className="relative pt-12 pb-16 sm:pt-20 sm:pb-24 px-4 sm:px-8 overflow-hidden bg-white">
         {/* Subtle radial glow in warm orange */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-(--color-accent)/5 rounded-full blur-3xl pointer-events-none" />
 
-        {/* ─── Background: Textile Mill Facility (Half-Height Ambient Backdrop) ─── */}
-        <div className="absolute inset-x-0 top-0 h-[460px] sm:h-[520px] overflow-hidden pointer-events-none select-none z-0">
+        {/* ─── Background: Textile Mill Facility (Ambient Backdrop Merged to White Downwards) ─── */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0">
           <img
             src="/textile-mill-hero.jpg"
             alt="Everest Textile Mills automated weaving shed and spinning units"
-            className="w-full h-full object-cover object-center opacity-30"
+            className="w-full h-full object-cover object-top opacity-50 [mask-image:linear-gradient(to_bottom,black_15%,transparent_85%)] [-webkit-mask-image:linear-gradient(to_bottom,black_15%,transparent_85%)]"
           />
-          {/* Subtle gradient overlays so cards and text remain crystal clear while background is visible */}
-          <div className="absolute inset-0 bg-gradient-to-b from-(--color-bg)/30 via-(--color-bg)/65 to-(--color-bg)" />
-          <div className="absolute inset-0 bg-gradient-to-r from-(--color-bg)/80 via-transparent to-(--color-bg)/80" />
+          {/* Subtle gradient overlays so cards and text remain crystal clear while background smoothly dissolves into white */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/15 via-white/60 to-white" />
+          <div className="absolute inset-0 bg-gradient-to-r from-white/80 via-transparent to-white/80" />
         </div>
 
         <div className="max-w-5xl mx-auto text-center relative z-10">
@@ -441,196 +441,196 @@ export function LandingPage() {
 
             {/* ─── Unfolded Live Order Tracking Details (JUST BELOW LOOKUP) ─── */}
             <MotionConfig reducedMotion="user">
-            <AnimatePresence mode="wait">
-            {trackedOrder && (
-              <motion.div
-                key={trackedOrder.orderNumber}
-                ref={trackingResultRef}
-                className="mt-6 sm:mt-8 text-left"
-                variants={fadeUpVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={transitionSmooth}
-              >
-                <motion.div
-                  className="bg-white border-2 border-(--color-accent)/20 rounded-3xl p-6 sm:p-8 shadow-xl shadow-(--color-accent)/5 relative overflow-hidden"
-                  variants={revealContainer}
-                  initial="initial"
-                  animate="animate"
-                >
-                  {/* Top decorative accent bar, drawn left to right */}
+              <AnimatePresence mode="wait">
+                {trackedOrder && (
                   <motion.div
-                    className="absolute top-0 left-0 right-0 h-1.5 origin-left bg-gradient-to-r from-(--color-accent) via-[#F97316] to-(--color-accent)"
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ delay: 0.05, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                  />
-
-                  {/* Header info */}
-                  <motion.div
-                    variants={staggerItem}
-                    className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-6 border-b border-(--color-border)"
+                    key={trackedOrder.orderNumber}
+                    ref={trackingResultRef}
+                    className="mt-6 sm:mt-8 text-left"
+                    variants={fadeUpVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    transition={transitionSmooth}
                   >
-                    <div>
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <h2 className="text-2xl font-extrabold text-(--color-text) tracking-tight">
-                          {trackedOrder.orderNumber}
-                        </h2>
-                        <Badge
-                          variant={STATUS_VARIANTS[trackedOrder.status] ?? 'neutral'}
-                          label={trackedOrder.status.replace('_', ' ')}
-                          dot
-                        />
-                        <span className="text-xs text-(--color-text-muted) font-mono bg-(--color-bg) px-2 py-0.5 rounded-md border border-(--color-border)">
-                          Token: {trackedOrder.trackingToken}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-(--color-text-muted)">
-                        Buyer: <span className="font-semibold text-(--color-text)">{trackedOrder.buyerName}</span> ·{' '}
-                        <span className="font-medium text-(--color-text)">{trackedOrder.fabricType}</span> ({trackedOrder.colour})
-                      </p>
-                    </div>
+                    <motion.div
+                      className="bg-white border-2 border-(--color-accent)/20 rounded-3xl p-6 sm:p-8 shadow-xl shadow-(--color-accent)/5 relative overflow-hidden"
+                      variants={revealContainer}
+                      initial="initial"
+                      animate="animate"
+                    >
+                      {/* Top decorative accent bar, drawn left to right */}
+                      <motion.div
+                        className="absolute top-0 left-0 right-0 h-1.5 origin-left bg-gradient-to-r from-(--color-accent) via-[#F97316] to-(--color-accent)"
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: 1 }}
+                        transition={{ delay: 0.05, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                      />
 
-                    <div className="flex items-center gap-2 self-start sm:self-auto">
-                      <button
-                        type="button"
-                        onClick={() => handleSearch(trackedOrder.orderNumber, false)}
-                        title="Refresh status"
-                        className="p-2 rounded-lg border border-(--color-border) hover:bg-(--color-bg) text-(--color-text-muted) hover:text-(--color-text) transition-colors"
+                      {/* Header info */}
+                      <motion.div
+                        variants={staggerItem}
+                        className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-6 border-b border-(--color-border)"
                       >
-                        <ArrowPathIcon className={`w-4 h-4 ${searching ? 'animate-spin' : ''}`} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTrackedOrder(null);
-                          setSearchQuery('');
-                        }}
-                        title="Dismiss order details"
-                        className="p-2 rounded-lg border border-(--color-border) hover:bg-(--color-danger-light) text-(--color-text-muted) hover:text-(--color-danger) hover:border-(--color-danger-border) transition-colors"
-                      >
-                        <XMarkIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </motion.div>
-
-                  {/* ─── Animated Milestone Pipeline Stepper ─── */}
-                  <motion.div variants={staggerItem} className="py-8">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-xs font-bold uppercase tracking-wider text-(--color-text-muted)">
-                        Live Manufacturing Pipeline
-                      </span>
-                      <span className="text-xs font-semibold text-(--color-accent) flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-(--color-accent) animate-pulse" />
-                        Active Stage: {trackedOrder.currentStage}
-                      </span>
-                    </div>
-
-                    <PipelineStepper activeIdx={getActiveStageIndex(trackedOrder)} />
-                  </motion.div>
-
-                  {/* ─── Metres & Quantitative Progress Counters ─── */}
-                  <motion.div
-                    variants={staggerItem}
-                    className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-4 border-t border-(--color-border)"
-                  >
-                    <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
-                      <span className="text-[11px] uppercase tracking-wider font-semibold text-(--color-text-muted) block">
-                        Ordered Quantity
-                      </span>
-                      <p className="text-2xl font-extrabold text-(--color-text) mt-1">
-                        {trackedOrder.metres.toLocaleString('en-IN')} <span className="text-sm font-normal text-(--color-text-muted)">m</span>
-                      </p>
-                      <p className="text-xs text-(--color-text-muted) mt-0.5">{trackedOrder.fabricType} · {trackedOrder.colour}</p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
-                      <span className="text-[11px] uppercase tracking-wider font-semibold text-(--color-text-muted) block">
-                        Produced on Machines
-                      </span>
-                      <p className="text-2xl font-extrabold text-(--color-accent) mt-1">
-                        {((trackedOrder as any).producedMetres ?? trackedOrder.stageProgress?.reduce((acc, s) => acc + (s.producedMetres || 0), 0) ?? 0).toLocaleString('en-IN')}{' '}
-                        <span className="text-sm font-normal text-(--color-text-muted)">m</span>
-                      </p>
-                      <p className="text-xs text-(--color-text-muted) mt-0.5">Through spinning/looms/dyeing</p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
-                      <span className="text-[11px] uppercase tracking-wider font-semibold text-(--color-text-muted) block">
-                        Passed Quality Check
-                      </span>
-                      <p className="text-2xl font-extrabold text-(--color-success) mt-1">
-                        {((trackedOrder as any).passedMetres ?? (trackedOrder.rollSummary?.passedRolls ?? 0) * 500).toLocaleString('en-IN')}{' '}
-                        <span className="text-sm font-normal text-(--color-text-muted)">m</span>
-                      </p>
-                      <p className="text-xs text-(--color-text-muted) mt-0.5">{trackedOrder.rollSummary?.passedRolls ?? 0} rolls graded PASS</p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
-                      <span className="text-[11px] uppercase tracking-wider font-semibold text-(--color-text-muted) block">
-                        Delivery Deadline
-                      </span>
-                      <p className="text-xl font-bold text-(--color-text) mt-1">
-                        {formatDate(trackedOrder.deadline)}
-                      </p>
-                      <p className="text-xs text-(--color-text-muted) mt-0.5">Scheduled dispatch</p>
-                    </div>
-                  </motion.div>
-
-                  {/* Rolls Grid if rolls exist */}
-                  {trackedOrder.rollSummary && trackedOrder.rollSummary.rolls.length > 0 && (
-                    <motion.div variants={staggerItem} className="mt-6 pt-5 border-t border-(--color-border)">
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="text-xs font-bold uppercase tracking-wider text-(--color-text-muted)">
-                          Individual Fabric Roll Inspect Log
-                        </p>
-                        <span className="text-xs text-(--color-text-muted)">
-                          {trackedOrder.rollSummary.totalRolls} rolls generated
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                        {trackedOrder.rollSummary.rolls.map((roll) => (
-                          <div
-                            key={roll.rollNumber}
-                            className="p-3 rounded-xl border border-(--color-border) bg-(--color-bg) flex items-center justify-between text-xs"
-                          >
-                            <div>
-                              <span className="font-bold text-(--color-text) font-mono">{roll.rollNumber}</span>
-                              <p className="text-(--color-text-muted) text-[11px]">{roll.metres} metres</p>
-                            </div>
+                        <div>
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <h2 className="text-2xl font-extrabold text-(--color-text) tracking-tight">
+                              {trackedOrder.orderNumber}
+                            </h2>
                             <Badge
-                              variant={roll.qcStatus === 'PASS' ? 'success' : 'warning'}
-                              label={roll.qcStatus}
+                              variant={STATUS_VARIANTS[trackedOrder.status] ?? 'neutral'}
+                              label={trackedOrder.status.replace('_', ' ')}
+                              dot
                             />
+                            <span className="text-xs text-(--color-text-muted) font-mono bg-(--color-bg) px-2 py-0.5 rounded-md border border-(--color-border)">
+                              Token: {trackedOrder.trackingToken}
+                            </span>
                           </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
+                          <p className="mt-1 text-sm text-(--color-text-muted)">
+                            Buyer: <span className="font-semibold text-(--color-text)">{trackedOrder.buyerName}</span> ·{' '}
+                            <span className="font-medium text-(--color-text)">{trackedOrder.fabricType}</span> ({trackedOrder.colour})
+                          </p>
+                        </div>
 
-                  {/* Bottom status refresh indicator */}
-                  <motion.div
-                    variants={staggerItem}
-                    className="mt-6 pt-4 border-t border-(--color-border)/60 flex items-center justify-between text-xs text-(--color-text-subtle)"
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <ShieldCheckIcon className="w-4 h-4 text-(--color-success)" />
-                      Direct live synchronization with Everest Textile Mills ERP
-                    </span>
-                    <span>Updated {lastRefreshed.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => handleSearch(trackedOrder.orderNumber, false)}
+                            title="Refresh status"
+                            className="p-2 rounded-lg border border-(--color-border) hover:bg-(--color-bg) text-(--color-text-muted) hover:text-(--color-text) transition-colors"
+                          >
+                            <ArrowPathIcon className={`w-4 h-4 ${searching ? 'animate-spin' : ''}`} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTrackedOrder(null);
+                              setSearchQuery('');
+                            }}
+                            title="Dismiss order details"
+                            className="p-2 rounded-lg border border-(--color-border) hover:bg-(--color-danger-light) text-(--color-text-muted) hover:text-(--color-danger) hover:border-(--color-danger-border) transition-colors"
+                          >
+                            <XMarkIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </motion.div>
+
+                      {/* ─── Animated Milestone Pipeline Stepper ─── */}
+                      <motion.div variants={staggerItem} className="py-8">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-xs font-bold uppercase tracking-wider text-(--color-text-muted)">
+                            Live Manufacturing Pipeline
+                          </span>
+                          <span className="text-xs font-semibold text-(--color-accent) flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-(--color-accent) animate-pulse" />
+                            Active Stage: {trackedOrder.currentStage}
+                          </span>
+                        </div>
+
+                        <PipelineStepper activeIdx={getActiveStageIndex(trackedOrder)} />
+                      </motion.div>
+
+                      {/* ─── Metres & Quantitative Progress Counters ─── */}
+                      <motion.div
+                        variants={staggerItem}
+                        className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-4 border-t border-(--color-border)"
+                      >
+                        <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
+                          <span className="text-[11px] uppercase tracking-wider font-semibold text-(--color-text-muted) block">
+                            Ordered Quantity
+                          </span>
+                          <p className="text-2xl font-extrabold text-(--color-text) mt-1">
+                            {trackedOrder.metres.toLocaleString('en-IN')} <span className="text-sm font-normal text-(--color-text-muted)">m</span>
+                          </p>
+                          <p className="text-xs text-(--color-text-muted) mt-0.5">{trackedOrder.fabricType} · {trackedOrder.colour}</p>
+                        </div>
+
+                        <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
+                          <span className="text-[11px] uppercase tracking-wider font-semibold text-(--color-text-muted) block">
+                            Produced on Machines
+                          </span>
+                          <p className="text-2xl font-extrabold text-(--color-accent) mt-1">
+                            {((trackedOrder as any).producedMetres ?? trackedOrder.stageProgress?.reduce((acc, s) => acc + (s.producedMetres || 0), 0) ?? 0).toLocaleString('en-IN')}{' '}
+                            <span className="text-sm font-normal text-(--color-text-muted)">m</span>
+                          </p>
+                          <p className="text-xs text-(--color-text-muted) mt-0.5">Through spinning/looms/dyeing</p>
+                        </div>
+
+                        <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
+                          <span className="text-[11px] uppercase tracking-wider font-semibold text-(--color-text-muted) block">
+                            Passed Quality Check
+                          </span>
+                          <p className="text-2xl font-extrabold text-(--color-success) mt-1">
+                            {((trackedOrder as any).passedMetres ?? (trackedOrder.rollSummary?.passedRolls ?? 0) * 500).toLocaleString('en-IN')}{' '}
+                            <span className="text-sm font-normal text-(--color-text-muted)">m</span>
+                          </p>
+                          <p className="text-xs text-(--color-text-muted) mt-0.5">{trackedOrder.rollSummary?.passedRolls ?? 0} rolls graded PASS</p>
+                        </div>
+
+                        <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
+                          <span className="text-[11px] uppercase tracking-wider font-semibold text-(--color-text-muted) block">
+                            Delivery Deadline
+                          </span>
+                          <p className="text-xl font-bold text-(--color-text) mt-1">
+                            {formatDate(trackedOrder.deadline)}
+                          </p>
+                          <p className="text-xs text-(--color-text-muted) mt-0.5">Scheduled dispatch</p>
+                        </div>
+                      </motion.div>
+
+                      {/* Rolls Grid if rolls exist */}
+                      {trackedOrder.rollSummary && trackedOrder.rollSummary.rolls.length > 0 && (
+                        <motion.div variants={staggerItem} className="mt-6 pt-5 border-t border-(--color-border)">
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-xs font-bold uppercase tracking-wider text-(--color-text-muted)">
+                              Individual Fabric Roll Inspect Log
+                            </p>
+                            <span className="text-xs text-(--color-text-muted)">
+                              {trackedOrder.rollSummary.totalRolls} rolls generated
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            {trackedOrder.rollSummary.rolls.map((roll) => (
+                              <div
+                                key={roll.rollNumber}
+                                className="p-3 rounded-xl border border-(--color-border) bg-(--color-bg) flex items-center justify-between text-xs"
+                              >
+                                <div>
+                                  <span className="font-bold text-(--color-text) font-mono">{roll.rollNumber}</span>
+                                  <p className="text-(--color-text-muted) text-[11px]">{roll.metres} metres</p>
+                                </div>
+                                <Badge
+                                  variant={roll.qcStatus === 'PASS' ? 'success' : 'warning'}
+                                  label={roll.qcStatus}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* Bottom status refresh indicator */}
+                      <motion.div
+                        variants={staggerItem}
+                        className="mt-6 pt-4 border-t border-(--color-border)/60 flex items-center justify-between text-xs text-(--color-text-subtle)"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <ShieldCheckIcon className="w-4 h-4 text-(--color-success)" />
+                          Direct live synchronization with Everest Textile Mills ERP
+                        </span>
+                        <span>Updated {lastRefreshed.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                      </motion.div>
+                    </motion.div>
                   </motion.div>
-                </motion.div>
-              </motion.div>
-            )}
-            </AnimatePresence>
+                )}
+              </AnimatePresence>
             </MotionConfig>
           </div>
         </div>
       </section>
 
       {/* ─── Section: Manufacturing Pipeline Showcase ─── */}
-      <section id="pipeline" className="py-16 sm:py-24 bg-white border-y border-(--color-border) px-4 sm:px-8">
+      <section id="pipeline" className="py-16 sm:py-24 bg-white px-4 sm:px-8">
         <div className="max-w-6xl mx-auto">
           <div className="text-center max-w-2xl mx-auto mb-14">
             <span className="text-xs font-bold uppercase tracking-wider text-(--color-accent)">
