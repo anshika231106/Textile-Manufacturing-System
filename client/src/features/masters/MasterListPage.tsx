@@ -6,15 +6,20 @@ import { useToast } from '../../components/ui/Toast';
 import {
   listBuyers,
   createBuyer,
+  updateBuyer,
   deleteBuyer,
   listSuppliers,
   createSupplier,
+  updateSupplier,
   deleteSupplier,
   listYarnTypes,
   createYarnType,
+  updateYarnType,
   deleteYarnType,
   listMachines,
   createMachine,
+  updateMachine,
+  deleteMachine,
   type Buyer,
   type Supplier,
   type YarnType,
@@ -39,19 +44,22 @@ import {
   MagnifyingGlassIcon,
   ArrowPathIcon,
   TrashIcon,
+  PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 
 // Workers are managed in Staff Management (people) and Attendance (daily wages).
 type MasterType = 'buyers' | 'suppliers' | 'yarns' | 'machines';
 
-// Master types that can be deleted from this page.
-type DeletableType = 'buyers' | 'suppliers' | 'yarns';
-
 interface DeleteTarget {
-  type: DeletableType;
+  type: MasterType;
   id: string;
   label: string;
 }
+
+const EMPTY_BUYER_FORM = { name: '', contactName: '', phone: '', email: '', address: '' };
+const EMPTY_SUPPLIER_FORM = { name: '', contactName: '', phone: '', email: '' };
+const EMPTY_YARN_FORM = { code: '', name: '', colour: '', countLabel: '', reorderLevelKg: '' };
+const EMPTY_MACHINE_FORM = { code: '', name: '', stage: 'WEAVING' as 'SPINNING' | 'WEAVING' | 'DYEING', ratePerMetre: '' };
 
 interface TabItem {
   id: MasterType;
@@ -81,6 +89,8 @@ export function MasterListPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  // Id of the record being edited; null while the dialog is adding a new record.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
@@ -88,12 +98,13 @@ export function MasterListPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Form states for creation
-  const [buyerForm, setBuyerForm] = useState({ name: '', contactName: '', phone: '', email: '', address: '' });
-  const [supplierForm, setSupplierForm] = useState({ name: '', contactName: '', phone: '', email: '' });
-  const [yarnForm, setYarnForm] = useState({ code: '', name: '', colour: '', countLabel: '', reorderLevelKg: '' });
-  const [machineForm, setMachineForm] = useState({ code: '', name: '', stage: 'WEAVING' as 'SPINNING' | 'WEAVING' | 'DYEING', ratePerMetre: '' });
+  const [buyerForm, setBuyerForm] = useState(EMPTY_BUYER_FORM);
+  const [supplierForm, setSupplierForm] = useState(EMPTY_SUPPLIER_FORM);
+  const [yarnForm, setYarnForm] = useState(EMPTY_YARN_FORM);
+  const [machineForm, setMachineForm] = useState(EMPTY_MACHINE_FORM);
 
   // Permissions
+  // Editing follows the same roles as creating.
   const canCreate = (() => {
     if (!user) return false;
     if (user.role === 'OWNER' || user.role === 'OFFICE') return true;
@@ -116,7 +127,54 @@ export function MasterListPage() {
     navigate(`/masters/${t}`);
     setSearchQuery('');
     setDialogOpen(false);
+    setEditingId(null);
     setFormErrors({});
+  };
+
+  const resetForms = () => {
+    setBuyerForm(EMPTY_BUYER_FORM);
+    setSupplierForm(EMPTY_SUPPLIER_FORM);
+    setYarnForm(EMPTY_YARN_FORM);
+    setMachineForm(EMPTY_MACHINE_FORM);
+  };
+
+  const openCreate = () => {
+    resetForms();
+    setEditingId(null);
+    setFormErrors({});
+    setDialogOpen(true);
+  };
+
+  const openEdit = (row: Buyer | Supplier | YarnType | Machine) => {
+    resetForms();
+    if (currentType === 'buyers') {
+      const r = row as Buyer;
+      setBuyerForm({
+        name: r.name,
+        contactName: r.contactName ?? '',
+        phone: r.phone ?? '',
+        email: r.email ?? '',
+        address: r.address ?? '',
+      });
+    } else if (currentType === 'suppliers') {
+      const r = row as Supplier;
+      setSupplierForm({ name: r.name, contactName: r.contactName ?? '', phone: r.phone ?? '', email: r.email ?? '' });
+    } else if (currentType === 'yarns') {
+      const r = row as YarnType;
+      setYarnForm({
+        code: r.code,
+        name: r.name,
+        colour: r.colour,
+        countLabel: r.countLabel ?? '',
+        reorderLevelKg: String(r.reorderLevelKg),
+      });
+    } else {
+      const r = row as Machine;
+      setMachineForm({ code: r.code, name: r.name, stage: r.stage, ratePerMetre: String(r.ratePerMetre) });
+    }
+    setEditingId(row.id);
+    setFormErrors({});
+    setDialogOpen(true);
   };
 
   const reloadCurrent = () => {
@@ -137,9 +195,12 @@ export function MasterListPage() {
       } else if (deleteTarget.type === 'suppliers') {
         await deleteSupplier(deleteTarget.id);
         reloadSuppliers();
-      } else {
+      } else if (deleteTarget.type === 'yarns') {
         await deleteYarnType(deleteTarget.id);
         reloadYarns();
+      } else {
+        await deleteMachine(deleteTarget.id);
+        reloadMachines();
       }
       showToast(`"${deleteTarget.label}" deleted.`, 'success');
       setDeleteTarget(null);
@@ -150,38 +211,52 @@ export function MasterListPage() {
     }
   };
 
-  // Trailing trash-button column for deletable master tables (OWNER / OFFICE only).
-  function deleteColumn<T extends { id: string }>(
-    type: DeletableType,
+  // Trailing edit / delete buttons, shown per the user's permissions.
+  function actionsColumn<T extends Buyer | Supplier | YarnType | Machine>(
+    type: MasterType,
     getLabel: (row: T) => string
   ): Column<T>[] {
-    if (!canDelete) return [];
+    if (!canCreate && !canDelete) return [];
     return [
       {
         key: 'actions',
         header: '',
         align: 'right',
         render: (r) => (
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => {
-                setDeleteError('');
-                setDeleteTarget({ type, id: r.id, label: getLabel(r) });
-              }}
-              className="p-1 text-(--color-text-muted) hover:text-(--color-danger) rounded hover:bg-(--color-danger-light) transition-colors"
-              title="Delete"
-              aria-label={`Delete ${getLabel(r)}`}
-            >
-              <TrashIcon className="w-4 h-4" />
-            </button>
+          <div className="flex justify-end gap-1">
+            {canCreate && (
+              <button
+                type="button"
+                onClick={() => openEdit(r)}
+                className="p-1 text-(--color-text-muted) hover:text-(--color-accent) rounded hover:bg-(--color-surface-sunken) transition-colors"
+                title="Edit"
+                aria-label={`Edit ${getLabel(r)}`}
+              >
+                <PencilSquareIcon className="w-4 h-4" />
+              </button>
+            )}
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteError('');
+                  setDeleteTarget({ type, id: r.id, label: getLabel(r) });
+                }}
+                className="p-1 text-(--color-text-muted) hover:text-(--color-danger) rounded hover:bg-(--color-danger-light) transition-colors"
+                title="Delete"
+                aria-label={`Delete ${getLabel(r)}`}
+              >
+                <TrashIcon className="w-4 h-4" />
+              </button>
+            )}
           </div>
         ),
       },
     ];
   }
 
-  const handleCreateSubmit = async (e: React.FormEvent) => {
+  // Blank optional fields are sent as '' so an edit can clear them; the server stores null.
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormErrors({});
     setIsSubmitting(true);
@@ -189,61 +264,72 @@ export function MasterListPage() {
     try {
       if (currentType === 'buyers') {
         if (!buyerForm.name.trim()) throw new Error('Buyer name is required.');
-        await createBuyer({
+        const input = {
           name: buyerForm.name.trim(),
-          contactName: buyerForm.contactName.trim() || undefined,
-          phone: buyerForm.phone.trim() || undefined,
-          email: buyerForm.email.trim() || undefined,
-          address: buyerForm.address.trim() || undefined,
-        });
-        showToast(`Buyer "${buyerForm.name}" created!`, 'success');
-        setBuyerForm({ name: '', contactName: '', phone: '', email: '', address: '' });
+          contactName: buyerForm.contactName.trim(),
+          phone: buyerForm.phone.trim(),
+          email: buyerForm.email.trim(),
+          address: buyerForm.address.trim(),
+        };
+        if (editingId) await updateBuyer(editingId, input);
+        else await createBuyer(input);
+        showToast(`Buyer "${input.name}" ${editingId ? 'updated' : 'created'}!`, 'success');
+        setBuyerForm(EMPTY_BUYER_FORM);
         reloadBuyers();
       } else if (currentType === 'suppliers') {
         if (!supplierForm.name.trim()) throw new Error('Supplier name is required.');
-        await createSupplier({
+        const input = {
           name: supplierForm.name.trim(),
-          contactName: supplierForm.contactName.trim() || undefined,
-          phone: supplierForm.phone.trim() || undefined,
-          email: supplierForm.email.trim() || undefined,
-        });
-        showToast(`Supplier "${supplierForm.name}" created!`, 'success');
-        setSupplierForm({ name: '', contactName: '', phone: '', email: '' });
+          contactName: supplierForm.contactName.trim(),
+          phone: supplierForm.phone.trim(),
+          email: supplierForm.email.trim(),
+        };
+        if (editingId) await updateSupplier(editingId, input);
+        else await createSupplier(input);
+        showToast(`Supplier "${input.name}" ${editingId ? 'updated' : 'created'}!`, 'success');
+        setSupplierForm(EMPTY_SUPPLIER_FORM);
         reloadSuppliers();
       } else if (currentType === 'yarns') {
         if (!yarnForm.code.trim()) throw new Error('Yarn code is required.');
         if (!yarnForm.name.trim()) throw new Error('Yarn name is required.');
         if (!yarnForm.colour.trim()) throw new Error('Yarn colour is required.');
         const reorderVal = parseFloat(yarnForm.reorderLevelKg) || 0;
-        await createYarnType({
+        const input = {
           code: yarnForm.code.trim().toUpperCase(),
           name: yarnForm.name.trim(),
           colour: yarnForm.colour.trim(),
-          countLabel: yarnForm.countLabel.trim() || undefined,
+          countLabel: yarnForm.countLabel.trim(),
           reorderLevelKg: reorderVal,
-        });
-        showToast(`Yarn type "${yarnForm.code}" created!`, 'success');
-        setYarnForm({ code: '', name: '', colour: '', countLabel: '', reorderLevelKg: '' });
+        };
+        if (editingId) await updateYarnType(editingId, input);
+        else await createYarnType(input);
+        showToast(`Yarn type "${input.code}" ${editingId ? 'updated' : 'created'}!`, 'success');
+        setYarnForm(EMPTY_YARN_FORM);
         reloadYarns();
       } else if (currentType === 'machines') {
         if (!machineForm.code.trim()) throw new Error('Machine code is required.');
         if (!machineForm.name.trim()) throw new Error('Machine name is required.');
         const rateVal = parseFloat(machineForm.ratePerMetre) || 0;
-        await createMachine({
+        const input = {
           code: machineForm.code.trim().toUpperCase(),
           name: machineForm.name.trim(),
-          stage: machineForm.stage,
           ratePerMetre: rateVal,
-        });
-        showToast(`Machine "${machineForm.code}" registered!`, 'success');
-        setMachineForm({ code: '', name: '', stage: 'WEAVING', ratePerMetre: '' });
+        };
+        if (editingId) await updateMachine(editingId, input);
+        else await createMachine({ ...input, stage: machineForm.stage });
+        showToast(`Machine "${input.code}" ${editingId ? 'updated' : 'registered'}!`, 'success');
+        setMachineForm(EMPTY_MACHINE_FORM);
         reloadMachines();
       }
 
       setDialogOpen(false);
+      setEditingId(null);
     } catch (err: any) {
-      setFormErrors({ general: err.message || 'Failed to create record.' });
-      showToast(err.message || 'Validation error', 'error');
+      // Server validation errors carry per-field messages in details.
+      const message =
+        err.details?.[0]?.message || err.message || `Failed to ${editingId ? 'update' : 'create'} record.`;
+      setFormErrors({ general: message });
+      showToast(message, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -276,7 +362,7 @@ export function MasterListPage() {
       header: 'Email',
       render: (r) => <span className="text-xs text-(--color-text-muted)">{r.email || '—'}</span>,
     },
-    ...deleteColumn<Buyer>('buyers', (r) => r.name),
+    ...actionsColumn<Buyer>('buyers', (r) => r.name),
   ];
 
   // --- Supplier Table Columns ---
@@ -301,7 +387,7 @@ export function MasterListPage() {
       header: 'Email',
       render: (r) => <span className="text-xs text-(--color-text-muted)">{r.email || '—'}</span>,
     },
-    ...deleteColumn<Supplier>('suppliers', (r) => r.name),
+    ...actionsColumn<Supplier>('suppliers', (r) => r.name),
   ];
 
   // --- Yarn Table Columns ---
@@ -348,7 +434,7 @@ export function MasterListPage() {
         </span>
       ),
     },
-    ...deleteColumn<YarnType>('yarns', (r) => r.code),
+    ...actionsColumn<YarnType>('yarns', (r) => r.code),
   ];
 
   // --- Machine Table Columns ---
@@ -398,6 +484,7 @@ export function MasterListPage() {
         </span>
       ),
     },
+    ...actionsColumn<Machine>('machines', (r) => r.code),
   ];
 
   const currentTabInfo = TABS.find((t) => t.id === currentType)!;
@@ -465,10 +552,7 @@ export function MasterListPage() {
             <Button
               variant="primary"
               size="md"
-              onClick={() => {
-                setFormErrors({});
-                setDialogOpen(true);
-              }}
+              onClick={openCreate}
             >
               <PlusIcon className="w-4 h-4" />
               Add {currentTabInfo.label.replace(/s$/, '')}
@@ -572,10 +656,10 @@ export function MasterListPage() {
       <Dialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
-        title={`Add New ${currentTabInfo.label.replace(/s$/, '')}`}
+        title={`${editingId ? 'Edit' : 'Add New'} ${currentTabInfo.label.replace(/s$/, '')}`}
         width="max-w-lg"
       >
-        <form onSubmit={handleCreateSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {formErrors.general && <Callout tone="danger">{formErrors.general}</Callout>}
 
           {/* Form for Buyers */}
@@ -719,6 +803,7 @@ export function MasterListPage() {
                   ]}
                   value={machineForm.stage}
                   onChange={(e: any) => setMachineForm({ ...machineForm, stage: e.target.value })}
+                  disabled={editingId !== null}
                 />
               </div>
               <Input
@@ -756,7 +841,7 @@ export function MasterListPage() {
               variant="primary"
               loading={isSubmitting}
             >
-              Save Master Record
+              {editingId ? 'Save Changes' : 'Save Master Record'}
             </Button>
           </div>
         </form>

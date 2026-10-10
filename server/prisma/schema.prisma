@@ -109,16 +109,20 @@ model Buyer {
   name        String   @unique
   contactName String?
   phone       String?
+  email       String?
+  address     String?
   createdAt   DateTime @default(now())
 
   orders Order[]
 }
 
 model Supplier {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @unique
-  phone     String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  contactName String?
+  phone       String?
+  email       String?
+  createdAt   DateTime @default(now())
 
   movements StockMovement[]
 }
