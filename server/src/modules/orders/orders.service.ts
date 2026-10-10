@@ -80,7 +80,7 @@ export class OrdersService {
   }
 
 
-  private formatOrderDetail(order: any, feasibility: any = null) {
+  formatOrderDetail(order: any, feasibility: any = null) {
     const metres = Number(order.metres);
     const ratePerMetre = Number(order.ratePerMetre);
     const totalAmount = round2(metres * ratePerMetre);
@@ -234,7 +234,7 @@ export class OrdersService {
       rolls: rollCounts,
       rollSummary: {
         totalRolls: rollsList.length,
-        passedRolls: passed,
+        passedRolls: passed + dispatched,
         inQcRolls: pendingQc,
         reworkRolls: rework,
         rejectedRolls: rejected,
@@ -486,8 +486,10 @@ export class OrdersService {
       where: {
         OR: [
           { trackingToken: clean },
+          { trackingToken: { equals: clean, mode: 'insensitive' } },
           { orderNo: clean },
           { orderNo: clean.toUpperCase() },
+          { orderNo: { equals: clean, mode: 'insensitive' } },
           ...(isUuid ? [{ id: clean }] : []),
         ],
       },

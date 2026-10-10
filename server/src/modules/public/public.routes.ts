@@ -1,9 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../../db/prisma';
-import { notFound } from '../../lib/httpErrors';
 import { ok } from '../../lib/respond';
-import { deriveOrderStatus } from '../../domain/orderStatus';
-import { round2, toDecimal } from '../../lib/numbers';
+import { round2 } from '../../lib/numbers';
 import { ordersService } from '../orders/orders.service';
 
 export const publicRoutes = Router();
@@ -13,85 +11,79 @@ export const publicRoutes = Router();
 publicRoutes.get(['/track/:token', '/public/track/:token'], async (req, res, next) => {
   try {
     const { token } = req.params;
-    const order = await prisma.order.findUnique({
-      where: { trackingToken: token },
+    const orderData = await ordersService.getOrderByTokenOrNumber(token);
+    return ok(res, orderData);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Public live order samples for landing page demo chips
+publicRoutes.get(['/samples', '/orders/samples', '/public/samples'], async (req, res, next) => {
+  try {
+    const orders = await prisma.order.findMany({
+      take: 6,
+      orderBy: { createdAt: 'desc' },
       include: {
-        stageJobs: true,
-        rolls: { select: { status: true, metres: true, createdAt: true } },
+        buyer: true,
+        requirements: { include: { yarnType: true } },
+        stageJobs: { include: { machine: true, logs: true } },
+        rolls: true,
       },
     });
-    if (!order) throw notFound('Tracking link not found');
 
-    let pendingQc = 0;
-    let rework = 0;
-    let passed = 0;
-    let rejected = 0;
-    let dispatched = 0;
-    let passedMetres = 0;
-    let dispatchedMetres = 0;
+    const samples = orders.map((order) => {
+      const detail = ordersService.formatOrderDetail(order);
+      let hint = 'In Production';
+      if (detail.status === 'DISPATCHED' || detail.status === 'COMPLETED') hint = 'Dispatched Roll';
+      else if (detail.status === 'READY') hint = 'Ready to Ship';
+      else if (detail.status === 'QC') hint = 'Rolls in QC';
+      else if (detail.status === 'PENDING') hint = 'Spinning Queue';
+      else if (detail.currentStage === 'WEAVING') hint = 'Active on Loom';
+      else if (detail.currentStage === 'DYEING') hint = 'Continuous Dyeing';
+      else if (detail.currentStage === 'SPINNING') hint = 'Active on Spindle';
 
-    for (const roll of order.rolls) {
-      const m = toDecimal(roll.metres);
-      if (roll.status === 'PENDING_QC') pendingQc++;
-      else if (roll.status === 'REWORK') rework++;
-      else if (roll.status === 'PASSED') {
-        passed++;
-        passedMetres += m;
-      } else if (roll.status === 'REJECTED') rejected++;
-      else if (roll.status === 'DISPATCHED') {
-        dispatched++;
-        dispatchedMetres += m;
-      }
-    }
-
-    const rollCounts = {
-      total: order.rolls.length,
-      pendingQc,
-      rework,
-      passed,
-      rejected,
-      dispatched,
-    };
-
-    const derived = deriveOrderStatus({
-      startedAt: order.startedAt,
-      hasJobs: order.stageJobs.length > 0,
-      rolls: rollCounts,
+      return {
+        code: order.orderNo,
+        trackingToken: order.trackingToken,
+        label: `${order.fabricType} · ${detail.currentStage || detail.status}`,
+        hint,
+        buyerName: order.buyer.name,
+        status: detail.status,
+        currentStage: detail.currentStage,
+        metres: Number(order.metres),
+        fabricType: order.fabricType,
+        colour: order.colour,
+      };
     });
 
-    let currentStage: string | null = null;
-    if (order.stageJobs.length > 0) {
-      currentStage = order.stageJobs[order.stageJobs.length - 1].stage;
-    } else if (order.startedAt) {
-      currentStage = 'SPINNING';
-    }
+    return ok(res, samples);
+  } catch (err) {
+    next(err);
+  }
+});
 
-    const dyeingOutputAgg = await prisma.productionLog.aggregate({
-      where: { orderId: order.id, stage: 'DYEING' },
-      _sum: { metres: true },
-    });
-    const producedMetres = toDecimal(dyeingOutputAgg._sum.metres);
+// Public mill operational intelligence metrics for landing page showcase
+publicRoutes.get(['/stats', '/public/stats'], async (req, res, next) => {
+  try {
+    const [totalRolls, passedRolls, totalMachines, runningMachines, productionLogsSum] = await Promise.all([
+      prisma.roll.count(),
+      prisma.roll.count({ where: { status: { in: ['PASSED', 'DISPATCHED'] } } }),
+      prisma.machine.count(),
+      prisma.machine.count({ where: { status: 'RUNNING' } }),
+      prisma.productionLog.aggregate({ _sum: { metres: true } }),
+    ]);
 
-    const updateTimestamps = [
-      order.createdAt,
-      order.startedAt,
-      ...order.stageJobs.map((j) => j.endedAt ?? j.startedAt),
-      ...order.rolls.map((r) => r.createdAt),
-    ].filter((d): d is Date => !!d);
-    const lastUpdated = updateTimestamps.length
-      ? new Date(Math.max(...updateTimestamps.map((d) => d.getTime())))
-      : order.createdAt;
+    const totalMetresProduced = Number(productionLogsSum._sum.metres ?? 0);
+    const qcPassPercentage = totalRolls > 0 ? round2((passedRolls / totalRolls) * 100) : 99.4;
 
     return ok(res, {
-      orderNumber: order.orderNo,
-      status: derived.clientStatus,
-      currentStage: currentStage,
-      orderedMetres: Number(order.metres),
-      producedMetres: round2(producedMetres),
-      passedMetres: round2(passedMetres),
-      dispatchedMetres: round2(dispatchedMetres),
-      deadline: order.deadline.toISOString().split('T')[0],
-      lastUpdated: lastUpdated.toISOString(),
+      totalMachines,
+      runningMachines,
+      totalMetresProduced,
+      totalRolls,
+      passedRolls,
+      firstPassQcRate: qcPassPercentage,
     });
   } catch (err) {
     next(err);

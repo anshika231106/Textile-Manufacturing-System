@@ -5,12 +5,17 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { StatCard, StatGrid } from '../../components/ui/StatCard';
 import { Table, type Column } from '../../components/ui/Table';
+import { Dialog } from '../../components/ui/Dialog';
+import { Input } from '../../components/ui/Input';
+import { Callout } from '../../components/ui/Callout';
 import { formatCurrency, formatApiMonth } from '../../lib/format';
 import {
   getAttendance,
   saveAttendance,
   getWages,
+  updateDailyWage,
   type WorkerAttendanceRecord,
+  type WorkerWageSummary,
   type MonthlyWagesResponse,
 } from './attendance.api';
 import {
@@ -20,6 +25,7 @@ import {
   BanknotesIcon,
   UsersIcon,
   ClockIcon,
+  PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -44,6 +50,7 @@ export function AttendancePage() {
   const isStaff = user?.role === 'STAFF';
   const canMarkAttendance = user?.role === 'SUPERVISOR';
   const canSeeWages = user?.role === 'OFFICE' || user?.role === 'OWNER' || isStaff;
+  const canEditWages = user?.role === 'OFFICE' || user?.role === 'OWNER';
 
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedMonth, setSelectedMonth] = useState(formatApiMonth(new Date()));
@@ -54,6 +61,10 @@ export function AttendancePage() {
   const [wagesData, setWagesData] = useState<MonthlyWagesResponse | null>(null);
   const [wagesLoading, setWagesLoading] = useState(canSeeWages);
   const [wagesError, setWagesError] = useState('');
+  const [wageTarget, setWageTarget] = useState<WorkerWageSummary | null>(null);
+  const [wageInput, setWageInput] = useState('');
+  const [wageSaving, setWageSaving] = useState(false);
+  const [wageEditError, setWageEditError] = useState('');
 
   const loadDaily = async (date: string) => {
     setDailyLoading(true);
@@ -106,11 +117,6 @@ export function AttendancePage() {
   };
 
   const handleSave = async () => {
-    if (records.some((record) => record.present === null)) {
-      showToast('Mark every staff member present or absent before saving.', 'error');
-      return;
-    }
-
     setSaving(true);
     try {
       const response = await saveAttendance({
@@ -129,9 +135,35 @@ export function AttendancePage() {
     }
   };
 
+  const handleSaveWage = async () => {
+    if (!wageTarget) return;
+    const amount = Number(wageInput);
+    if (!wageInput.trim() || !Number.isFinite(amount) || amount < 0 || amount > 999999.99) {
+      setWageEditError('Enter a valid daily wage from 0 to 999,999.99.');
+      return;
+    }
+
+    setWageSaving(true);
+    setWageEditError('');
+    try {
+      const updated = await updateDailyWage(wageTarget.workerId, Math.round(amount * 100) / 100);
+      setRecords((current) => current.map((record) =>
+        record.workerId === updated.staffId
+          ? { ...record, dailyWage: updated.dailyWage }
+          : record,
+      ));
+      await loadWages(selectedMonth);
+      showToast(`${wageTarget.workerName}'s daily wage was updated.`, 'success');
+      setWageTarget(null);
+    } catch (error) {
+      setWageEditError(errorMessage(error, 'Failed to update daily wage.'));
+    } finally {
+      setWageSaving(false);
+    }
+  };
+
   const presentCount = records.filter((record) => record.present === true).length;
   const absentCount = records.filter((record) => record.present === false).length;
-  const unmarkedCount = records.filter((record) => record.present === null).length;
 
   const dailyColumns: Column<WorkerAttendanceRecord>[] = [
     { key: 'code', header: 'Code', render: (w) => <span className="font-mono font-semibold text-(--color-text)">{w.workerCode}</span> },
@@ -154,10 +186,8 @@ export function AttendancePage() {
       render: (w) =>
         w.present === true ? (
           <Badge variant="success" label="PRESENT" dot />
-        ) : w.present === false ? (
-          <Badge variant="danger" label="ABSENT" dot />
         ) : (
-          <Badge variant="warning" label="NOT MARKED" dot />
+          <Badge variant="danger" label="ABSENT" dot />
         ),
     },
     ...(canMarkAttendance
@@ -170,12 +200,12 @@ export function AttendancePage() {
               type="button"
               onClick={() => toggleStatus(w.workerId)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                w.present === true
+                w.present
                   ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs hover:bg-emerald-700'
                   : 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100'
               }`}
             >
-              {w.present === true ? 'Present' : w.present === false ? 'Absent' : 'Mark Present'}
+              {w.present ? 'Present' : 'Absent'}
             </button>
           ),
         }]
@@ -190,6 +220,29 @@ export function AttendancePage() {
     { key: 'present', header: 'Days Present', align: 'right', render: (w) => <span className="font-mono font-bold text-emerald-700">{w.presentDays}</span> },
     { key: 'absent', header: 'Days Absent', align: 'right', render: (w) => <span className="font-mono text-rose-700">{w.absentDays}</span> },
     { key: 'total', header: 'Wages Earned', align: 'right', render: (w) => <span className="font-mono font-bold text-sm text-emerald-800">{formatCurrency(w.totalWage)}</span> },
+    ...(canEditWages
+      ? [{
+          key: 'actions',
+          header: 'Actions',
+          align: 'right' as const,
+          render: (w: WorkerWageSummary) => (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setWageTarget(w);
+                setWageInput(String(w.dailyWage));
+                setWageEditError('');
+              }}
+              className="text-xs"
+            >
+              <PencilSquareIcon className="w-4 h-4" />
+              Edit daily wage
+            </Button>
+          ),
+        }]
+      : []),
   ];
 
   return (
@@ -276,11 +329,6 @@ export function AttendancePage() {
               <span className="text-rose-700 font-medium">
                 Absent: <strong className="font-mono">{absentCount}</strong>
               </span>
-              {unmarkedCount > 0 && (
-                <span className="text-amber-700 font-medium">
-                  Not marked: <strong className="font-mono">{unmarkedCount}</strong>
-                </span>
-              )}
             </div>
 
             {canMarkAttendance && (
@@ -324,7 +372,7 @@ export function AttendancePage() {
             <Button
               variant="primary"
               loading={saving}
-              disabled={dailyLoading || records.length === 0 || unmarkedCount > 0}
+              disabled={dailyLoading || records.length === 0}
               onClick={handleSave}
               className="shadow-xs text-xs py-2.5 px-5"
             >
@@ -403,6 +451,55 @@ export function AttendancePage() {
             />
           )}
         </section>
+      )}
+
+      {canEditWages && (
+        <Dialog
+          open={wageTarget !== null}
+          onClose={() => !wageSaving && setWageTarget(null)}
+          title="Update Daily Wage"
+          width="max-w-md"
+        >
+          {wageTarget && (
+            <div className="space-y-4">
+              <p className="text-sm text-(--color-text-muted)">
+                Update the daily wage for <strong className="text-(--color-text)">{wageTarget.workerName}</strong>.
+                Monthly wages are recalculated from this rate and recorded days present.
+              </p>
+              <Input
+                id="staff-daily-wage"
+                type="number"
+                label="Daily wage"
+                min="0"
+                max="999999.99"
+                step="0.01"
+                value={wageInput}
+                onChange={(event) => setWageInput(event.target.value)}
+                disabled={wageSaving}
+                required
+              />
+              {wageEditError && <Callout tone="danger">{wageEditError}</Callout>}
+              <div className="pt-3 border-t border-(--color-border) flex justify-end gap-2.5">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setWageTarget(null)}
+                  disabled={wageSaving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  loading={wageSaving}
+                  onClick={handleSaveWage}
+                >
+                  Save Daily Wage
+                </Button>
+              </div>
+            </div>
+          )}
+        </Dialog>
       )}
     </div>
   );

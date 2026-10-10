@@ -21,6 +21,10 @@ const saveAttendanceBody = z.object({
     present: z.boolean(),
   })),
 });
+const updateWageParams = z.object({ staffId: z.string().uuid() });
+const updateWageBody = z.object({
+  dailyWage: z.number().finite().min(0).max(999999.99),
+});
 
 function isValidDate(value: string): boolean {
   const date = new Date(`${value}T00:00:00.000Z`);
@@ -66,7 +70,7 @@ async function loadDailyRecords(date: string, staffId?: string, includeWage = fa
     workerName: user.name,
     workerRole: 'Staff',
     ...(includeWage ? { dailyWage: dailyWage(user) } : {}),
-    present: attendanceByStaff.get(user.id) ?? null,
+    present: attendanceByStaff.get(user.id) ?? false,
   }));
 }
 
@@ -184,6 +188,38 @@ attendanceRoutes.get(
         totalWages: wageWorkers.reduce((sum, worker) => sum + worker.totalWage, 0),
         totalPresentDays: wageWorkers.reduce((sum, worker) => sum + worker.presentDays, 0),
         activeWorkers: wageWorkers.length,
+      });
+    } catch (err) {
+      return next(err);
+    }
+  },
+);
+
+attendanceRoutes.patch(
+  '/attendance/staff/:staffId/wage',
+  authenticate,
+  authorize('OFFICE', 'OWNER'),
+  validate({ params: updateWageParams, body: updateWageBody }),
+  async (req, res, next) => {
+    try {
+      const { staffId } = req.params as z.infer<typeof updateWageParams>;
+      const { dailyWage: updatedDailyWage } = req.body as z.infer<typeof updateWageBody>;
+      const staff = await prisma.user.findUnique({
+        where: { id: staffId },
+        select: { id: true, role: true },
+      });
+      if (!staff || staff.role !== 'STAFF') {
+        throw badRequest('INVALID_STAFF', 'Wages can only be updated for staff users');
+      }
+
+      const updated = await prisma.user.update({
+        where: { id: staffId },
+        data: { dailyWage: updatedDailyWage },
+        select: { id: true, dailyWage: true },
+      });
+      return ok(res, {
+        staffId: updated.id,
+        dailyWage: dailyWage(updated),
       });
     } catch (err) {
       return next(err);
