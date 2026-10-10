@@ -56,8 +56,8 @@
     --radius-lg:  12px;
     --radius-xl:  16px;
 
-    --sidebar-w:       240px;
-    --sidebar-w-mini:  64px;
+    --sidebar-w:       256px;
+    --sidebar-w-mini:  76px;
     --topbar-h:        56px;
   }
 
@@ -193,6 +193,29 @@
 
 :root[data-theme='dark'] .landing-header {
   background-color: color-mix(in srgb, var(--color-surface) 75%, transparent) !important;
+}
+
+:root[data-theme='dark'] .app-sidebar-panel {
+  background-color: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  box-shadow: 0 10px 30px -12px rgb(0 0 0 / 60%);
+}
+
+/* Sidebar nav: scrollable, but no native scrollbar. Overflow is shown by fading the edges instead. */
+.sidebar-scroll {
+  scrollbar-width: none;
+  --fade-top: 0px;
+  --fade-bottom: 0px;
+  mask-image: linear-gradient(to bottom, transparent 0, black var(--fade-top), black calc(100% - var(--fade-bottom)), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black var(--fade-top), black calc(100% - var(--fade-bottom)), transparent 100%);
+}
+.sidebar-scroll::-webkit-scrollbar {
+  display: none;
+}
+.sidebar-scroll.fade-top {
+  --fade-top: 28px;
+}
+.sidebar-scroll.fade-bottom {
+  --fade-bottom: 36px;
 }
 
 /* Keep in-page anchor targets clear of the fixed floating navbar. */
