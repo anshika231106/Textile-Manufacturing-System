@@ -1,6 +1,6 @@
 import type { SelectHTMLAttributes } from 'react';
 
-interface Option {
+export interface SelectOption {
   value: string;
   label: string;
 }
@@ -8,20 +8,21 @@ interface Option {
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
-  options: Option[];
+  options?: SelectOption[];
   placeholder?: string;
 }
 
 export function Select({
   label,
   error,
-  options,
+  options = [],
   placeholder,
   id,
   className = '',
   ...props
 }: SelectProps) {
   const selectId = id ?? label?.toLowerCase().replace(/\s+/g, '-');
+  const safeOptions = Array.isArray(options) ? options : [];
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -34,8 +35,8 @@ export function Select({
       <select
         id={selectId}
         className={[
-          'w-full rounded-md border px-3 py-2 text-sm text-[#1A1714] bg-white',
-          'transition-colors duration-150 appearance-none cursor-pointer',
+          'w-full rounded-lg border px-3.5 py-2.5 text-sm text-[#1A1714] bg-white',
+          'transition-colors duration-150 appearance-none cursor-pointer shadow-xs',
           'focus:outline-none focus:ring-2 focus:ring-[#EA580C]/30 focus:border-[#EA580C]',
           error
             ? 'border-[#DC2626]'
@@ -46,8 +47,8 @@ export function Select({
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2378716C' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
           backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'right 10px center',
-          paddingRight: '32px',
+          backgroundPosition: 'right 12px center',
+          paddingRight: '36px',
         }}
         {...props}
       >
@@ -56,7 +57,7 @@ export function Select({
             {placeholder}
           </option>
         )}
-        {options.map((o) => (
+        {safeOptions.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
