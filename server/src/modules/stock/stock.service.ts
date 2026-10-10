@@ -29,7 +29,7 @@ export class StockService {
       }
     }
 
-    // 2. Create stock movement and compute new on-hand balance inside transaction
+    // 2. Create stock movement and compute new on-hand balance inside 
     const { movement, onHandKg } = await prisma.$transaction(
       async (tx) => {
         const mov = await tx.stockMovement.create({
