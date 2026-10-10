@@ -1,186 +1,303 @@
-import { useAuth } from '../../lib/auth';
-import { Spinner } from '../../components/ui/Spinner';
-import { ErrorState } from '../../components/ui/ErrorState';
-import { useApi } from '../../lib/useApi';
-import { api } from '../../lib/api';
-import { Badge } from '../../components/ui/Badge';
-import { StatCard, StatGrid } from '../../components/ui/StatCard';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
-  CubeIcon,
-  WrenchScrewdriverIcon,
+  ArrowPathIcon,
   BeakerIcon,
   ChartBarIcon,
+  ClipboardDocumentListIcon,
+  CpuChipIcon,
+  PlusIcon,
+  ShoppingBagIcon,
   SwatchIcon,
+  TruckIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
+import { useAuth, type Role } from '../../lib/auth';
+import { ApiError } from '../../lib/api';
+import { usePolling } from '../../lib/usePolling';
+import { Button } from '../../components/ui/Button';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { SegmentedControl } from '../../components/ui/SegmentedControl';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { StatCard, StatGrid } from '../../components/ui/StatCard';
+import { staggerContainer } from '../../lib/motion';
+import { getBoard, type FloorBoardResponse } from '../floor/floor.api';
+import { getDashboard, type DashboardData, type Stage } from './reports.api';
+import { ProductionTrendChart, StageLegend, STAGE_ORDER } from './dashboard/ProductionTrendChart';
+import {
+  ActivityPanel,
+  AttentionStrip,
+  FinancePanel,
+  MachineFloorPanel,
+  OrderDeadlinesPanel,
+  OrderPipeline,
+  Panel,
+  QualityPanel,
+  StockPanel,
+  buildAttentionItems,
+} from './dashboard/panels';
+import { StaffHome } from './dashboard/StaffHome';
 
-interface DashboardData {
-  ordersByStatus: { status: string; count: number }[];
-  machinesRunning: number;
-  machinesIdle: number;
-  machinesBreakdown: number;
-  lowStockYarnCount: number;
-  rollsAwaitingQc: number;
-  metresTodayProduced: number;
+const REFRESH_MS = 60_000;
+
+// Mirrors the role lists in routes.tsx for the pages the dashboard links to
+// (routes.tsx imports this page, so importing ROUTES here would be circular).
+const PAGE_ROLES: Record<string, Role[] | 'all'> = {
+  '/orders': 'all',
+  '/orders/new': 'all',
+  '/orders/:id': 'all',
+  '/stock': 'all',
+  '/floor': ['OWNER', 'SUPERVISOR', 'STAFF'],
+  '/floor/log': ['OWNER', 'SUPERVISOR'],
+  '/qc': ['OWNER', 'SUPERVISOR'],
+  '/dispatch': ['OWNER', 'SUPERVISOR'],
+  '/invoices/:id': ['OWNER', 'OFFICE', 'SUPERVISOR'],
+  '/attendance': ['OWNER', 'OFFICE', 'SUPERVISOR'],
+  '/reports/month-end': ['OWNER', 'OFFICE'],
+};
+
+const QUICK_ACTIONS = [
+  { label: 'New order', to: '/orders/new', icon: PlusIcon, primary: true },
+  { label: 'Log production', to: '/floor/log', icon: ClipboardDocumentListIcon },
+  { label: 'Inspect rolls', to: '/qc', icon: BeakerIcon },
+  { label: 'Dispatch', to: '/dispatch', icon: TruckIcon },
+];
+
+type Snapshot =
+  | { kind: 'manager'; data: DashboardData }
+  | { kind: 'staff'; board: FloorBoardResponse };
+
+function pctChange(current: number, previous: number): string | null {
+  if (previous <= 0) return current > 0 ? 'new vs yesterday' : null;
+  const pct = Math.round(((current - previous) / previous) * 100);
+  return `${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)}% vs yesterday`;
 }
-
-const STATUS_LABEL: Record<string, string> = {
-  PENDING:       'Pending',
-  IN_PRODUCTION: 'In Production',
-  QC:            'In QC',
-  READY:         'Ready to Dispatch',
-  DISPATCHED:    'Dispatched',
-  COMPLETED:     'Completed',
-  CANCELLED:     'Cancelled',
-};
-
-const STATUS_VARIANT: Record<string, 'neutral' | 'warning' | 'info' | 'success' | 'danger'> = {
-  PENDING:       'neutral',
-  IN_PRODUCTION: 'info',
-  QC:            'warning',
-  READY:         'success',
-  DISPATCHED:    'success',
-  COMPLETED:     'success',
-  CANCELLED:     'danger',
-};
-
-// Segment colors for the proportional status bar - mirrors Badge's dot-color mapping.
-const SEGMENT_COLOR: Record<string, string> = {
-  neutral: 'bg-(--color-text-muted)',
-  warning: 'bg-(--color-warning)',
-  info:    'bg-(--color-info)',
-  success: 'bg-(--color-success)',
-  danger:  'bg-(--color-danger)',
-};
-
-const MOCK_DASHBOARD: DashboardData = {
-  ordersByStatus: [
-    { status: 'PENDING', count: 4 },
-    { status: 'IN_PRODUCTION', count: 6 },
-    { status: 'QC', count: 2 },
-    { status: 'READY', count: 5 },
-    { status: 'DISPATCHED', count: 12 },
-  ],
-  machinesRunning: 6,
-  machinesIdle: 2,
-  machinesBreakdown: 1,
-  lowStockYarnCount: 2,
-  rollsAwaitingQc: 3,
-  metresTodayProduced: 4850,
-};
 
 export function HomePage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const role = user?.role as Role | undefined;
+  const isStaff = role === 'STAFF';
 
-  const { data, loading, error, reload } = useApi<DashboardData>(
-    async () => {
-      try {
-        return await api<DashboardData>('/reports/dashboard');
-      } catch {
-        // Fallback to sample data during frontend MVP development
-        return MOCK_DASHBOARD;
-      }
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [trendView, setTrendView] = useState<'chart' | 'table'>('chart');
+  const inFlight = useRef(false);
+
+  const canAccess = useCallback(
+    (path: string) => {
+      const roles = PAGE_ROLES[path];
+      return roles === 'all' || (!!role && !!roles && roles.includes(role));
     },
-    []
+    [role]
   );
 
-  const totalOrders = data?.ordersByStatus.reduce((sum, s) => sum + s.count, 0) ?? 0;
+  const load = useCallback(
+    async (force = false) => {
+      // Skip background refreshes while the tab is hidden; always honour manual refresh.
+      if (inFlight.current || (!force && document.hidden && snapshot)) return;
+      inFlight.current = true;
+      setRefreshing(true);
+      try {
+        const next: Snapshot = isStaff
+          ? { kind: 'staff', board: await getBoard() }
+          : { kind: 'manager', data: await getDashboard() };
+        setSnapshot(next);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof ApiError ? err : new ApiError('UNKNOWN_ERROR', String(err)));
+      } finally {
+        inFlight.current = false;
+        setRefreshing(false);
+      }
+    },
+    [isStaff, snapshot]
+  );
+
+  usePolling(() => void load(), REFRESH_MS);
+
+  const data = snapshot?.kind === 'manager' ? snapshot.data : null;
+  const attention = useMemo(() => (data ? buildAttentionItems(data, canAccess) : []), [data, canAccess]);
+  const stageTotals = useMemo(() => {
+    const totals = { SPINNING: 0, WEAVING: 0, DYEING: 0 } as Record<Stage, number>;
+    data?.production.trend.forEach((d) => STAGE_ORDER.forEach((s) => (totals[s] += d[s])));
+    STAGE_ORDER.forEach((s) => (totals[s] = Math.round(totals[s])));
+    return totals;
+  }, [data]);
+
+  const updatedAt = data?.generatedAt ?? (snapshot ? new Date().toISOString() : null);
+  const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <div className="flex flex-col gap-8 page-content">
+    <div className="flex flex-col gap-6 page-content">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight text-(--color-text)">
-          Good {getGreeting()}, {user?.name?.split(' ')[0]}
-        </h2>
-        <p className="mt-1 text-sm text-(--color-text-muted)">
-          Here's what's happening at the mill today.
-        </p>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-(--color-accent)">{today}</p>
+          <h2 className="mt-1 text-2xl font-bold tracking-tight text-(--color-text)">
+            Good {getGreeting()}, {user?.name?.split(' ')[0]}
+          </h2>
+          <p className="mt-1 flex items-center gap-2 text-sm text-(--color-text-muted)">
+            {isStaff ? 'Your machines at a glance.' : "Here's what's happening at the mill right now."}
+            {updatedAt && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-(--color-text-subtle)">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-(--color-success) opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-(--color-success)" />
+                </span>
+                Live · updated {new Date(updatedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {QUICK_ACTIONS.filter((a) => canAccess(a.to)).map((a) => (
+            <Button key={a.to} size="sm" variant={a.primary ? 'primary' : 'secondary'} onClick={() => navigate(a.to)}>
+              <a.icon className="h-4 w-4" />
+              {a.label}
+            </Button>
+          ))}
+          <Button size="sm" variant="ghost" onClick={() => void load(true)} disabled={refreshing} aria-label="Refresh dashboard">
+            <ArrowPathIcon className={['h-4 w-4', refreshing ? 'animate-spin' : ''].join(' ')} />
+          </Button>
+        </div>
       </div>
 
-      {loading && (
-        <div className="flex items-center justify-center py-24">
-          <Spinner size="lg" />
-        </div>
+      {error && !snapshot && <ErrorState code={error.code} message={error.message} onRetry={() => void load(true)} />}
+      {error && snapshot && (
+        <p className="rounded-lg border border-(--color-warning-border) bg-(--color-warning-light) px-3 py-2 text-xs text-(--color-text)">
+          Couldn't refresh just now ({error.message}). Showing the last snapshot.
+        </p>
       )}
 
-      {error && (
-        <ErrorState code={error.code} message={error.message} onRetry={reload} />
-      )}
+      {!snapshot && !error && <DashboardSkeleton />}
 
-      {!loading && !error && data && (
-        <>
+      {snapshot?.kind === 'staff' && <StaffHome board={snapshot.board} />}
+
+      {data && (
+        <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex flex-col gap-6">
+          <AttentionStrip items={attention} />
+
           {/* KPI tiles */}
-          <StatGrid columns={4}>
+          <StatGrid columns={6}>
             <StatCard
-              icon={WrenchScrewdriverIcon}
-              label="Machines Running"
-              value={data.machinesRunning}
-              sub={`${data.machinesIdle} idle · ${data.machinesBreakdown} down`}
+              icon={SwatchIcon}
+              label="Metres today"
+              value={`${data.production.today.toLocaleString('en-IN')} m`}
+              sub={pctChange(data.production.today, data.production.yesterday) ?? `${data.production.last7Days.toLocaleString('en-IN')} m this week`}
               tone="accent"
-              live
             />
             <StatCard
-              icon={CubeIcon}
-              label="Rolls Awaiting QC"
-              value={data.rollsAwaitingQc}
-              tone={data.rollsAwaitingQc > 0 ? 'accent' : 'neutral'}
+              icon={CpuChipIcon}
+              label="Utilisation"
+              value={`${data.machines.utilizationRate}%`}
+              sub={`${data.machines.running}/${data.machines.total} running${data.machines.breakdown ? ` · ${data.machines.breakdown} down` : ''}`}
+              tone={data.machines.breakdown ? 'danger' : 'success'}
+              live={data.machines.running > 0}
+            />
+            <StatCard
+              icon={ShoppingBagIcon}
+              label="Active orders"
+              value={data.orders.active}
+              sub={data.orders.overdue ? `${data.orders.overdue} overdue · ${data.orders.dueThisWeek} due this week` : `${data.orders.dueThisWeek} due this week`}
+              tone={data.orders.overdue ? 'danger' : 'info'}
             />
             <StatCard
               icon={BeakerIcon}
-              label="Low Stock Yarns"
-              value={data.lowStockYarnCount}
-              tone={data.lowStockYarnCount > 0 ? 'accent' : 'neutral'}
+              label="QC pass rate"
+              value={data.quality.last7Days.passRate == null ? '—' : `${data.quality.last7Days.passRate}%`}
+              sub={`${data.quality.awaitingRolls} roll${data.quality.awaitingRolls === 1 ? '' : 's'} awaiting · 7 days`}
+              tone={data.quality.last7Days.passRate != null && data.quality.last7Days.passRate < 90 ? 'warning' : 'success'}
             />
             <StatCard
-              icon={SwatchIcon}
-              label="Metres Today"
-              value={`${data.metresTodayProduced.toLocaleString('en-IN')} m`}
+              icon={TruckIcon}
+              label="Ready to ship"
+              value={`${data.finishedGoods.readyMetres.toLocaleString('en-IN')} m`}
+              sub={`${data.finishedGoods.readyRolls} roll${data.finishedGoods.readyRolls === 1 ? '' : 's'} passed QC`}
               tone="neutral"
+            />
+            <StatCard
+              icon={UserGroupIcon}
+              label="Staff present"
+              value={data.workforce.markedToday ? `${data.workforce.presentToday}/${data.workforce.totalStaff}` : '—'}
+              sub={data.workforce.markedToday ? `${data.workforce.absentToday} absent today` : 'Attendance not marked yet'}
+              tone={data.workforce.markedToday ? 'neutral' : 'warning'}
             />
           </StatGrid>
 
-          {/* Orders by status */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <ChartBarIcon className="w-5 h-5 text-(--color-text-muted)" />
-              <h3 className="text-sm font-semibold text-(--color-text)">Orders by Status</h3>
-            </div>
-
-            {totalOrders === 0 ? (
-              <p className="text-sm text-(--color-text-muted)">No orders yet.</p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {/* Proportional breakdown bar */}
-                <div className="flex w-full h-3 rounded-full overflow-hidden bg-(--color-surface-sunken)">
-                  {data.ordersByStatus.map((s) => (
-                    <div
-                      key={s.status}
-                      style={{ width: `${(s.count / totalOrders) * 100}%` }}
-                      className={[SEGMENT_COLOR[STATUS_VARIANT[s.status] ?? 'neutral'], 'transition-all duration-300'].join(' ')}
-                      title={`${STATUS_LABEL[s.status] ?? s.status}: ${s.count}`}
-                    />
-                  ))}
-                </div>
-                {/* Legend */}
-                <div className="flex flex-wrap gap-2">
-                  {data.ordersByStatus.map((s) => (
-                    <div
-                      key={s.status}
-                      className="flex items-center gap-2 bg-white border border-(--color-border) rounded-lg px-4 py-2"
-                    >
-                      <Badge
-                        variant={STATUS_VARIANT[s.status] ?? 'neutral'}
-                        label={STATUS_LABEL[s.status] ?? s.status}
-                      />
-                      <span className="text-sm font-semibold text-(--color-text)">{s.count}</span>
-                    </div>
-                  ))}
-                </div>
+          {/* Production + machines */}
+          <div className="grid gap-6 xl:grid-cols-3">
+            <Panel
+              className="xl:col-span-2"
+              title="Production, last 14 days"
+              icon={ChartBarIcon}
+              subtitle={
+                <>
+                  {data.production.last7Days.toLocaleString('en-IN')} m this week vs {data.production.prev7Days.toLocaleString('en-IN')} m the week before
+                  {' · '}today by shift: {(['MORNING', 'EVENING', 'NIGHT'] as const)
+                    .map((s) => `${s[0]}${s.slice(1).toLowerCase()} ${data.production.byShiftToday[s].toLocaleString('en-IN')} m`)
+                    .join(', ')}
+                </>
+              }
+              headerRight={
+                <SegmentedControl
+                  size="sm"
+                  value={trendView}
+                  onChange={setTrendView}
+                  options={[
+                    { value: 'chart', label: 'Chart' },
+                    { value: 'table', label: 'Table' },
+                  ]}
+                />
+              }
+            >
+              <div className="mb-3">
+                <StageLegend totals={stageTotals} />
               </div>
+              <ProductionTrendChart data={data.production.trend} view={trendView} />
+            </Panel>
+            <MachineFloorPanel machines={data.machines} canOpenFloor={canAccess('/floor')} />
+          </div>
+
+          {/* Orders */}
+          <div className="flex flex-col gap-3">
+            <OrderPipeline counts={data.ordersByStatus} />
+            <OrderDeadlinesPanel orders={data.orders} />
+          </div>
+
+          {/* Quality / stock / money / activity */}
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <QualityPanel quality={data.quality} canOpenQc={canAccess('/qc')} />
+            <StockPanel stock={data.stock} />
+            {data.finance ? (
+              <FinancePanel finance={data.finance} />
+            ) : (
+              <ActivityPanel activity={data.activity} canAccess={canAccess} />
             )}
           </div>
-        </>
+          {data.finance && <ActivityPanel activity={data.activity} canAccess={canAccess} />}
+        </motion.div>
       )}
+    </div>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="flex flex-col gap-6" aria-busy="true" aria-label="Loading dashboard">
+      <Skeleton className="h-14 rounded-xl" />
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 2xl:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-[92px] rounded-xl" />
+        ))}
+      </div>
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Skeleton className="h-[330px] rounded-xl xl:col-span-2" />
+        <Skeleton className="h-[330px] rounded-xl" />
+      </div>
+      <Skeleton className="h-64 rounded-xl" />
     </div>
   );
 }
