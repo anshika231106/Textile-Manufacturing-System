@@ -10,14 +10,17 @@ export class OrdersService {
   /**
    * Helper: Calculate real-time stock balances per yarn type.
    */
-  private async getStockMap(yarnTypeIds: string[]) {
+  private async getStockMap(yarnTypeIds: string[], excludeOrderId?: string) {
     const [allMovements, unstartedOrders] = await Promise.all([
       prisma.stockMovement.findMany({
         where: { yarnTypeId: { in: yarnTypeIds } },
         select: { yarnTypeId: true, type: true, kg: true, ratePerKg: true },
       }),
       prisma.order.findMany({
-        where: { stageJobs: { none: {} } },
+        where: {
+          stageJobs: { none: {} },
+          ...(excludeOrderId ? { id: { not: excludeOrderId } } : {}),
+        },
         select: {
           id: true,
           metres: true,
@@ -153,10 +156,15 @@ export class OrdersService {
       currentStage = 'SPINNING';
     }
 
-    // Requirements formatting
+    // Requirements formatting - merges in the real feasibility line (when computed) instead of
+    // assuming full availability, so the shortfall shown here matches what actually gates Start Production.
+    const feasibilityByYarnType = new Map<string, any>(
+      (feasibility?.lines || []).map((l: any) => [l.yarnTypeId, l])
+    );
     const requirements = (order.requirements || []).map((req: any) => {
       const kgPerMetre = Number(req.kgPerMetre);
       const requiredKg = round3(kgPerMetre * metres);
+      const feasibilityLine = feasibilityByYarnType.get(req.yarnTypeId);
       return {
         yarnTypeId: req.yarnTypeId,
         code: req.yarnType?.code || req.yarnTypeId,
@@ -166,9 +174,9 @@ export class OrdersService {
         requiredKg,
         yarnTypeName: req.yarnType?.name || 'Yarn',
         yarnTypeCode: req.yarnType?.code || req.yarnTypeId,
-        availableKg: requiredKg,
-        shortfallKg: 0,
-        isSufficient: true,
+        availableKg: feasibilityLine ? feasibilityLine.availableKg : requiredKg,
+        shortfallKg: feasibilityLine ? feasibilityLine.shortfallKg : 0,
+        isSufficient: feasibilityLine ? feasibilityLine.isSufficient : true,
       };
     });
 
@@ -242,7 +250,7 @@ export class OrdersService {
   /**
    * API-18: POST /orders/feasibility - Preview yarn feasibility without saving.
    */
-  async previewFeasibility(input: FeasibilityInput) {
+  async previewFeasibility(input: FeasibilityInput, excludeOrderId?: string) {
     const rawReqs: { yarnTypeId: string; requiredKg: number }[] = [];
 
     if (input.lines && input.metres) {
@@ -272,7 +280,7 @@ export class OrdersService {
       throw notFound(`Yarn type '${missing}' not found`);
     }
 
-    const stockMap = await this.getStockMap(yarnTypeIds);
+    const stockMap = await this.getStockMap(yarnTypeIds, excludeOrderId);
     const assessment = evaluateFeasibility(rawReqs, stockMap);
 
     const enrichedLines = assessment.lines.map((l) => {
@@ -378,11 +386,14 @@ export class OrdersService {
       { maxWait: 10000, timeout: 20000 }
     );
 
-    // Feasibility evaluation for created order
-    const feasibility = await this.previewFeasibility({
-      metres: input.metres,
-      lines: requirements,
-    });
+    // Feasibility evaluation for created order (excludes its own just-created reservation)
+    const feasibility = await this.previewFeasibility(
+      {
+        metres: input.metres,
+        lines: requirements,
+      },
+      newOrder.id
+    );
 
     return this.formatOrderDetail(newOrder, feasibility);
   }
@@ -451,13 +462,16 @@ export class OrdersService {
 
     let feasibility: any = null;
     if (!order.startedAt) {
-      feasibility = await this.previewFeasibility({
-        metres: Number(order.metres),
-        lines: order.requirements.map((r) => ({
-          yarnTypeId: r.yarnTypeId,
-          kgPerMetre: Number(r.kgPerMetre),
-        })),
-      });
+      feasibility = await this.previewFeasibility(
+        {
+          metres: Number(order.metres),
+          lines: order.requirements.map((r) => ({
+            yarnTypeId: r.yarnTypeId,
+            kgPerMetre: Number(r.kgPerMetre),
+          })),
+        },
+        order.id
+      );
     }
 
     return this.formatOrderDetail(order, feasibility);
@@ -509,6 +523,17 @@ export class OrdersService {
     // Start production atomically inside transaction
     const updatedOrder = await prisma.$transaction(
       async (tx) => {
+        // Claim the order first: a conditional update on startedAt IS NULL means only one of two
+        // concurrent "Start Production" requests (e.g. a double-click) can win this race. The loser
+        // sees count 0 and aborts before anything is issued, instead of both issuing yarn twice.
+        const claim = await tx.order.updateMany({
+          where: { id: order.id, startedAt: null },
+          data: { startedAt: new Date() },
+        });
+        if (claim.count !== 1) {
+          throw conflict('ALREADY_STARTED', 'Order has already started production');
+        }
+
         // 1. Record yarn ISSUE movements with weighted average rate
         for (const req of order.requirements) {
           const neededKg = round3(Number(req.kgPerMetre) * Number(order.metres));
@@ -548,10 +573,9 @@ export class OrdersService {
           });
         }
 
-        // 3. Mark startedAt on order
-        return await tx.order.update({
+        // 3. startedAt was already set atomically by the claim above - just re-fetch the full detail.
+        return await tx.order.findUniqueOrThrow({
           where: { id: order.id },
-          data: { startedAt: new Date() },
           include: {
             buyer: true,
             requirements: { include: { yarnType: true } },

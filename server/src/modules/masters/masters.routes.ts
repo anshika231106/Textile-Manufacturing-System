@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import { prisma } from '../../lib/prisma';
 import { ok } from '../../lib/respond';
+import { authenticate } from '../../middleware/authenticate';
 
 export const mastersRoutes = Router();
+
+mastersRoutes.use(authenticate);
 
 // API-04: GET /buyers
 mastersRoutes.get(['/buyers', '/masters/buyers'], async (_req, res, next) => {

@@ -36,8 +36,8 @@ staffRoutes.post(
     body: z.object({
       name: z.string().min(1, 'Name is required').max(120),
       email: z.string().email('Valid email is required'),
-      role: z.enum(['OFFICE', 'SUPERVISOR', 'STAFF', 'STOREKEEPER'], {
-        message: 'Role must be OFFICE, SUPERVISOR, STAFF, or STOREKEEPER',
+      role: z.enum(['OFFICE', 'SUPERVISOR', 'STAFF'], {
+        message: 'Role must be OFFICE, SUPERVISOR, or STAFF',
       }),
     }),
   }),
