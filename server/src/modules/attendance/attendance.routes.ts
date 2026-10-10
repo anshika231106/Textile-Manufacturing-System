@@ -5,169 +5,188 @@ import { badRequest } from '../../lib/httpErrors';
 import { ok } from '../../lib/respond';
 import { authenticate, authorize } from '../../middleware/authenticate';
 import { validate } from '../../middleware/validate';
-import { toDecimal } from '../../lib/numbers';
 
 export const attendanceRoutes = Router();
 
+const attendanceQuery = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(isValidDate, 'Date must be a valid YYYY-MM-DD date'),
+});
+const wagesQuery = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Month must be YYYY-MM'),
+});
+const saveAttendanceBody = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(isValidDate, 'Date must be a valid YYYY-MM-DD date'),
+  records: z.array(z.object({
+    workerId: z.string().uuid(),
+    present: z.boolean(),
+  })),
+});
+
+function isValidDate(value: string): boolean {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function plantDateString(date: Date): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function dateValue(date: string): Date {
+  return new Date(`${date}T00:00:00.000Z`);
+}
+
 const DEFAULT_DAILY_WAGE = 550;
 
-function parseDateOnly(value: string): Date {
-  const d = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(d.getTime())) throw badRequest('INVALID_DATE', 'Invalid date');
-  return d;
+function dailyWage(value: { dailyWage: { toNumber(): number } | null }): number {
+  return value.dailyWage?.toNumber() ?? DEFAULT_DAILY_WAGE;
 }
 
-async function getStaffRoster() {
-  return prisma.user.findMany({
-    where: { role: 'STAFF' },
+async function loadDailyRecords(date: string, staffId?: string, includeWage = false) {
+  const users = await prisma.user.findMany({
+    where: { role: 'STAFF', ...(staffId ? { id: staffId } : {}) },
+    select: { id: true, name: true, dailyWage: includeWage },
     orderBy: { name: 'asc' },
-    select: { id: true, name: true, dailyWage: true },
   });
+  const attendance = await prisma.attendance.findMany({
+    where: { date: dateValue(date), staffId: { in: users.map(({ id }) => id) } },
+    select: { staffId: true, present: true },
+  });
+  const attendanceByStaff = new Map(attendance.map(({ staffId: id, present }) => [id, present]));
+
+  return users.map((user, index) => ({
+    workerId: user.id,
+    workerCode: `WRK-${String(index + 1).padStart(3, '0')}`,
+    workerName: user.name,
+    workerRole: 'Staff',
+    ...(includeWage ? { dailyWage: dailyWage(user) } : {}),
+    present: attendanceByStaff.get(user.id) ?? null,
+  }));
 }
 
-function workerCode(index: number): string {
-  return `WRK-${String(index + 1).padStart(3, '0')}`;
-}
-
-const dateQuery = z.object({ date: z.string().min(1) });
-
-// GET /attendance?date=YYYY-MM-DD - attendance for every STAFF worker on a given date
 attendanceRoutes.get(
   '/attendance',
   authenticate,
-  authorize('OWNER', 'SUPERVISOR'),
-  validate({ query: dateQuery }),
+  authorize('STAFF', 'SUPERVISOR', 'OFFICE', 'OWNER'),
+  validate({ query: attendanceQuery }),
   async (req, res, next) => {
     try {
-      const { date } = req.query as { date: string };
-      const day = parseDateOnly(date);
-
-      const [staff, records] = await Promise.all([
-        getStaffRoster(),
-        prisma.attendance.findMany({ where: { date: day } }),
-      ]);
-      const presentMap = new Map(records.map((r) => [r.staffId, r.present]));
-
-      return ok(res, {
-        date,
-        records: staff.map((w, idx) => ({
-          workerId: w.id,
-          workerCode: workerCode(idx),
-          workerName: w.name,
-          workerRole: 'STAFF',
-          dailyWage: w.dailyWage ? toDecimal(w.dailyWage) : DEFAULT_DAILY_WAGE,
-          present: presentMap.has(w.id) ? presentMap.get(w.id)! : true,
-        })),
-      });
+      const { date } = req.query as z.infer<typeof attendanceQuery>;
+      const role = req.authUser!.role;
+      const staffId = role === 'STAFF' ? req.authUser!.id : undefined;
+      const includeWage = role === 'STAFF' || role === 'OFFICE' || role === 'OWNER';
+      const records = await loadDailyRecords(date, staffId, includeWage);
+      return ok(res, { date, records });
     } catch (err) {
-      next(err);
+      return next(err);
     }
-  }
+  },
 );
 
-const saveBody = z.object({
-  date: z.string().min(1),
-  records: z
-    .array(z.object({ workerId: z.string().uuid(), present: z.boolean() }))
-    .min(1),
-});
-
-// POST /attendance - upsert attendance per worker per date (never duplicates a row)
 attendanceRoutes.post(
   '/attendance',
   authenticate,
-  authorize('OWNER', 'SUPERVISOR'),
-  validate({ body: saveBody }),
+  authorize('SUPERVISOR'),
+  validate({ body: saveAttendanceBody }),
   async (req, res, next) => {
     try {
-      const input = saveBody.parse(req.body);
-      const day = parseDateOnly(input.date);
-      const markedById = req.authUser!.id;
+      const { date, records } = req.body as z.infer<typeof saveAttendanceBody>;
+      if (date !== plantDateString(new Date())) {
+        throw badRequest('ATTENDANCE_DATE_MUST_BE_TODAY', 'Supervisors can only save attendance for today');
+      }
+
+      const ids = records.map(({ workerId }) => workerId);
+      if (new Set(ids).size !== ids.length) {
+        throw badRequest('DUPLICATE_ATTENDANCE_RECORD', 'Each staff member can only appear once');
+      }
+
+      const staff = await prisma.user.findMany({
+        where: { role: 'STAFF' },
+        select: { id: true },
+      });
+      if (staff.length !== records.length || staff.some(({ id }) => !ids.includes(id))) {
+        throw badRequest('INCOMPLETE_ATTENDANCE_ROSTER', 'Submit attendance for every current staff member');
+      }
 
       await prisma.$transaction(
-        input.records.map((r) =>
+        records.map(({ workerId, present }) =>
           prisma.attendance.upsert({
-            where: { staffId_date: { staffId: r.workerId, date: day } },
-            update: { present: r.present, markedById },
-            create: { staffId: r.workerId, date: day, present: r.present, markedById },
-          })
-        )
+            where: { staffId_date: { staffId: workerId, date: dateValue(date) } },
+            create: { staffId: workerId, date: dateValue(date), present, markedById: req.authUser!.id },
+            update: { present, markedById: req.authUser!.id },
+          }),
+        ),
       );
 
-      const [staff, records] = await Promise.all([
-        getStaffRoster(),
-        prisma.attendance.findMany({ where: { date: day } }),
-      ]);
-      const presentMap = new Map(records.map((r) => [r.staffId, r.present]));
-
-      return ok(res, {
-        date: input.date,
-        records: staff.map((w, idx) => ({
-          workerId: w.id,
-          workerCode: workerCode(idx),
-          workerName: w.name,
-          workerRole: 'STAFF',
-          dailyWage: w.dailyWage ? toDecimal(w.dailyWage) : DEFAULT_DAILY_WAGE,
-          present: presentMap.has(w.id) ? presentMap.get(w.id)! : true,
-        })),
-      });
+      return ok(res, { date, records: await loadDailyRecords(date) });
     } catch (err) {
-      next(err);
+      return next(err);
     }
-  }
+  },
 );
 
-const monthQuery = z.object({ month: z.string().regex(/^\d{4}-\d{2}$/, 'month must be YYYY-MM') });
-
-// GET /attendance/wages?month=YYYY-MM - present days x daily wage per worker (UTC calendar month, A-09)
 attendanceRoutes.get(
   '/attendance/wages',
   authenticate,
-  authorize('OWNER', 'OFFICE', 'SUPERVISOR'),
-  validate({ query: monthQuery }),
+  authorize('STAFF', 'OFFICE', 'OWNER'),
+  validate({ query: wagesQuery }),
   async (req, res, next) => {
     try {
-      const { month } = req.query as { month: string };
-      const start = new Date(`${month}-01T00:00:00.000Z`);
-      const end = new Date(start);
-      end.setUTCMonth(end.getUTCMonth() + 1);
+      const { month } = req.query as z.infer<typeof wagesQuery>;
+      const role = req.authUser!.role;
+      const staffId = role === 'STAFF' ? req.authUser!.id : undefined;
+      const [year, monthNumber] = month.split('-').map(Number);
+      const start = new Date(Date.UTC(year, monthNumber - 1, 1));
+      const end = new Date(Date.UTC(year, monthNumber, 1));
+      const workers = await prisma.user.findMany({
+        where: { role: 'STAFF', ...(staffId ? { id: staffId } : {}) },
+        select: { id: true, name: true, dailyWage: true },
+        orderBy: { name: 'asc' },
+      });
+      const attendance = await prisma.attendance.findMany({
+        where: {
+          staffId: { in: workers.map(({ id }) => id) },
+          date: { gte: start, lt: end },
+        },
+        select: { staffId: true, present: true },
+      });
 
-      const [staff, records] = await Promise.all([
-        getStaffRoster(),
-        prisma.attendance.findMany({
-          where: { date: { gte: start, lt: end }, present: true },
-          select: { staffId: true },
-        }),
-      ]);
-
-      const presentCount = new Map<string, number>();
-      for (const r of records) {
-        presentCount.set(r.staffId, (presentCount.get(r.staffId) || 0) + 1);
+      const totalsByStaff = new Map<string, { presentDays: number; absentDays: number }>();
+      for (const { staffId: id, present } of attendance) {
+        const totals = totalsByStaff.get(id) ?? { presentDays: 0, absentDays: 0 };
+        totals[present ? 'presentDays' : 'absentDays'] += 1;
+        totalsByStaff.set(id, totals);
       }
 
-      const workers = staff.map((w, idx) => {
-        const dailyWage = w.dailyWage ? toDecimal(w.dailyWage) : DEFAULT_DAILY_WAGE;
-        const presentDays = presentCount.get(w.id) || 0;
+      const wageWorkers = workers.map((worker, index) => {
+        const totals = totalsByStaff.get(worker.id) ?? { presentDays: 0, absentDays: 0 };
+        const rate = dailyWage(worker);
         return {
-          workerId: w.id,
-          workerCode: workerCode(idx),
-          workerName: w.name,
-          workerRole: 'STAFF',
-          dailyWage,
-          presentDays,
-          totalWage: presentDays * dailyWage,
+          workerId: worker.id,
+          workerCode: `WRK-${String(index + 1).padStart(3, '0')}`,
+          workerName: worker.name,
+          workerRole: 'Staff',
+          dailyWage: rate,
+          ...totals,
+          totalWage: totals.presentDays * rate,
         };
       });
 
       return ok(res, {
         month,
-        workers,
-        totalWages: workers.reduce((sum, w) => sum + w.totalWage, 0),
-        totalPresentDays: workers.reduce((sum, w) => sum + w.presentDays, 0),
-        activeWorkers: workers.length,
+        workers: wageWorkers,
+        totalWages: wageWorkers.reduce((sum, worker) => sum + worker.totalWage, 0),
+        totalPresentDays: wageWorkers.reduce((sum, worker) => sum + worker.presentDays, 0),
+        activeWorkers: wageWorkers.length,
       });
     } catch (err) {
-      next(err);
+      return next(err);
     }
-  }
+  },
 );
