@@ -2,6 +2,62 @@ import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "../src/lib/prisma";
 
+const DEMO_FIRST_NAMES = [
+  "Aarav", "Aditya", "Akash", "Amit", "Ananya", "Arjun", "Deepak", "Dev",
+  "Gaurav", "Isha", "Karan", "Kavita", "Meera", "Neha", "Nikhil", "Pooja",
+  "Rahul", "Riya", "Rohan", "Sanjay", "Sneha", "Suresh", "Tanvi", "Vikram",
+  "Yash", "Asha", "Dinesh", "Kiran", "Manish", "Priya",
+];
+
+const DEMO_LAST_NAMES = [
+  "Sharma", "Patel", "Kumar", "Rao", "Mehta", "Singh", "Joshi", "Desai",
+  "Nair", "Iyer", "Kulkarni", "Shah", "Reddy", "Verma", "Mishra", "Pillai",
+  "Gupta", "Jadhav", "Chavan", "More", "Das", "Bose", "Kapoor", "Yadav",
+  "Naidu", "Malhotra", "Saxena", "Menon", "Bhat", "Ghosh",
+];
+
+async function ensureDemoRoleUsers(
+  role: "STAFF" | "SUPERVISOR" | "OFFICE",
+  targetCount: number,
+  defaultPasswordHash: string,
+) {
+  const users = await prisma.user.findMany({ select: { email: true, role: true } });
+  const roleCount = users.filter((user) => user.role === role).length;
+  const missingCount = targetCount - roleCount;
+  if (missingCount <= 0) return;
+
+  const usedEmails = new Set(users.map((user) => user.email.toLowerCase()));
+  const rolePrefix = role.toLowerCase();
+  const newUsers: Array<{
+    email: string;
+    name: string;
+    passwordHash: string;
+    role: "STAFF" | "SUPERVISOR" | "OFFICE";
+    dailyWage?: number;
+  }> = [];
+
+  for (let index = 1; newUsers.length < missingCount; index++) {
+    const email = `${rolePrefix}${String(index).padStart(3, "0")}@everest.com`;
+    if (usedEmails.has(email)) continue;
+    usedEmails.add(email);
+
+    const firstName = DEMO_FIRST_NAMES[(index - 1) % DEMO_FIRST_NAMES.length];
+    const lastName = DEMO_LAST_NAMES[
+      Math.floor((index - 1) / DEMO_FIRST_NAMES.length) % DEMO_LAST_NAMES.length
+    ];
+    newUsers.push({
+      email,
+      name: `${firstName} ${lastName}`,
+      passwordHash: defaultPasswordHash,
+      role,
+      ...(role === "STAFF" ? { dailyWage: 450 + ((index * 25) % 251) } : {}),
+    });
+  }
+
+  await prisma.user.createMany({ data: newUsers });
+  console.log(`Added ${newUsers.length} demo ${role.toLowerCase()} users.`);
+}
+
 async function main() {
   const defaultPasswordHash = await bcrypt.hash("password", 10);
 
@@ -31,6 +87,10 @@ async function main() {
     update: { passwordHash: defaultPasswordHash },
     create: { email: "staff2@everest.com", name: "Dinesh Rao", passwordHash: defaultPasswordHash, role: "STAFF", dailyWage: 550 },
   });
+
+  await ensureDemoRoleUsers("STAFF", 150, defaultPasswordHash);
+  await ensureDemoRoleUsers("SUPERVISOR", 20, defaultPasswordHash);
+  await ensureDemoRoleUsers("OFFICE", 10, defaultPasswordHash);
 
   // BUYER & SUPPLIER
   const buyer = await prisma.buyer.create({

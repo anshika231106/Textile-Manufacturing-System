@@ -118,15 +118,20 @@ attendanceRoutes.post(
         throw badRequest('INCOMPLETE_ATTENDANCE_ROSTER', 'Submit attendance for every current staff member');
       }
 
-      await prisma.$transaction(
-        records.map(({ workerId, present }) =>
-          prisma.attendance.upsert({
-            where: { staffId_date: { staffId: workerId, date: dateValue(date) } },
-            create: { staffId: workerId, date: dateValue(date), present, markedById: req.authUser!.id },
-            update: { present, markedById: req.authUser!.id },
-          }),
-        ),
-      );
+      const attendanceDate = dateValue(date);
+      await prisma.$transaction([
+        prisma.attendance.deleteMany({
+          where: { staffId: { in: ids }, date: attendanceDate },
+        }),
+        prisma.attendance.createMany({
+          data: records.map(({ workerId, present }) => ({
+            staffId: workerId,
+            date: attendanceDate,
+            present,
+            markedById: req.authUser!.id,
+          })),
+        }),
+      ], { maxWait: 10_000, timeout: 15_000 });
 
       return ok(res, { date, records: await loadDailyRecords(date) });
     } catch (err) {
