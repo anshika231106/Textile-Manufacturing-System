@@ -86,7 +86,7 @@ export function MasterListPage() {
   const canCreate = (() => {
     if (!user) return false;
     if (user.role === 'OWNER' || user.role === 'OFFICE') return true;
-    if (currentType === 'suppliers' && user.role === 'STOREKEEPER') return true;
+    if (currentType === 'suppliers' && user.role === 'SUPERVISOR') return true;
     return false;
   })();
 

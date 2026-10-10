@@ -57,7 +57,7 @@ export function ReceiptPage() {
     }
   }, [prefilledYarnId, yarnTypeId]);
 
-  const canRecord = user?.role === 'OWNER' || user?.role === 'STOREKEEPER';
+  const canRecord = user?.role === 'OWNER' || user?.role === 'SUPERVISOR';
 
   const selectedYarn = yarnTypes?.find((y) => y.id === yarnTypeId);
   const kgVal = parseFloat(kgStr) || 0;
@@ -150,7 +150,7 @@ export function ReceiptPage() {
           <CubeIcon className="w-12 h-12 text-[#78716C] mx-auto mb-3" />
           <h2 className="text-lg font-semibold text-[#1A1714]">Access Restricted</h2>
           <p className="text-sm text-[#78716C] mt-1 mb-6">
-            Only Storekeepers and Mill Owners have permission to record raw material yarn receipts.
+            Only supervisors and mill owners have permission to record raw material yarn receipts.
           </p>
           <Button variant="secondary" onClick={() => navigate('/stock')}>
             Return to Stock Overview
