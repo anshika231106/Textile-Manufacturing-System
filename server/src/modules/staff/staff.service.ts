@@ -30,7 +30,7 @@ export async function createStaffService(data: CreateStaffInput) {
     where: { email: normalizedEmail },
   });
 
-  if (existing) {
+  if (existing && !existing.deletedAt) {
     throw conflict('CONFLICT_DUPLICATE', `User with email "${normalizedEmail}" already exists`);
   }
 
@@ -40,21 +40,30 @@ export async function createStaffService(data: CreateStaffInput) {
 
   const passwordHash = await bcrypt.hash(plainPassword, 12);
 
-  const newUser = await prisma.user.create({
-    data: {
-      name: data.name.trim(),
-      email: normalizedEmail,
-      role: data.role,
-      passwordHash,
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-    },
-  });
+  const select = {
+    id: true,
+    name: true,
+    email: true,
+    role: true,
+    createdAt: true,
+  } as const;
+
+  // A previously removed employee is restored so their history stays linked.
+  const newUser = existing
+    ? await prisma.user.update({
+        where: { id: existing.id },
+        data: { name: data.name.trim(), role: data.role, passwordHash, deletedAt: null },
+        select,
+      })
+    : await prisma.user.create({
+        data: {
+          name: data.name.trim(),
+          email: normalizedEmail,
+          role: data.role,
+          passwordHash,
+        },
+        select,
+      });
 
   // Send credentials email asynchronously (does not block user creation if SMTP is slow/fails)
   sendWelcomeEmail({
@@ -71,6 +80,7 @@ export async function createStaffService(data: CreateStaffInput) {
 
 export async function listStaffService() {
   const users = await prisma.user.findMany({
+    where: { deletedAt: null },
     select: {
       id: true,
       name: true,
@@ -95,13 +105,21 @@ export async function deleteStaffService(id: string, currentUserId: string) {
     where: { id },
   });
 
-  if (!target) {
+  if (!target || target.deletedAt) {
     throw notFound('Staff member not found');
   }
+  if (target.role === 'OWNER') {
+    throw badRequest('CANNOT_DELETE_OWNER', 'Owner accounts cannot be removed');
+  }
 
-  await prisma.user.delete({
-    where: { id },
-  });
+  // Soft delete: attendance, wages, production and dispatch records reference
+  // this user, so a hard delete would violate foreign keys.
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.user.update({ where: { id }, data: { deletedAt: now } }),
+    prisma.machine.updateMany({ where: { assignedStaffId: id }, data: { assignedStaffId: null } }),
+    prisma.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: now } }),
+  ]);
 
   return { success: true, id };
 }
@@ -113,10 +131,10 @@ export async function updateStaffRoleService(id: string, role: Role, currentUser
 
   const target = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, role: true },
+    select: { id: true, role: true, deletedAt: true },
   });
 
-  if (!target) {
+  if (!target || target.deletedAt) {
     throw notFound('Staff member not found');
   }
   if (target.role === 'OWNER') {

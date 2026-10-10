@@ -46,7 +46,7 @@ export async function loginService(email: string, password: string): Promise<Aut
     where: { email: normalizedEmail },
   });
 
-  if (!user) {
+  if (!user || user.deletedAt) {
     throw new AppError(401, 'INVALID_CREDENTIALS', 'Incorrect email or password');
   }
 

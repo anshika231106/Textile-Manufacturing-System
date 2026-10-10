@@ -57,7 +57,7 @@ floorRoutes.get(
   async (_req, res, next) => {
     try {
       const staff = await prisma.user.findMany({
-        where: { role: 'STAFF' },
+        where: { role: 'STAFF', deletedAt: null },
         select: { id: true, name: true, email: true },
         orderBy: { name: 'asc' },
       });
@@ -163,8 +163,8 @@ floorRoutes.patch(
       const { machineId } = machineParams.parse(req.params);
       const { staffId } = assignmentBody.parse(req.body);
       if (staffId) {
-        const staff = await prisma.user.findUnique({ where: { id: staffId }, select: { role: true } });
-        if (!staff) throw notFound('Staff member not found');
+        const staff = await prisma.user.findUnique({ where: { id: staffId }, select: { role: true, deletedAt: true } });
+        if (!staff || staff.deletedAt) throw notFound('Staff member not found');
         if (staff.role !== 'STAFF') throw badRequest('INVALID_STAFF', 'Machines can only be assigned to staff users');
       }
 
