@@ -29,6 +29,7 @@ authRoutes.post(
 // GET /api/v1/auth/me
 authRoutes.get('/me', requireAuth(), async (req: any, res, next) => {
   try {
+    console.log("fsdfsdfjdd")
     const user = await getMeService(req.user.sub);
     return ok(res, user);
   } catch (err) {

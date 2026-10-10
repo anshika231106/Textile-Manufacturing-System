@@ -79,9 +79,7 @@ export class OrdersService {
     return stockMap;
   }
 
-  /**
-   * Helper: Formats order entity into standardized detail matching MVP §8.12 and frontend contract.
-   */
+
   private formatOrderDetail(order: any, feasibility: any = null) {
     const metres = Number(order.metres);
     const ratePerMetre = Number(order.ratePerMetre);
@@ -475,6 +473,46 @@ export class OrdersService {
     }
 
     return this.formatOrderDetail(order, feasibility);
+  }
+
+  /**
+   * Public tracking lookup by tracking token, orderNo, or UUID.
+   */
+  async getOrderByTokenOrNumber(query: string) {
+    const clean = query.trim();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean);
+
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [
+          { trackingToken: clean },
+          { orderNo: clean },
+          { orderNo: clean.toUpperCase() },
+          ...(isUuid ? [{ id: clean }] : []),
+        ],
+      },
+      include: {
+        buyer: true,
+        requirements: { include: { yarnType: true } },
+        stageJobs: { include: { machine: true, logs: true } },
+        rolls: true,
+      },
+    });
+
+    if (!order) {
+      throw notFound(`Order '${clean}' not found`);
+    }
+
+    const detail = this.formatOrderDetail(order);
+    const producedMetres = (detail.stages || []).reduce((acc: number, s: any) => acc + (s.producedMetres || 0), 0);
+    return {
+      ...detail,
+      orderedMetres: detail.metres,
+      producedMetres,
+      passedMetres: detail.rolls.passedMetres,
+      dispatchedMetres: detail.rolls.dispatchedMetres,
+      lastUpdated: new Date().toISOString(),
+    };
   }
 
   /**

@@ -4,6 +4,7 @@ import { notFound } from '../../lib/httpErrors';
 import { ok } from '../../lib/respond';
 import { deriveOrderStatus } from '../../domain/orderStatus';
 import { round2, toDecimal } from '../../lib/numbers';
+import { ordersService } from '../orders/orders.service';
 
 export const publicRoutes = Router();
 
