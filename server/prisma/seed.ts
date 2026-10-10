@@ -1,8 +1,9 @@
+import { randomUUID } from "crypto";
 import { prisma } from "../src/lib/prisma";
 
 async function main() {
   // ---------------------------------------------------------
-  // USERS (one per role)
+  // USERS (one per role — supervisor now also owns stock/QC duties)
   // ---------------------------------------------------------
   const owner = await prisma.user.create({
     data: { email: "owner@everest.com", name: "Vikram Mehta", passwordHash: "seed-hash", role: "OWNER" },
@@ -13,8 +14,11 @@ async function main() {
   const supervisor = await prisma.user.create({
     data: { email: "supervisor@everest.com", name: "Suresh Patil", passwordHash: "seed-hash", role: "SUPERVISOR" },
   });
-  const storekeeper = await prisma.user.create({
-    data: { email: "store@everest.com", name: "Ramesh Yadav", passwordHash: "seed-hash", role: "STOREKEEPER" },
+  const staff = await prisma.user.create({
+    data: { email: "staff1@everest.com", name: "Ganesh Kumar", passwordHash: "seed-hash", role: "STAFF", dailyWage: 600 },
+  });
+  const staff2 = await prisma.user.create({
+    data: { email: "staff2@everest.com", name: "Dinesh Rao", passwordHash: "seed-hash", role: "STAFF", dailyWage: 550 },
   });
 
   // ---------------------------------------------------------
@@ -29,7 +33,7 @@ async function main() {
   });
 
   // ---------------------------------------------------------
-  // YARN TYPE + STOCK RECEIPT
+  // YARN TYPE + STOCK RECEIPT (now logged by supervisor, not a separate storekeeper)
   // ---------------------------------------------------------
   const yarnCotton = await prisma.yarnType.create({
     data: { code: "COT-40-WHT", name: "Cotton 40s", colour: "White", countLabel: "40s", reorderLevelKg: 100 },
@@ -43,12 +47,12 @@ async function main() {
       ratePerKg: 250,
       supplierId: supplier.id,
       reference: "GRN-001",
-      createdById: storekeeper.id,
+      createdById: supervisor.id,
     },
   });
 
   // ---------------------------------------------------------
-  // MACHINES (one per stage)
+  // MACHINES
   // ---------------------------------------------------------
   const spinningMachine = await prisma.machine.create({
     data: { code: "SPIN-01", name: "Spinning Unit 1", stage: "SPINNING", status: "IDLE", ratePerMetre: 2 },
@@ -61,7 +65,7 @@ async function main() {
   });
 
   // ---------------------------------------------------------
-  // ORDER + YARN REQUIREMENT
+  // ORDER + YARN REQUIREMENT (started by office)
   // ---------------------------------------------------------
   const order = await prisma.order.create({
     data: {
@@ -72,7 +76,7 @@ async function main() {
       metres: 500,
       ratePerMetre: 180,
       deadline: new Date("2026-11-15"),
-      trackingToken: "trk_" + Math.random().toString(36).slice(2, 12),
+      trackingToken: "trk_" + randomUUID(),
       startedAt: new Date(),
       createdById: office.id,
     },
@@ -82,7 +86,6 @@ async function main() {
     data: { orderId: order.id, yarnTypeId: yarnCotton.id, kgPerMetre: 0.3 },
   });
 
-  // Issue yarn against this order
   await prisma.stockMovement.create({
     data: {
       yarnTypeId: yarnCotton.id,
@@ -91,12 +94,12 @@ async function main() {
       ratePerKg: 250,
       orderId: order.id,
       reference: "ISSUE-001",
-      createdById: storekeeper.id,
+      createdById: supervisor.id,
     },
   });
 
   // ---------------------------------------------------------
-  // STAGE JOBS (spinning -> weaving -> dyeing)
+  // STAGE JOBS (logged by staff now doing the floor work)
   // ---------------------------------------------------------
   const spinJob = await prisma.stageJob.create({
     data: { orderId: order.id, stage: "SPINNING", machineId: spinningMachine.id, status: "COMPLETED", endedAt: new Date() },
@@ -108,21 +111,21 @@ async function main() {
     data: { orderId: order.id, stage: "DYEING", machineId: dyeingMachine.id, status: "RUNNING" },
   });
 
-  await prisma.machine.update({ where: { id: weavingMachine.id }, data: { status: "RUNNING" } });
+  await prisma.machine.update({ where: { id: dyeingMachine.id }, data: { status: "RUNNING" } });
 
   // ---------------------------------------------------------
-  // PRODUCTION LOGS
+  // PRODUCTION LOGS (staff logs metres, not supervisor)
   // ---------------------------------------------------------
   await prisma.productionLog.createMany({
     data: [
-      { stageJobId: spinJob.id, orderId: order.id, machineId: spinningMachine.id, stage: "SPINNING", shift: "MORNING", metres: 200, createdById: supervisor.id },
-      { stageJobId: weaveJob.id, orderId: order.id, machineId: weavingMachine.id, stage: "WEAVING", shift: "MORNING", metres: 200, createdById: supervisor.id },
-      { stageJobId: dyeJob.id, orderId: order.id, machineId: dyeingMachine.id, stage: "DYEING", shift: "EVENING", metres: 100, createdById: supervisor.id },
+      { stageJobId: spinJob.id, orderId: order.id, machineId: spinningMachine.id, stage: "SPINNING", shift: "MORNING", metres: 200, createdById: staff.id },
+      { stageJobId: weaveJob.id, orderId: order.id, machineId: weavingMachine.id, stage: "WEAVING", shift: "MORNING", metres: 200, createdById: staff.id },
+      { stageJobId: dyeJob.id, orderId: order.id, machineId: dyeingMachine.id, stage: "DYEING", shift: "EVENING", metres: 200, createdById: staff2.id },
     ],
   });
 
   // ---------------------------------------------------------
-  // ROLLS + QC
+  // ROLLS + QC (rolls created by staff, QC done by supervisor)
   // ---------------------------------------------------------
   const rollPass = await prisma.roll.create({
     data: {
@@ -132,7 +135,7 @@ async function main() {
       weavingMachineId: weavingMachine.id,
       dyeingMachineId: dyeingMachine.id,
       status: "PASSED",
-      createdById: supervisor.id,
+      createdById: staff.id,
     },
   });
   const rollRework = await prisma.roll.create({
@@ -143,7 +146,7 @@ async function main() {
       weavingMachineId: weavingMachine.id,
       dyeingMachineId: dyeingMachine.id,
       status: "REWORK",
-      createdById: supervisor.id,
+      createdById: staff.id,
     },
   });
 
@@ -155,10 +158,10 @@ async function main() {
   });
 
   // ---------------------------------------------------------
-  // DISPATCH + INVOICE + PAYMENT (only the passed roll)
+  // DISPATCH + INVOICE + PAYMENT (dispatch done by supervisor now)
   // ---------------------------------------------------------
   const dispatch = await prisma.dispatch.create({
-    data: { dispatchNo: "DSP-0001", orderId: order.id, vehicleNo: "MH-12-AB-1234", createdById: office.id },
+    data: { dispatchNo: "DSP-0001", orderId: order.id, vehicleNo: "MH-12-AB-1234", createdById: supervisor.id },
   });
 
   await prisma.dispatchItem.create({
@@ -181,13 +184,25 @@ async function main() {
   });
 
   // ---------------------------------------------------------
-  // WORKER + ATTENDANCE
+  // ATTENDANCE (supervisor marks staff present)
   // ---------------------------------------------------------
-  const worker = await prisma.worker.create({
-    data: { code: "WRK-001", name: "Ganesh Kumar", dailyWage: 600 },
+  await prisma.attendance.create({
+    data: { staffId: staff.id, markedById: supervisor.id, date: new Date(), present: true },
   });
   await prisma.attendance.create({
-    data: { workerId: worker.id, date: new Date(), present: true },
+    data: { staffId: staff2.id, markedById: supervisor.id, date: new Date(), present: true },
+  });
+
+  // ---------------------------------------------------------
+  // COUNTERS (so generated numbers continue after the seeded ones)
+  // ---------------------------------------------------------
+  await prisma.counter.createMany({
+    data: [
+      { key: "order", value: 1 },
+      { key: "roll", value: 2 },
+      { key: "dispatch", value: 1 },
+      { key: "invoice", value: 1 },
+    ],
   });
 
   console.log("Seed complete. Order:", order.orderNo, "| Buyer tracking token:", order.trackingToken);

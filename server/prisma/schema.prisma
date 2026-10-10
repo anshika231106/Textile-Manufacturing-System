@@ -1,22 +1,17 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
 enum Role {
   OWNER
   OFFICE
   SUPERVISOR
-  STOREKEEPER
+  STAFF
 }
 
 enum Stage {
@@ -75,15 +70,20 @@ model User {
   name         String
   passwordHash String
   role         Role
+  dailyWage    Decimal? @db.Decimal(8, 2) // only meaningful for STAFF
   createdAt    DateTime @default(now())
 
-  stockMovements StockMovement[]
-  orders         Order[]
-  productionLogs ProductionLog[]
-  rolls          Roll[]
-  qcRecords      QcRecord[]
-  dispatches     Dispatch[]
-  payments       Payment[]
+  stockMovements    StockMovement[]
+  orders            Order[]
+  productionLogs    ProductionLog[]
+  rolls             Roll[]
+  qcRecords         QcRecord[]
+  dispatches        Dispatch[]
+  payments          Payment[]
+  attendanceRecords Attendance[]   @relation("StaffAttendance")
+  markedAttendance  Attendance[]   @relation("AttendanceMarkedBy")
+  wagesReceived     WagePayment[]  @relation("WageStaff")
+  wagesPaidOut      WagePayment[]  @relation("WageCreatedBy")
 }
 
 model Buyer {
@@ -335,26 +335,33 @@ model Payment {
   @@index([paidOn])
 }
 
-model Worker {
-  id        String   @id @default(uuid()) @db.Uuid
-  code      String   @unique
-  name      String
-  dailyWage Decimal  @db.Decimal(8, 2)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
+model WagePayment {
+  id          String   @id @default(uuid()) @db.Uuid
+  staffId     String   @db.Uuid
+  month       String // e.g. "2026-10"
+  amount      Decimal  @db.Decimal(12, 2)
+  paidOn      DateTime @db.Date
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
 
-  attendance Attendance[]
+  staff     User @relation("WageStaff", fields: [staffId], references: [id])
+  createdBy User @relation("WageCreatedBy", fields: [createdById], references: [id])
+
+  @@index([staffId, month])
+  @@index([paidOn])
 }
 
 model Attendance {
-  id       String   @id @default(uuid()) @db.Uuid
-  workerId String   @db.Uuid
-  date     DateTime @db.Date
-  present  Boolean
+  id         String   @id @default(uuid()) @db.Uuid
+  staffId    String   @db.Uuid
+  markedById String   @db.Uuid
+  date       DateTime @db.Date
+  present    Boolean
 
-  worker Worker @relation(fields: [workerId], references: [id])
+  staff    User @relation("StaffAttendance", fields: [staffId], references: [id])
+  markedBy User @relation("AttendanceMarkedBy", fields: [markedById], references: [id])
 
-  @@unique([workerId, date])
+  @@unique([staffId, date])
   @@index([date])
 }
 
