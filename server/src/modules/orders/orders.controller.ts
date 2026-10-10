@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
-import { prisma } from '../../lib/prisma';
 import { created, ok } from '../../lib/respond';
+import { unauthenticated } from '../../lib/httpErrors';
 import { ordersService } from './orders.service';
 import {
   FeasibilitySchema,
@@ -8,17 +8,10 @@ import {
   ListOrdersQuerySchema,
 } from './orders.schemas';
 
-async function resolveAuditUserId(req: Request): Promise<string> {
-  if ((req as any).user?.id) {
-    return (req as any).user.id;
-  }
-  const fallback = await prisma.user.findFirst({
-    where: { role: { in: ['OFFICE', 'OWNER'] } },
-    select: { id: true },
-  });
-  if (fallback) return fallback.id;
-  const anyUser = await prisma.user.findFirst({ select: { id: true } });
-  return anyUser?.id || '00000000-0000-0000-0000-000000000001';
+function requireUserId(req: Request): string {
+  const userId = req.authUser?.id;
+  if (!userId) throw unauthenticated();
+  return userId;
 }
 
 export class OrdersController {
@@ -35,7 +28,7 @@ export class OrdersController {
   async createOrder(req: Request, res: Response, next: NextFunction) {
     try {
       const input = CreateOrderSchema.parse(req.body);
-      const userId = await resolveAuditUserId(req);
+      const userId = requireUserId(req);
       const result = await ordersService.createOrder(input, userId);
       return created(res, result);
     } catch (err) {
@@ -68,7 +61,7 @@ export class OrdersController {
 
   async startProduction(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = await resolveAuditUserId(req);
+      const userId = requireUserId(req);
       const result = await ordersService.startProduction(req.params.id, userId);
       return ok(res, result);
     } catch (err) {

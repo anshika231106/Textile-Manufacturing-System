@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
-import { prisma } from '../../lib/prisma';
 import { created, ok } from '../../lib/respond';
+import { unauthenticated } from '../../lib/httpErrors';
 import { stockService } from './stock.service';
 import {
   CreateReceiptSchema,
@@ -8,24 +8,17 @@ import {
   FinishedStockQuerySchema,
 } from './stock.schemas';
 
-async function resolveAuditUserId(req: Request): Promise<string> {
-  if ((req as any).user?.id) {
-    return (req as any).user.id;
-  }
-  const fallback = await prisma.user.findFirst({
-    where: { role: { in: ['SUPERVISOR', 'OWNER', 'OFFICE'] } },
-    select: { id: true },
-  });
-  if (fallback) return fallback.id;
-  const anyUser = await prisma.user.findFirst({ select: { id: true } });
-  return anyUser?.id || '00000000-0000-0000-0000-000000000001';
+function requireUserId(req: Request): string {
+  const userId = req.authUser?.id;
+  if (!userId) throw unauthenticated();
+  return userId;
 }
 
 export class StockController {
   async recordReceipt(req: Request, res: Response, next: NextFunction) {
     try {
       const input = CreateReceiptSchema.parse(req.body);
-      const userId = await resolveAuditUserId(req);
+      const userId = requireUserId(req);
       const result = await stockService.recordReceipt(input, userId);
       return created(res, result);
     } catch (err) {
