@@ -11,14 +11,32 @@ async function run() {
   const healthData = await healthRes.json();
   console.log('Health status:', healthRes.status, healthData);
 
+  // 1b. Login as owner to obtain Bearer token
+  console.log('\n1b. Logging in as owner@everest.com...');
+  const loginRes = await fetch(`${BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'owner@everest.com', password: 'password' }),
+  });
+  const loginData = await loginRes.json();
+  if (loginRes.status !== 200 || !loginData.data?.accessToken) {
+    throw new Error(`Login failed with status ${loginRes.status}: ${JSON.stringify(loginData)}`);
+  }
+  const token = loginData.data.accessToken;
+  const authHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  };
+  console.log('Login successful, token obtained.');
+
   // 2. Masters check (suppliers & yarn-types)
   console.log('\n2. Fetching yarn types and suppliers...');
-  const ytRes = await fetch(`${BASE_URL}/yarn-types`);
+  const ytRes = await fetch(`${BASE_URL}/yarn-types`, { headers: authHeaders });
   const ytData = await ytRes.json();
   const yarnTypes = ytData.data || ytData;
   console.log(`Found ${yarnTypes.length} yarn types:`, yarnTypes.map((y: any) => `${y.code} (${y.id})`));
 
-  const supRes = await fetch(`${BASE_URL}/suppliers`);
+  const supRes = await fetch(`${BASE_URL}/suppliers`, { headers: authHeaders });
   const supData = await supRes.json();
   const suppliers = supData.data || supData;
   console.log(`Found ${suppliers.length} suppliers:`, suppliers.map((s: any) => `${s.name} (${s.id})`));
@@ -32,7 +50,7 @@ async function run() {
 
   // 3. Stock Summary
   console.log('\n3. Fetching Stock Summary...');
-  const summaryRes = await fetch(`${BASE_URL}/stock/summary`);
+  const summaryRes = await fetch(`${BASE_URL}/stock/summary`, { headers: authHeaders });
   const summaryData = await summaryRes.json();
   const summaryList = summaryData.data || summaryData;
   console.log(`Summary items: ${summaryList.length}`);
@@ -43,7 +61,7 @@ async function run() {
   console.log(`\n4. Recording receipt: 150 kg of ${testYarn.code} at rate 260...`);
   const receiptRes = await fetch(`${BASE_URL}/stock/receipts`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders,
     body: JSON.stringify({
       yarnTypeId: testYarn.id,
       supplierId: testSupplier.id,
@@ -62,7 +80,7 @@ async function run() {
 
   // 5. Fetch Ledger
   console.log(`\n5. Fetching ledger for ${testYarn.code}...`);
-  const ledgerRes = await fetch(`${BASE_URL}/stock/ledger?yarnTypeId=${testYarn.id}&limit=10`);
+  const ledgerRes = await fetch(`${BASE_URL}/stock/ledger?yarnTypeId=${testYarn.id}&limit=10`, { headers: authHeaders });
   const ledgerData = await ledgerRes.json();
   const ledgerItems = ledgerData.data?.items || ledgerData.items || [];
   console.log(`Ledger items returned: ${ledgerItems.length}`);
@@ -70,11 +88,11 @@ async function run() {
 
   // 6. Finished Stock
   console.log('\n6. Fetching finished fabric stock...');
-  const finRes = await fetch(`${BASE_URL}/stock/finished`);
+  const finRes = await fetch(`${BASE_URL}/stock/finished`, { headers: authHeaders });
   const finData = await finRes.json();
   console.log('Finished fabric stock entries:', finData.data || finData);
 
-  console.log('\n ALL 6 STOCK API INTEGRATION CHECKS PASSED SUCCESSFULLY!');
+  console.log('\n✅ ALL 6 STOCK API INTEGRATION CHECKS PASSED SUCCESSFULLY!');
 }
 
 run().catch((err) => {

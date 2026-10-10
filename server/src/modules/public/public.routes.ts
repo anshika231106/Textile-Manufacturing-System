@@ -10,7 +10,7 @@ export const publicRoutes = Router();
 
 // API-46: GET /public/track/:token - buyer-facing order status, no login required.
 // Only safe fields are returned: no rates, no costs, no other buyer's data.
-publicRoutes.get('/public/track/:token', async (req, res, next) => {
+publicRoutes.get(['/track/:token', '/public/track/:token'], async (req, res, next) => {
   try {
     const { token } = req.params;
     const order = await prisma.order.findUnique({
