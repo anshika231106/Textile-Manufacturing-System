@@ -21,7 +21,7 @@ export function Nav({ collapsed }: NavProps) {
         <NavLink
           key={route.path}
           to={route.path}
-          end={route.path === '/'}
+          end={route.path === '/dashboard' || route.path === '/'}
           title={route.label}
           className={({ isActive }) =>
             [

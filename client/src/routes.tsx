@@ -13,6 +13,7 @@ import {
   UsersIcon,
 } from '@heroicons/react/24/outline';
 
+import { LandingPage }     from './features/landing/LandingPage';
 import { HomePage }         from './features/reports/HomePage';
 import { LoginPage }        from './features/auth/LoginPage';
 import { TrackPage }        from './features/track/TrackPage';
@@ -20,6 +21,10 @@ import { OrdersPage }       from './features/orders/OrdersPage';
 import { NewOrderPage }     from './features/orders/NewOrderPage';
 import { OrderDetailPage }  from './features/orders/OrderDetailPage';
 import { Placeholder }      from './components/ui/Placeholder';
+
+import { StockPage }         from './features/stock/StockPage';
+import { ReceiptPage }       from './features/stock/ReceiptPage';
+import { MasterListPage }    from './features/masters/MasterListPage';
 
 export interface RouteConfig {
   path: string;
@@ -36,7 +41,7 @@ export interface RouteConfig {
 
 export const ROUTES: RouteConfig[] = [
   {
-    path: '/',
+    path: '/dashboard',
     label: 'Dashboard',
     icon: HomeIcon,
     roles: 'all',
@@ -49,7 +54,7 @@ export const ROUTES: RouteConfig[] = [
     icon: CubeIcon,
     roles: 'all',
     nav: true,
-    element: <Placeholder title="Yarn Stock" description="Stock overview, low-stock indicators and ledger — coming in Phase 2." />,
+    element: <StockPage />,
   },
   {
     path: '/stock/receipt',
@@ -57,15 +62,23 @@ export const ROUTES: RouteConfig[] = [
     icon: CubeIcon,
     roles: ['OWNER', 'STOREKEEPER'],
     nav: false,
-    element: <Placeholder title="Record Receipt" description="Yarn receipt form — coming in Phase 2." />,
+    element: <ReceiptPage />,
+  },
+  {
+    path: '/masters',
+    label: 'Masters',
+    icon: UsersIcon,
+    roles: 'all',
+    nav: true,
+    element: <MasterListPage />,
   },
   {
     path: '/masters/:type',
     label: 'Masters',
     icon: UsersIcon,
     roles: 'all',
-    nav: true,
-    element: <Placeholder title="Masters" description="Buyers, suppliers, yarns, machines, workers — coming in Phase 2." />,
+    nav: false,
+    element: <MasterListPage />,
   },
   {
     path: '/orders',
@@ -186,6 +199,7 @@ export const ROUTES: RouteConfig[] = [
 
 // Public-only routes (no AppLayout, no auth)
 export const PUBLIC_ROUTES = [
+  { path: '/',                element: <LandingPage /> },
   { path: '/login',           element: <LoginPage /> },
   { path: '/track/:token',    element: <TrackPage /> },
 ];

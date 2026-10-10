@@ -89,3 +89,27 @@
 .page-content {
   animation: fadeIn 200ms ease both;
 }
+
+/* ─── Textile & Pulse Aesthetics ─── */
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.75; transform: scale(1.06); }
+}
+
+.animate-pulse-subtle {
+  animation: pulseSubtle 2.5s ease-in-out infinite;
+}
+
+.textile-grid {
+  background-size: 36px 36px;
+  background-image: 
+    linear-gradient(to right, rgba(232, 228, 223, 0.45) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(232, 228, 223, 0.45) 1px, transparent 1px);
+}
+
+.textile-dots {
+  background-color: #FAFAF8;
+  background-image: radial-gradient(#E8E4DF 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+

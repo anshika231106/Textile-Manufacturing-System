@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 
 const ROLE_HOME: Record<string, string> = {
-  OWNER:       '/',
+  OWNER:       '/dashboard',
   OFFICE:      '/orders',
   SUPERVISOR:  '/floor',
   STOREKEEPER: '/stock',

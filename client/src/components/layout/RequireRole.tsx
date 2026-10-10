@@ -26,7 +26,7 @@ export function RequireRole({ roles = 'all', children }: RequireRoleProps) {
 
   if (roles !== 'all' && !roles.includes(user.role)) {
     // Redirect to dashboard; the API is the real security boundary
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children ?? <Outlet />}</>;

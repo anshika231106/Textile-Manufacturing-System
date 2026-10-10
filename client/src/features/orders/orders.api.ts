@@ -412,3 +412,19 @@ export async function startProduction(id: string): Promise<Order> {
     return updatedOrder;
   }
 }
+
+export async function lookupOrderForPublic(query: string): Promise<Order | null> {
+  const clean = query.trim().toUpperCase();
+  try {
+    return await api<Order>(`/public/track/${query.trim()}`, { auth: false });
+  } catch {
+    const found = ordersStore.find(
+      (o) =>
+        o.orderNumber.toUpperCase() === clean ||
+        o.trackingToken.toUpperCase() === clean ||
+        o.id.toUpperCase() === clean
+    );
+    return found ? { ...found } : null;
+  }
+}
+
