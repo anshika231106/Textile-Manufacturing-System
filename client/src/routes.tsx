@@ -174,7 +174,7 @@ export const ROUTES: RouteConfig[] = [
     path: '/attendance',
     label: 'Attendance',
     icon: ClipboardDocumentListIcon,
-    roles: ['OWNER', 'OFFICE', 'SUPERVISOR'],
+    roles: ['OWNER', 'OFFICE', 'SUPERVISOR', 'STAFF'],
     nav: true,
     element: <AttendancePage />,
   },

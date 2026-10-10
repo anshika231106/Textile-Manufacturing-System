@@ -72,6 +72,12 @@ npx prisma db seed
 
 Populates a full sample chain: Buyer → Order → yarn stock → machines → stage jobs → rolls → QC → dispatch → invoice → payment, plus staff assignments and attendance. Demo users use the password `password`.
 
+## Attendance and wages
+
+Attendance is stored per staff member and date. Supervisors can mark and save the full roster for today; Office and Owner can review attendance and monthly wage totals, while each Staff user can view only their own attendance and wage summary. Wage totals are calculated as the staff member's daily wage multiplied by recorded present days. Supervisors cannot access wage data, and attendance changes are rejected for roles other than Supervisor.
+
+The API endpoints are `GET /api/v1/attendance?date=YYYY-MM-DD`, `POST /api/v1/attendance`, and `GET /api/v1/attendance/wages?month=YYYY-MM`.
+
 ## 8. Verify it worked
 
 ```bash
