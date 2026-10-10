@@ -54,7 +54,7 @@ function dailyWage(value: { dailyWage: { toNumber(): number } | null }): number 
 
 async function loadDailyRecords(date: string, staffId?: string, includeWage = false) {
   const users = await prisma.user.findMany({
-    where: { role: 'STAFF', ...(staffId ? { id: staffId } : {}) },
+    where: { role: 'STAFF', deletedAt: null, ...(staffId ? { id: staffId } : {}) },
     select: { id: true, name: true, dailyWage: includeWage },
     orderBy: { name: 'asc' },
   });
@@ -111,7 +111,7 @@ attendanceRoutes.post(
       }
 
       const staff = await prisma.user.findMany({
-        where: { role: 'STAFF' },
+        where: { role: 'STAFF', deletedAt: null },
         select: { id: true },
       });
       if (staff.length !== records.length || staff.some(({ id }) => !ids.includes(id))) {
@@ -154,7 +154,12 @@ attendanceRoutes.get(
       const start = new Date(Date.UTC(year, monthNumber - 1, 1));
       const end = new Date(Date.UTC(year, monthNumber, 1));
       const workers = await prisma.user.findMany({
-        where: { role: 'STAFF', ...(staffId ? { id: staffId } : {}) },
+        where: {
+          role: 'STAFF',
+          ...(staffId ? { id: staffId } : {}),
+          // Removed staff still appear for months they worked in.
+          OR: [{ deletedAt: null }, { attendanceRecords: { some: { date: { gte: start, lt: end } } } }],
+        },
         select: { id: true, name: true, dailyWage: true },
         orderBy: { name: 'asc' },
       });
@@ -211,9 +216,9 @@ attendanceRoutes.patch(
       const { dailyWage: updatedDailyWage } = req.body as z.infer<typeof updateWageBody>;
       const staff = await prisma.user.findUnique({
         where: { id: staffId },
-        select: { id: true, role: true },
+        select: { id: true, role: true, deletedAt: true },
       });
-      if (!staff || staff.role !== 'STAFF') {
+      if (!staff || staff.role !== 'STAFF' || staff.deletedAt) {
         throw badRequest('INVALID_STAFF', 'Wages can only be updated for staff users');
       }
 

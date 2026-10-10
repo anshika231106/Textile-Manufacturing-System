@@ -93,7 +93,7 @@ mastersRoutes.get(['/machines', '/masters/machines'], async (_req, res, next) =>
 mastersRoutes.get(['/workers', '/masters/workers'], async (_req, res, next) => {
   try {
     const workers = await prisma.user.findMany({
-      where: { role: 'STAFF' },
+      where: { role: 'STAFF', deletedAt: null },
       orderBy: { name: 'asc' },
     });
     return ok(

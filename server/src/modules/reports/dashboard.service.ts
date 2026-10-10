@@ -113,7 +113,7 @@ export async function buildDashboard(role: Role) {
       where: { checkedAt: { gte: weekAgo } },
       select: { result: true, defectType: true },
     }),
-    prisma.user.count({ where: { role: 'STAFF' } }),
+    prisma.user.count({ where: { role: 'STAFF', deletedAt: null } }),
     prisma.attendance.findMany({ where: { date: dateOnly(todayKey) }, select: { present: true } }),
   ]);
 

@@ -72,6 +72,7 @@ model User {
   role         Role
   dailyWage    Decimal? @db.Decimal(8, 2) // only meaningful for STAFF
   createdAt    DateTime @default(now())
+  deletedAt    DateTime? // set when removed from staff management; history is kept
 
   stockMovements    StockMovement[]
   orders            Order[]
