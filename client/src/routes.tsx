@@ -11,6 +11,7 @@ import {
   ClipboardDocumentListIcon,
   ChartBarIcon,
   UsersIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
 import { LandingPage }     from './features/landing/LandingPage';
@@ -20,6 +21,7 @@ import { TrackPage }        from './features/track/TrackPage';
 import { OrdersPage }       from './features/orders/OrdersPage';
 import { NewOrderPage }     from './features/orders/NewOrderPage';
 import { OrderDetailPage }  from './features/orders/OrderDetailPage';
+import { StaffPage }        from './features/staff/StaffPage';
 import { Placeholder }      from './components/ui/Placeholder';
 
 import { StockPage }         from './features/stock/StockPage';
@@ -82,6 +84,14 @@ export const ROUTES: RouteConfig[] = [
     roles: 'all',
     nav: false,
     element: <MasterListPage />,
+  },
+  {
+    path: '/staff',
+    label: 'Staff Management',
+    icon: UserGroupIcon,
+    roles: ['OWNER', 'OFFICE'],
+    nav: true,
+    element: <StaffPage />,
   },
   {
     path: '/orders',

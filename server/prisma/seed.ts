@@ -1,24 +1,37 @@
 import { randomUUID } from "crypto";
 import { prisma } from "../src/lib/prisma";
+import bcrypt from "bcryptjs";
 
 async function main() {
+  const defaultPasswordHash = await bcrypt.hash("password", 10);
+
   // ---------------------------------------------------------
-  // USERS (one per role — supervisor now also owns stock/QC duties)
+  // USERS (one per role — supervisor owns stock/QC, staff does floor work)
   // ---------------------------------------------------------
-  const owner = await prisma.user.create({
-    data: { email: "owner@everest.com", name: "Vikram Mehta", passwordHash: "seed-hash", role: "OWNER" },
+  const owner = await prisma.user.upsert({
+    where: { email: "owner@everest.com" },
+    update: { passwordHash: defaultPasswordHash },
+    create: { email: "owner@everest.com", name: "Vikram Mehta", passwordHash: defaultPasswordHash, role: "OWNER" },
   });
-  const office = await prisma.user.create({
-    data: { email: "office@everest.com", name: "Anjali Rao", passwordHash: "seed-hash", role: "OFFICE" },
+  const office = await prisma.user.upsert({
+    where: { email: "office@everest.com" },
+    update: { passwordHash: defaultPasswordHash },
+    create: { email: "office@everest.com", name: "Anjali Rao", passwordHash: defaultPasswordHash, role: "OFFICE" },
   });
-  const supervisor = await prisma.user.create({
-    data: { email: "supervisor@everest.com", name: "Suresh Patil", passwordHash: "seed-hash", role: "SUPERVISOR" },
+  const supervisor = await prisma.user.upsert({
+    where: { email: "supervisor@everest.com" },
+    update: { passwordHash: defaultPasswordHash },
+    create: { email: "supervisor@everest.com", name: "Suresh Patil", passwordHash: defaultPasswordHash, role: "SUPERVISOR" },
   });
-  const staff = await prisma.user.create({
-    data: { email: "staff1@everest.com", name: "Ganesh Kumar", passwordHash: "seed-hash", role: "STAFF", dailyWage: 600 },
+  const staff = await prisma.user.upsert({
+    where: { email: "staff1@everest.com" },
+    update: { passwordHash: defaultPasswordHash },
+    create: { email: "staff1@everest.com", name: "Ganesh Kumar", passwordHash: defaultPasswordHash, role: "STAFF", dailyWage: 600 },
   });
-  const staff2 = await prisma.user.create({
-    data: { email: "staff2@everest.com", name: "Dinesh Rao", passwordHash: "seed-hash", role: "STAFF", dailyWage: 550 },
+  const staff2 = await prisma.user.upsert({
+    where: { email: "staff2@everest.com" },
+    update: { passwordHash: defaultPasswordHash },
+    create: { email: "staff2@everest.com", name: "Dinesh Rao", passwordHash: defaultPasswordHash, role: "STAFF", dailyWage: 550 },
   });
 
   // ---------------------------------------------------------

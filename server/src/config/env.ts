@@ -12,6 +12,11 @@ const schema = z.object({
   CLIENT_ORIGIN: z.string().min(1).transform((v) => v.split(',').map((s) => s.trim())),
   ENFORCE_STAGE_CAP: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
   DEFECT_FLAG_PCT: z.coerce.number().default(10),
+  SMTP_HOST: z.string().default('smtp.gmail.com'),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASS: z.string().default(''),
+  SMTP_FROM: z.string().default('MillTrace <noreply@milltrace.com>'),
 });
 
 const parsed = schema.safeParse(process.env);

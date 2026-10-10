@@ -5,7 +5,7 @@ import { AppError } from '../lib/httpErrors';
 
 // Express identifies an error handler by its 4 parameters, so _next must stay.
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
-  if (err instanceof AppError) {
+  if (err instanceof AppError || (err && typeof err.status === 'number' && typeof err.code === 'string')) {
     return res.status(err.status).json({ error: { code: err.code, message: err.message, details: err.details } });
   }
   if (err instanceof ZodError) {

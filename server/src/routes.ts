@@ -11,6 +11,7 @@ import { invoicesRoutes } from './modules/invoices/invoices.routes';
 import { attendanceRoutes } from './modules/attendance/attendance.routes';
 import { reportsRoutes } from './modules/reports/reports.routes';
 import { publicRoutes } from './modules/public/public.routes';
+import { staffRoutes } from './modules/staff/staff.routes';
 
 export const router = Router();
 
@@ -39,3 +40,4 @@ router.use(rollsRoutes);
 router.use(dispatchRoutes);
 router.use(invoicesRoutes);
 router.use(attendanceRoutes);
+router.use(staffRoutes);

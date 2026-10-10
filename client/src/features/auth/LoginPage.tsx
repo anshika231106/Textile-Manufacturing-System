@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth, DEMO_USERS } from '../../lib/auth';
+import { useAuth } from '../../lib/auth';
 import { ApiError } from '../../lib/api';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -10,11 +10,12 @@ const ROLE_HOME: Record<string, string> = {
   OWNER:       '/dashboard',
   OFFICE:      '/orders',
   SUPERVISOR:  '/floor',
+  STAFF:       '/floor',
   STOREKEEPER: '/stock',
 };
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -22,16 +23,21 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Automatically forward already authenticated users
+  useEffect(() => {
+    if (user) {
+      navigate(ROLE_HOME[user.role] ?? '/', { replace: true });
+    }
+  }, [user, navigate]);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!email || !password) return;
     setLoading(true);
     setError('');
     try {
-      await login(email, password);
-      const normalizedEmail = email.toLowerCase().trim();
-      const role = DEMO_USERS[normalizedEmail]?.role ?? 'OWNER';
-      navigate(ROLE_HOME[role] ?? '/');
+      const loggedInUser = await login(email, password);
+      navigate(ROLE_HOME[loggedInUser.role] ?? '/', { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === 'INVALID_CREDENTIALS') {
