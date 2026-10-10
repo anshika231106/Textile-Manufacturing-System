@@ -1115,33 +1115,34 @@ function FinancePanel({ finance, canAccess }: { finance: NonNullable<DashboardDa
 
       {finance.topReceivables.length > 0 && (
         <div className="mt-3 border-t border-(--color-border) pt-3">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-(--color-text-muted)">Who owes the most</p>
-          <div style={{ height: finance.topReceivables.length * 30 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={finance.topReceivables} layout="vertical" margin={{ top: 0, right: 56, bottom: 0, left: 0 }} barCategoryGap={6}>
-                <XAxis type="number" hide />
-                <YAxis type="category" dataKey="buyerName" width={110} tick={{ fontSize: 11, fill: C.ink }} tickLine={false} axisLine={false} />
-                <Tooltip
-                  cursor={{ fill: C.hover }}
-                  content={({ active, payload }) =>
-                    active && payload?.length ? (
-                      <ChartTooltipCard
-                        title={String((payload[0].payload as { buyerName: string }).buyerName)}
-                        rows={[{ label: 'Outstanding', value: formatCurrency(Number(payload[0].value)) }]}
-                      />
-                    ) : null
-                  }
-                />
-                <Bar
-                  dataKey="amount"
-                  fill={C.ink}
-                  radius={[0, 4, 4, 0]}
-                  maxBarSize={14}
-                  label={{ position: 'right', fontSize: 11, fill: C.ink, formatter: (v: unknown) => `₹${formatCompact(Number(v))}` }}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-(--color-text-muted)">Who owes the most</p>
+          <ul className="flex flex-col gap-2.5">
+            {finance.topReceivables.map((receivable, index) => {
+              const maximumAmount = finance.topReceivables[0]?.amount ?? 0;
+              const barWidth = maximumAmount > 0 ? (receivable.amount / maximumAmount) * 100 : 0;
+              return (
+                <li key={receivable.buyerName} className="min-w-0">
+                  <div className="mb-1 flex min-w-0 items-center justify-between gap-3">
+                    <span
+                      className="min-w-0 truncate text-xs font-medium text-(--color-text)"
+                      title={receivable.buyerName}
+                    >
+                      {index + 1}. {receivable.buyerName}
+                    </span>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums text-(--color-text)">
+                      {formatCurrency(receivable.amount)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-(--color-surface-sunken)">
+                    <div
+                      className="h-full rounded-full bg-(--color-accent)"
+                      style={{ width: `${barWidth}%` }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
     </Panel>
