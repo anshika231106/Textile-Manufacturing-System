@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../components/ui/Toast';
 import { Badge } from '../../components/ui/Badge';
@@ -159,7 +160,12 @@ export function QcPage() {
       header: 'Roll Identifier',
       render: (roll) => (
         <div>
-          <div className="font-mono font-bold text-sm text-(--color-text)">{roll.rollNo}</div>
+          <Link
+            to={`/rolls/${roll.id}`}
+            className="font-mono font-bold text-sm text-indigo-600 hover:text-indigo-800 hover:underline inline-flex items-center gap-1"
+          >
+            {roll.rollNo}
+          </Link>
           <div className="text-[11px] text-(--color-text-subtle)">
             Created: {new Date(roll.createdAt).toLocaleDateString()}
           </div>
@@ -258,15 +264,22 @@ export function QcPage() {
       header: 'Actions',
       align: 'right',
       render: (roll) => (
-        <Button
-          size="sm"
-          variant={roll.status === 'PENDING_QC' || roll.status === 'REWORK' ? 'primary' : 'secondary'}
-          onClick={() => openInspection(roll)}
-          className="text-xs shadow-2xs"
-        >
-          <ShieldCheckIcon className="w-3.5 h-3.5" />
-          {roll.status === 'PENDING_QC' ? 'Inspect' : 'Re-inspect'}
-        </Button>
+        <div className="flex items-center justify-end gap-1.5">
+          <Link to={`/rolls/${roll.id}`}>
+            <Button size="sm" variant="ghost" className="text-xs text-indigo-600 hover:bg-indigo-50">
+              Trace
+            </Button>
+          </Link>
+          <Button
+            size="sm"
+            variant={roll.status === 'PENDING_QC' || roll.status === 'REWORK' ? 'primary' : 'secondary'}
+            onClick={() => openInspection(roll)}
+            className="text-xs shadow-2xs"
+          >
+            <ShieldCheckIcon className="w-3.5 h-3.5" />
+            {roll.status === 'PENDING_QC' ? 'Inspect' : 'Re-inspect'}
+          </Button>
+        </div>
       ),
     },
   ];

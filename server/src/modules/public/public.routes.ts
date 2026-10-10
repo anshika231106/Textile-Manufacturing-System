@@ -6,8 +6,8 @@ import { ordersService } from '../orders/orders.service';
 
 export const publicRoutes = Router();
 
-// API-46: Public Order Tracking Lookup (buyer & landing page)
-// Accessible via /api/v1/public/track/:token AND /api/v1/public/public/track/:token
+// API-46: GET /public/track/:token - buyer-facing order status, no login required.
+// Only safe fields are returned: no rates, no costs, no other buyer's data.
 publicRoutes.get(['/track/:token', '/public/track/:token'], async (req, res, next) => {
   try {
     const { token } = req.params;

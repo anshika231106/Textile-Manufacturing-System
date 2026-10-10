@@ -35,6 +35,8 @@ import { InvoicesPage }      from './features/dispatch/InvoicesPage';
 import { InvoicePage }       from './features/dispatch/InvoicePage';
 import { AttendancePage }    from './features/attendance/AttendancePage';
 import { MonthEndPage }      from './features/reports/MonthEndPage';
+import { RollTracePage }     from './features/rolls/RollTracePage';
+import { RollLabelPage }     from './features/rolls/RollLabelPage';
 
 export interface RouteConfig {
   path: string;
@@ -199,10 +201,10 @@ export const ROUTES: RouteConfig[] = [
     path: '/rolls/:id',
     label: 'Roll Trace',
     icon: BeakerIcon,
-    roles: ['OWNER', 'SUPERVISOR'],
+    roles: 'all',
     nav: false,
     p1: true,
-    element: <Placeholder title="Roll Trace" description="Full traceability timeline — P1, coming in Phase 6." />,
+    element: <RollTracePage />,
   },
   {
     path: '/rolls/:id/label',
@@ -211,7 +213,7 @@ export const ROUTES: RouteConfig[] = [
     roles: 'all',
     nav: false,
     p1: true,
-    element: <Placeholder title="Roll Label" description="Printable QR label — P1, coming in Phase 6." />,
+    element: <RollLabelPage />,
   },
 ];
 

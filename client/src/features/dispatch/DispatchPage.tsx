@@ -17,7 +17,6 @@ import {
   type FinishedGoodItem,
   type ConfirmDispatchResponse,
 } from './dispatch.api';
-import { ScanPanel } from './ScanPanel';
 import {
   TruckIcon,
   CheckCircleIcon,
@@ -25,6 +24,7 @@ import {
   DocumentTextIcon,
   PlusIcon,
   TrashIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 
 export function DispatchPage() {
@@ -301,9 +301,6 @@ export function DispatchPage() {
                 </span>
               </div>
 
-              {/* Optional Scanner Panel (P1 stub) */}
-              <ScanPanel onScan={(code) => handleAddCode(code)} />
-
               {/* Manual Roll Code Input */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted)">
@@ -393,8 +390,16 @@ export function DispatchPage() {
                               className="rounded text-(--color-accent) focus:ring-(--color-accent) h-4 w-4"
                             />
                             <div>
-                              <div className="font-mono font-bold text-xs text-(--color-text)">
-                                {roll.rollNo}
+                              <div className="flex items-center gap-1.5 font-mono font-bold text-xs text-(--color-text)">
+                                <span>{roll.rollNo}</span>
+                                <Link
+                                  to={`/rolls/${roll.id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="View Roll Trace"
+                                  className="text-slate-400 hover:text-indigo-600 transition-colors"
+                                >
+                                  <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
+                                </Link>
                               </div>
                               <div className="text-[11px] text-(--color-text-muted)">
                                 {roll.fabricType} ({roll.colour})

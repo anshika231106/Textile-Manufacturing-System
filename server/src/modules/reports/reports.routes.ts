@@ -14,7 +14,7 @@ const DEFAULT_DAILY_WAGE = 550;
 // GET /reports/dashboard - live operational snapshot for the home screen.
 // Mounted under /reports in routes.ts, so paths here are relative to that prefix.
 reportsRoutes.get(
-  '/dashboard',
+  ['/dashboard', '/reports/dashboard'],
   authenticate,
   authorize('OWNER', 'OFFICE', 'SUPERVISOR'),
   async (req, res, next) => {
@@ -30,7 +30,7 @@ const monthQuery = z.object({ month: z.string().regex(/^\d{4}-\d{2}$/, 'month mu
 
 // GET /reports/month-end?month=YYYY-MM - purchases, wages, invoiced, received, profit, cost per order (API-44)
 reportsRoutes.get(
-  '/month-end',
+  ['/month-end', '/reports/month-end'],
   authenticate,
   authorize('OWNER', 'OFFICE'),
   validate({ query: monthQuery }),
