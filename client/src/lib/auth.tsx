@@ -22,17 +22,42 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 
 const TOKEN_KEY = 'milltrace_token';
+const REFRESH_TOKEN_KEY = 'milltrace_refresh_token';
 
-function saveToken(token: string) {
-  try { localStorage.setItem(TOKEN_KEY, token); } catch { /* blocked */ }
+function saveTokens(accessToken: string, refreshToken?: string) {
+  try {
+    localStorage.setItem(TOKEN_KEY, accessToken);
+    if (refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    }
+  } catch {
+    /* blocked */
+  }
 }
 
-function clearToken() {
-  try { localStorage.removeItem(TOKEN_KEY); } catch { /* blocked */ }
+function clearTokens() {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  } catch {
+    /* blocked */
+  }
 }
 
 function readToken(): string | null {
-  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function readRefreshToken(): string | null {
+  try {
+    return localStorage.getItem(REFRESH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -43,38 +68,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Restore session on mount
   useEffect(() => {
     const stored = readToken();
-    if (!stored) {
+    const storedRefresh = readRefreshToken();
+
+    if (!stored && !storedRefresh) {
       setLoading(false);
       return;
     }
-    setToken(stored);
+
+    if (stored) {
+      setToken(stored);
+    }
 
     api<User>('/auth/me')
       .then((u) => setUser(u))
       .catch(() => {
-        clearToken();
+        clearTokens();
         setToken(null);
       })
       .finally(() => setLoading(false));
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<User> => {
-    const res = await api<{ token: string; user: User }>('/auth/login', {
+    const res = await api<{
+      token: string;
+      accessToken?: string;
+      refreshToken?: string;
+      user: User;
+    }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
       auth: false,
     });
-    saveToken(res.token);
-    setToken(res.token);
+
+    const accessToken = res.accessToken || res.token;
+    saveTokens(accessToken, res.refreshToken);
+    setToken(accessToken);
     setUser(res.user);
     return res.user;
   }, []);
 
   const logout = useCallback(() => {
-    clearToken();
+    const currentRefresh = readRefreshToken();
+    if (currentRefresh) {
+      api('/auth/logout', {
+        method: 'POST',
+        body: JSON.stringify({ refreshToken: currentRefresh }),
+        auth: false,
+      }).catch(() => {});
+    }
+
+    clearTokens();
     setToken(null);
     setUser(null);
   }, []);
+
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, logout }}>

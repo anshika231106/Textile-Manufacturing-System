@@ -86,6 +86,21 @@ model User {
   wagesPaidOut      WagePayment[]  @relation("WageCreatedBy")
   assignedMachines  Machine[]      @relation("MachineAssignee")
   machineStatusUpdates Machine[]   @relation("MachineStatusUpdatedBy")
+  refreshTokens     RefreshToken[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  tokenHash String    @unique
+  userId    String    @db.Uuid
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
 }
 
 model Buyer {
