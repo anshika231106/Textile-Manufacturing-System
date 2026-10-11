@@ -5,7 +5,7 @@ import { useApi } from '../../lib/useApi';
 import { listOrdersPage, type Order, type OrderStatus } from './orders.api';
 import { Card } from '../../components/ui/Card';
 import { Table, type Column } from '../../components/ui/Table';
-import { Pagination } from '../../components/ui/Pagination';
+import { DEFAULT_PAGE_SIZE, Pagination } from '../../components/ui/Pagination';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -50,7 +50,7 @@ export function OrdersPage() {
   const navigate = useNavigate();
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [page, setPage] = useState(0);
-  const pageSize = 10;
+  const pageSize = DEFAULT_PAGE_SIZE;
 
   const { data, loading, error, reload } = useApi(
     () => listOrdersPage({

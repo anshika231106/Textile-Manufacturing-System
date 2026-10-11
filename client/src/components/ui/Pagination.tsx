@@ -1,6 +1,8 @@
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Button } from './Button';
 
+export const DEFAULT_PAGE_SIZE = 10;
+
 interface PaginationProps {
   page: number;
   pageSize: number;

@@ -8,6 +8,7 @@ import { Select } from '../../components/ui/Select';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { ErrorState } from '../../components/ui/ErrorState';
+import { DEFAULT_PAGE_SIZE } from '../../components/ui/Pagination';
 import { formatCurrency, formatTimestamp } from '../../lib/format';
 import {
   ArrowDownLeftIcon,
@@ -29,7 +30,7 @@ export function LedgerPanel({
 }: LedgerPanelProps) {
   const [filterType, setFilterType] = useState<string>('ALL');
   const [page, setPage] = useState<number>(0);
-  const pageSize = 50;
+  const pageSize = DEFAULT_PAGE_SIZE;
 
   const { data, loading, error, reload } = useApi(
     () =>
