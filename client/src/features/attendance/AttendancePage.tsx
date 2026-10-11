@@ -33,6 +33,7 @@ import {
   PencilSquareIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
+  BriefcaseIcon,
 } from '@heroicons/react/24/outline';
 
 function errorMessage(error: unknown, fallback: string): string {
