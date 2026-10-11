@@ -122,6 +122,7 @@ export class OrdersService {
         rollNumber: r.rollNo,
         metres: m,
         qcStatus,
+        dispatched: r.status === 'DISPATCHED',
         createdAt: r.createdAt?.toISOString(),
       };
     });
@@ -149,11 +150,14 @@ export class OrdersService {
     };
     const derived = deriveOrderStatus(statusCtx);
 
-    // Current stage
+    // Current stage: the furthest stage with a job (stageJobs come back in no guaranteed order)
+    const stageOrder = ['SPINNING', 'WEAVING', 'DYEING'];
     let currentStage: string | null = null;
     if (order.stageJobs && order.stageJobs.length > 0) {
-      const latestJob = order.stageJobs[order.stageJobs.length - 1];
-      currentStage = latestJob.stage;
+      currentStage = order.stageJobs.reduce(
+        (furthest: string, j: any) => (stageOrder.indexOf(j.stage) > stageOrder.indexOf(furthest) ? j.stage : furthest),
+        order.stageJobs[0].stage
+      );
     } else if (order.startedAt) {
       currentStage = 'SPINNING';
     }
@@ -527,7 +531,9 @@ export class OrdersService {
     }
 
     const detail = this.formatOrderDetail(order);
-    const producedMetres = (detail.stages || []).reduce((acc: number, s: any) => acc + (s.producedMetres || 0), 0);
+    // Finished fabric = output of the furthest stage that has logged metres (summing stages would triple-count).
+    const producedMetres =
+      [...(detail.stages || [])].reverse().find((s: any) => s.producedMetres > 0)?.producedMetres ?? 0;
 
     // API-46 / T-20: explicit allow-list. Never return rates, costs, yarn, invoices,
     // internal IDs or buyer contact details on this unauthenticated endpoint.
@@ -557,15 +563,16 @@ export class OrdersService {
         inQcRolls: detail.rollSummary.inQcRolls,
         reworkRolls: detail.rollSummary.reworkRolls,
         rejectedRolls: detail.rollSummary.rejectedRolls,
-        rolls: detail.rollSummary.rolls.map((r: { rollNumber: string; metres: number; qcStatus: string }) => ({
+        rolls: detail.rollSummary.rolls.map((r: { rollNumber: string; metres: number; qcStatus: string; dispatched: boolean }) => ({
           rollNumber: r.rollNumber,
           metres: r.metres,
           qcStatus: r.qcStatus,
+          dispatched: r.dispatched,
         })),
       },
       orderedMetres: detail.metres,
       producedMetres,
-      passedMetres: detail.rolls.passedMetres,
+      passedMetres: round2(detail.rolls.passedMetres + detail.rolls.dispatchedMetres),
       dispatchedMetres: detail.rolls.dispatchedMetres,
       lastUpdated: new Date().toISOString(),
     };

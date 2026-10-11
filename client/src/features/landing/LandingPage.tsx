@@ -58,7 +58,72 @@ const STAGES = [
   { key: 'WEAVING', label: 'Weaving', desc: 'Loom weaving into greige fabric' },
   { key: 'DYEING', label: 'Dyeing', desc: 'Vat dyeing, washing & finishing' },
   { key: 'QC', label: 'QC & Rolls', desc: '100% inspection & roll grading' },
+  { key: 'DISPATCH', label: 'Dispatch', desc: 'Passed rolls packed & shipped' },
 ];
+
+const STAGE_INDEX: Record<string, number> = { SPINNING: 1, WEAVING: 2, DYEING: 3 };
+const PRODUCTION_STAGES = ['SPINNING', 'WEAVING', 'DYEING'] as const;
+
+/** Index of the active stepper card; STAGES.length means every stage is done. */
+function getActiveStageIndex(order: Order): number {
+  switch (order.status) {
+    case 'PENDING':
+      return 0;
+    case 'QC':
+      return 4;
+    case 'READY':
+    case 'DISPATCHED':
+      return 5;
+    case 'COMPLETED':
+      return STAGES.length;
+    default:
+      return STAGE_INDEX[order.currentStage] ?? 1;
+  }
+}
+
+function getStageHeadline(order: Order): string {
+  switch (order.status) {
+    case 'PENDING':
+      return 'Awaiting production start';
+    case 'QC':
+      return 'Quality check';
+    case 'READY':
+      return 'Ready to ship';
+    case 'DISPATCHED':
+      return 'Partially dispatched';
+    case 'COMPLETED':
+      return 'Fully dispatched';
+    case 'CANCELLED':
+      return 'Cancelled';
+    default: {
+      const stage = order.currentStage;
+      return stage.charAt(0) + stage.slice(1).toLowerCase();
+    }
+  }
+}
+
+/** Finished fabric so far: output of the furthest production stage that has logged metres. */
+function getProducedMetres(order: Order): number {
+  const byStage = new Map((order.stageProgress ?? []).map((s) => [s.stage, s.producedMetres || 0]));
+  for (const stage of [...PRODUCTION_STAGES].reverse()) {
+    const m = byStage.get(stage) ?? 0;
+    if (m > 0) return m;
+  }
+  return 0;
+}
+
+/** Metres in rolls that cleared QC, including rolls already dispatched. */
+function getPassedMetres(order: Order): number {
+  return (order.rollSummary?.rolls ?? [])
+    .filter((r) => r.qcStatus === 'PASS')
+    .reduce((acc, r) => acc + (r.metres || 0), 0);
+}
+
+function getDispatchedMetres(order: Order): number {
+  return (order.rollSummary?.rolls ?? [])
+    .filter((r) => r.dispatched)
+    .reduce((acc, r) => acc + (r.metres || 0), 0);
+}
 
 // Pipeline reveal timeline (seconds): cards enter one by one, then finished stages
 // turn green in order until the active stage lands.
@@ -73,18 +138,18 @@ function PipelineStepper({ activeIdx }: { activeIdx: number }) {
   const fillAt = (idx: number) => (STAGE_FILL_START + idx * STAGE_FILL_GAP) * t;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 relative">
+    <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3 relative">
       {/* Connector thread between stage centres (desktop only), filling up to the active stage */}
       <div
         aria-hidden
-        className="hidden sm:block absolute top-7 left-[calc(10%-0.3rem)] right-[calc(10%-0.3rem)] h-0.5 rounded-full bg-(--color-border)"
+        className="hidden lg:block absolute top-7 left-[calc(100%/12-0.3rem)] right-[calc(100%/12-0.3rem)] h-0.5 rounded-full bg-(--color-border)"
       >
         {activeIdx > 0 && (
           <motion.div
             className="h-full w-full rounded-full origin-left bg-gradient-to-r from-(--color-success) to-(--color-accent)"
             initial={{ scaleX: 0 }}
-            animate={{ scaleX: activeIdx / (STAGES.length - 1) }}
-            transition={{ delay: fillAt(0), duration: activeIdx * STAGE_FILL_GAP * t, ease: 'linear' }}
+            animate={{ scaleX: Math.min(activeIdx, STAGES.length - 1) / (STAGES.length - 1) }}
+            transition={{ delay: fillAt(0), duration: Math.min(activeIdx, STAGES.length - 1) * STAGE_FILL_GAP * t, ease: 'linear' }}
           />
         )}
       </div>
@@ -272,17 +337,6 @@ export function LandingPage() {
     } finally {
       setSearching(false);
     }
-  }
-
-  // Calculate active stage index
-  function getActiveStageIndex(order: Order): number {
-    if (order.status === 'PENDING') return 0;
-    if (order.status === 'COMPLETED' || order.status === 'DISPATCHED' || order.status === 'READY') return 4;
-    if (order.status === 'QC') return 4;
-    if (order.currentStage === 'SPINNING') return 1;
-    if (order.currentStage === 'WEAVING') return 2;
-    if (order.currentStage === 'DYEING') return 3;
-    return 1;
   }
 
   return (
@@ -537,7 +591,7 @@ export function LandingPage() {
                           </span>
                           <span className="text-xs font-semibold text-(--color-accent) flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-(--color-accent) animate-pulse" />
-                            Active Stage: {trackedOrder.currentStage}
+                            Active Stage: {getStageHeadline(trackedOrder)}
                           </span>
                         </div>
 
@@ -564,10 +618,10 @@ export function LandingPage() {
                             Produced on Machines
                           </span>
                           <p className="text-2xl font-extrabold text-(--color-accent) mt-1">
-                            {((trackedOrder as any).producedMetres ?? trackedOrder.stageProgress?.reduce((acc, s) => acc + (s.producedMetres || 0), 0) ?? 0).toLocaleString('en-IN')}{' '}
+                            {getProducedMetres(trackedOrder).toLocaleString('en-IN')}{' '}
                             <span className="text-sm font-normal text-(--color-text-muted)">m</span>
                           </p>
-                          <p className="text-xs text-(--color-text-muted) mt-0.5">Through spinning/looms/dyeing</p>
+                          <p className="text-xs text-(--color-text-muted) mt-0.5">Finished through spinning, weaving &amp; dyeing</p>
                         </div>
 
                         <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
@@ -575,10 +629,13 @@ export function LandingPage() {
                             Passed Quality Check
                           </span>
                           <p className="text-2xl font-extrabold text-(--color-success) mt-1">
-                            {((trackedOrder as any).passedMetres ?? (trackedOrder.rollSummary?.passedRolls ?? 0) * 500).toLocaleString('en-IN')}{' '}
+                            {getPassedMetres(trackedOrder).toLocaleString('en-IN')}{' '}
                             <span className="text-sm font-normal text-(--color-text-muted)">m</span>
                           </p>
-                          <p className="text-xs text-(--color-text-muted) mt-0.5">{trackedOrder.rollSummary?.passedRolls ?? 0} rolls graded PASS</p>
+                          <p className="text-xs text-(--color-text-muted) mt-0.5">{trackedOrder.rollSummary?.passedRolls ?? 0} rolls graded PASS
+                            {getDispatchedMetres(trackedOrder) > 0 &&
+                              ` · ${getDispatchedMetres(trackedOrder).toLocaleString('en-IN')} m dispatched`}
+                          </p>
                         </div>
 
                         <div className="p-4 rounded-xl bg-(--color-bg) border border-(--color-border)">
@@ -614,8 +671,14 @@ export function LandingPage() {
                                   <p className="text-(--color-text-muted) text-[11px]">{roll.metres} metres</p>
                                 </div>
                                 <Badge
-                                  variant={roll.qcStatus === 'PASS' ? 'success' : 'warning'}
-                                  label={roll.qcStatus}
+                                  variant={
+                                    roll.dispatched || roll.qcStatus === 'PASS'
+                                      ? 'success'
+                                      : roll.qcStatus === 'REJECT'
+                                        ? 'danger'
+                                        : 'warning'
+                                  }
+                                  label={roll.dispatched ? 'DISPATCHED' : roll.qcStatus}
                                 />
                               </div>
                             ))}

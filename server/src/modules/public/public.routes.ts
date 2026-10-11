@@ -35,7 +35,8 @@ publicRoutes.get(['/samples', '/orders/samples', '/public/samples'], async (req,
     const samples = orders.map((order) => {
       const detail = ordersService.formatOrderDetail(order);
       let hint = 'In Production';
-      if (detail.status === 'DISPATCHED' || detail.status === 'COMPLETED') hint = 'Dispatched Roll';
+      if (detail.status === 'COMPLETED') hint = 'Fully Dispatched';
+      else if (detail.status === 'DISPATCHED') hint = 'Partially Dispatched';
       else if (detail.status === 'READY') hint = 'Ready to Ship';
       else if (detail.status === 'QC') hint = 'Rolls in QC';
       else if (detail.status === 'PENDING') hint = 'Spinning Queue';
@@ -46,7 +47,7 @@ publicRoutes.get(['/samples', '/orders/samples', '/public/samples'], async (req,
       return {
         code: order.orderNo,
         trackingToken: order.trackingToken,
-        label: `${order.fabricType} · ${detail.currentStage || detail.status}`,
+        label: `${order.fabricType} · ${detail.status === 'IN_PRODUCTION' ? detail.currentStage : detail.status.replace('_', ' ')}`,
         hint,
         buyerName: order.buyer.name,
         status: detail.status,

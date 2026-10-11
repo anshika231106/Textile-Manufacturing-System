@@ -50,6 +50,8 @@ export interface RollItem {
   rollNumber: string;
   metres: number;
   qcStatus: 'PENDING' | 'PASS' | 'REWORK' | 'REJECT';
+  /** Passed roll that has already left on a dispatch. */
+  dispatched?: boolean;
   defectType?: string;
   inspectedAt?: string;
 }
