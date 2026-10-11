@@ -70,7 +70,9 @@ model User {
   name         String
   passwordHash String
   role         Role
-  dailyWage    Decimal? @db.Decimal(8, 2) // only meaningful for STAFF
+  dailyWage    Decimal? @db.Decimal(8, 2) // STAFF are paid per day present
+  monthlySalary   Decimal?  @db.Decimal(10, 2) // SUPERVISOR / OFFICE are paid a fixed monthly salary
+  salaryStartDate DateTime? @db.Date // first day on a salaried role; salary is prorated from here
   createdAt    DateTime @default(now())
   deletedAt    DateTime? // set when removed from staff management; history is kept
 

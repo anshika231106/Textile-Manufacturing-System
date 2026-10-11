@@ -12,6 +12,8 @@ export interface StatCardProps {
   tone?: Tone;
   /** Shows a small pulsing dot next to the icon chip, for "live" metrics (e.g. machines running now). */
   live?: boolean;
+  /** Makes the card a button, e.g. to open a breakdown of the figure. */
+  onClick?: () => void;
 }
 
 const toneStyles: Record<Tone, { chip: string; wash: string }> = {
@@ -41,14 +43,30 @@ const toneStyles: Record<Tone, { chip: string; wash: string }> = {
   },
 };
 
-export function StatCard({ icon: Icon, label, value, sub, tone = 'neutral', live = false }: StatCardProps) {
+export function StatCard({ icon: Icon, label, value, sub, tone = 'neutral', live = false, onClick }: StatCardProps) {
   const { chip, wash } = toneStyles[tone];
   return (
     <motion.div
       variants={staggerItem}
+      {...(onClick
+        ? {
+            role: 'button',
+            tabIndex: 0,
+            onClick,
+            onKeyDown: (event: React.KeyboardEvent) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onClick();
+              }
+            },
+          }
+        : {})}
       className={[
         'relative overflow-hidden rounded-xl border border-(--color-border) bg-gradient-to-br p-4',
         'shadow-2xs hover:shadow-xs transition-shadow duration-150',
+        onClick
+          ? 'cursor-pointer hover:border-(--color-accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent)'
+          : '',
         wash,
       ].join(' ')}
     >

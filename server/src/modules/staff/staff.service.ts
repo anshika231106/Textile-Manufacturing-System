@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../../db/prisma';
 import { conflict, notFound, badRequest } from '../../lib/httpErrors';
 import { sendWelcomeEmail } from '../../lib/mailer';
+import { isSalariedRole, plantDateValue } from '../../lib/payroll';
 import type { Role } from '../../../generated/prisma/client';
 
 function generateRandomPassword(length = 10): string {
@@ -39,6 +40,7 @@ export async function createStaffService(data: CreateStaffInput) {
     : generateRandomPassword(10);
 
   const passwordHash = await bcrypt.hash(plainPassword, 12);
+  const salaryStartDate = isSalariedRole(data.role) ? plantDateValue(new Date()) : null;
 
   const select = {
     id: true,
@@ -52,7 +54,7 @@ export async function createStaffService(data: CreateStaffInput) {
   const newUser = existing
     ? await prisma.user.update({
         where: { id: existing.id },
-        data: { name: data.name.trim(), role: data.role, passwordHash, deletedAt: null },
+        data: { name: data.name.trim(), role: data.role, passwordHash, salaryStartDate, deletedAt: null },
         select,
       })
     : await prisma.user.create({
@@ -61,6 +63,7 @@ export async function createStaffService(data: CreateStaffInput) {
           email: normalizedEmail,
           role: data.role,
           passwordHash,
+          salaryStartDate,
         },
         select,
       });
@@ -157,9 +160,14 @@ export async function updateStaffRoleService(id: string, role: Role, currentUser
     );
   }
 
+  // Staff → Supervisor moves from daily wages to a salary from today;
+  // Supervisor → Office keeps the original salary start date.
   const promotion = await prisma.user.updateMany({
     where: { id, role: target.role },
-    data: { role },
+    data: {
+      role,
+      ...(target.role === 'STAFF' ? { salaryStartDate: plantDateValue(new Date()) } : {}),
+    },
   });
   if (promotion.count !== 1) {
     throw conflict('ROLE_CHANGED_CONCURRENTLY', 'The employee role changed. Refresh and try again.');

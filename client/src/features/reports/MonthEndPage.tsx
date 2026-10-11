@@ -4,8 +4,11 @@ import { Spinner } from '../../components/ui/Spinner';
 import { StatCard, StatGrid } from '../../components/ui/StatCard';
 import { Table, type Column } from '../../components/ui/Table';
 import { DEFAULT_PAGE_SIZE, Pagination } from '../../components/ui/Pagination';
+import { Callout } from '../../components/ui/Callout';
+import { Dialog } from '../../components/ui/Dialog';
 import { formatCurrency, formatApiMonth } from '../../lib/format';
 import { getMonthEnd, type MonthEndReport } from './reports.api';
+import { getWages, type MonthlyWagesResponse, type WorkerWageSummary } from '../attendance/attendance.api';
 import {
   ChartBarIcon,
   ArrowPathIcon,
@@ -13,6 +16,7 @@ import {
   ArrowTrendingUpIcon,
   ShoppingBagIcon,
   UsersIcon,
+  BriefcaseIcon,
   CpuChipIcon,
   ReceiptPercentIcon,
 } from '@heroicons/react/24/outline';
@@ -23,6 +27,11 @@ export function MonthEndPage() {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<MonthEndReport | null>(null);
   const orderPageSize = DEFAULT_PAGE_SIZE;
+  const [wagesOpen, setWagesOpen] = useState(false);
+  const [wagesData, setWagesData] = useState<MonthlyWagesResponse | null>(null);
+  const [wagesLoading, setWagesLoading] = useState(false);
+  const [wagesError, setWagesError] = useState('');
+  const [wagePage, setWagePage] = useState(0);
 
   const loadReport = async (monthStr: string) => {
     try {
@@ -38,8 +47,44 @@ export function MonthEndPage() {
 
   useEffect(() => {
     setOrderPage(0);
+    setWagesOpen(false);
+    setWagesData(null);
     loadReport(selectedMonth);
   }, [selectedMonth]);
+
+  // Per-staff breakdown behind the Staff Wages card: daily wage x days present.
+  const openWageBreakdown = async () => {
+    setWagesOpen(true);
+    setWagePage(0);
+    if (wagesData?.month === selectedMonth) return;
+    setWagesLoading(true);
+    setWagesError('');
+    try {
+      setWagesData(await getWages(selectedMonth));
+    } catch (err) {
+      setWagesData(null);
+      setWagesError(err instanceof Error ? err.message : 'Unable to load staff wages.');
+    } finally {
+      setWagesLoading(false);
+    }
+  };
+
+  const wageColumns: Column<WorkerWageSummary>[] = [
+    { key: 'code', header: 'Code', render: (w) => <span className="font-mono font-medium text-(--color-text)">{w.workerCode}</span> },
+    { key: 'name', header: 'Staff Name', render: (w) => <span className="font-semibold text-(--color-text)">{w.workerName}</span> },
+    { key: 'rate', header: 'Daily Wage', align: 'right', render: (w) => <span className="font-mono text-(--color-text-muted)">{formatCurrency(w.dailyWage)}</span> },
+    { key: 'present', header: 'Present', align: 'right', render: (w) => <span className="font-mono font-bold text-emerald-700">{w.presentDays}</span> },
+    { key: 'absent', header: 'Absent', align: 'right', render: (w) => <span className="font-mono text-rose-700">{w.absentDays}</span> },
+    {
+      key: 'lost',
+      header: 'Lost to Absence',
+      align: 'right',
+      render: (w) => <span className="font-mono text-rose-700">{formatCurrency(w.absentDays * w.dailyWage)}</span>,
+    },
+    { key: 'earned', header: 'Wages Earned', align: 'right', render: (w) => <span className="font-mono font-bold text-emerald-800">{formatCurrency(w.totalWage)}</span> },
+  ];
+  const wageWorkers = wagesData?.workers ?? [];
+  const totalAbsentDays = wageWorkers.reduce((sum, w) => sum + w.absentDays, 0);
 
   const costColumns: Column<MonthEndReport['costPerOrder'][number]>[] = report
     ? [
@@ -153,19 +198,41 @@ export function MonthEndPage() {
       ) : (
         <div className="space-y-8">
           {/* Executive Stat Cards */}
-          <StatGrid columns={5}>
+          <StatGrid columns={4}>
             <StatCard icon={ShoppingBagIcon} label="Raw Purchases" value={formatCurrency(report.purchases)} sub="Yarn receipts cost" tone="neutral" />
-            <StatCard icon={UsersIcon} label="Staff Wages" value={formatCurrency(report.wages)} sub="Floor shift payroll" tone="neutral" />
+            <StatCard
+              icon={UsersIcon}
+              label="Staff Wages"
+              value={formatCurrency(report.staffWages)}
+              sub="Click for per-staff breakdown"
+              tone="neutral"
+              onClick={() => void openWageBreakdown()}
+            />
+            <StatCard
+              icon={BriefcaseIcon}
+              label="Salaries"
+              value={formatCurrency(report.salaries)}
+              sub={`${report.salariedEmployees} supervisor & office staff`}
+              tone="neutral"
+            />
+            <StatCard icon={UsersIcon} label="Total Payroll" value={formatCurrency(report.wages)} sub="Wages + salaries" tone="neutral" />
             <StatCard icon={ReceiptPercentIcon} label="Gross Invoiced" value={formatCurrency(report.invoiced)} sub="Sales billing issued" tone="neutral" />
             <StatCard icon={BanknotesIcon} label="Payments In" value={formatCurrency(report.paymentsReceived)} sub="Bank receipts cash" tone="info" />
             <StatCard
               icon={ArrowTrendingUpIcon}
               label="Operating Profit"
               value={formatCurrency(report.profit)}
-              sub="Invoiced - (Yarn + Wages)"
+              sub="Invoiced - (Yarn + Payroll)"
               tone={report.profit >= 0 ? 'success' : 'danger'}
             />
           </StatGrid>
+
+          {report.salaryNotSet > 0 && (
+            <Callout tone="warning">
+              {report.salaryNotSet} supervisor / office {report.salaryNotSet === 1 ? 'employee has' : 'employees have'} no monthly
+              salary set, so salaries and profit are understated. The owner can set salaries on the Attendance page.
+            </Callout>
+          )}
 
           {/* TABLE 1: Cost & Margin Per Order */}
           <div className="bg-white rounded-2xl border border-(--color-border) p-6 shadow-xs space-y-4">
@@ -213,6 +280,50 @@ export function MonthEndPage() {
           </div>
         </div>
       )}
+
+      <Dialog
+        open={wagesOpen}
+        onClose={() => setWagesOpen(false)}
+        title={`Staff Wages — ${selectedMonth}`}
+        width="max-w-5xl"
+      >
+        <div className="max-h-[75vh] overflow-y-auto space-y-4">
+          <p className="text-xs text-(--color-text-muted)">
+            Each staff member earns their daily wage for every day marked present. Absent days are not paid.
+          </p>
+          {wagesData && !wagesError && (
+            <StatGrid columns={4}>
+              <StatCard icon={UsersIcon} label="Staff" value={wageWorkers.length} tone="neutral" />
+              <StatCard icon={UsersIcon} label="Days Present" value={wagesData.totalPresentDays} tone="success" />
+              <StatCard icon={UsersIcon} label="Days Absent" value={totalAbsentDays} tone="danger" />
+              <StatCard icon={BanknotesIcon} label="Wages Earned" value={formatCurrency(wagesData.totalWages)} tone="success" />
+            </StatGrid>
+          )}
+          {wagesError ? (
+            <Callout tone="danger">{wagesError}</Callout>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <Table
+                  columns={wageColumns}
+                  rows={wageWorkers.slice(wagePage * orderPageSize, (wagePage + 1) * orderPageSize)}
+                  loading={wagesLoading}
+                  rowKey={(w) => w.workerId}
+                  emptyTitle="No staff"
+                  emptyDescription={`No staff attendance recorded for ${selectedMonth}.`}
+                />
+              </div>
+              <Pagination
+                page={wagePage}
+                pageSize={orderPageSize}
+                totalCount={wageWorkers.length}
+                itemLabel="staff members"
+                onPageChange={setWagePage}
+              />
+            </>
+          )}
+        </div>
+      </Dialog>
     </div>
   );
 }

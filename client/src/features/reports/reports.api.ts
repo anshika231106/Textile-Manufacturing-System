@@ -141,7 +141,15 @@ export interface MachineMetresItem {
 export interface MonthEndReport {
   month: string;
   purchases: number;
+  /** Total payroll: staffWages + salaries */
   wages: number;
+  /** Staff daily wages for days present */
+  staffWages: number;
+  /** Supervisor and office monthly salaries, prorated for mid-month joins and exits */
+  salaries: number;
+  salariedEmployees: number;
+  /** Salaried employees with no salary set yet (counted as 0) */
+  salaryNotSet: number;
   invoiced: number;
   paymentsReceived: number;
   profit: number;
@@ -153,6 +161,10 @@ const MOCK_MONTH_END: MonthEndReport = {
   month: '2026-10',
   purchases: 185000,
   wages: 114600,
+  staffWages: 84600,
+  salaries: 30000,
+  salariedEmployees: 1,
+  salaryNotSet: 0,
   invoiced: 585000,
   paymentsReceived: 420000,
   profit: 285400,

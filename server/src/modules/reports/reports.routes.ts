@@ -6,10 +6,9 @@ import { authenticate, authorize } from '../../middleware/authenticate';
 import { validate } from '../../middleware/validate';
 import { round2, toDecimal } from '../../lib/numbers';
 import { buildDashboard } from './dashboard.service';
+import { salariesForMonth, staffWagesForMonth } from '../../lib/payroll';
 
 export const reportsRoutes = Router();
-
-const DEFAULT_DAILY_WAGE = 550;
 
 // GET /reports/dashboard - live operational snapshot for the home screen.
 // Mounted under /reports in routes.ts, so paths here are relative to that prefix.
@@ -26,9 +25,9 @@ reportsRoutes.get(
   }
 );
 
-const monthQuery = z.object({ month: z.string().regex(/^\d{4}-\d{2}$/, 'month must be YYYY-MM') });
+const monthQuery = z.object({ month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'month must be YYYY-MM') });
 
-// GET /reports/month-end?month=YYYY-MM - purchases, wages, invoiced, received, profit, cost per order (API-44)
+// GET /reports/month-end?month=YYYY-MM - purchases, wages + salaries, invoiced, received, profit, cost per order (API-44)
 reportsRoutes.get(
   ['/month-end', '/reports/month-end'],
   authenticate,
@@ -41,17 +40,14 @@ reportsRoutes.get(
       const end = new Date(start);
       end.setUTCMonth(end.getUTCMonth() + 1);
 
-      const [receipts, staff, presentRecords, invoicesInMonth, paymentsInMonth, startedOrders, machines, productionLogs] =
+      const [receipts, staffWages, salaries, invoicesInMonth, paymentsInMonth, startedOrders, machines, productionLogs] =
         await Promise.all([
           prisma.stockMovement.findMany({
             where: { type: 'RECEIPT', occurredAt: { gte: start, lt: end } },
             select: { kg: true, ratePerKg: true },
           }),
-          prisma.user.findMany({ where: { role: 'STAFF' }, select: { id: true, dailyWage: true } }),
-          prisma.attendance.findMany({
-            where: { date: { gte: start, lt: end }, present: true },
-            select: { staffId: true },
-          }),
+          staffWagesForMonth(month),
+          salariesForMonth(month),
           prisma.invoice.findMany({
             where: { issuedAt: { gte: start, lt: end } },
             select: { amount: true, orderId: true },
@@ -74,14 +70,8 @@ reportsRoutes.get(
 
       const purchases = round2(receipts.reduce((sum, r) => sum + toDecimal(r.kg) * toDecimal(r.ratePerKg), 0));
 
-      const presentCount = new Map<string, number>();
-      for (const r of presentRecords) presentCount.set(r.staffId, (presentCount.get(r.staffId) || 0) + 1);
-      const wages = round2(
-        staff.reduce((sum, w) => {
-          const dailyWage = w.dailyWage ? toDecimal(w.dailyWage) : DEFAULT_DAILY_WAGE;
-          return sum + (presentCount.get(w.id) || 0) * dailyWage;
-        }, 0)
-      );
+      // Payroll = staff daily wages for days present + supervisor / office monthly salaries.
+      const wages = round2(staffWages.totalWages + salaries.totalSalaries);
 
       const invoicedAmountByOrder = new Map<string, number>();
       for (const inv of invoicesInMonth) {
@@ -166,6 +156,10 @@ reportsRoutes.get(
         month,
         purchases,
         wages,
+        staffWages: staffWages.totalWages,
+        salaries: salaries.totalSalaries,
+        salariedEmployees: salaries.employees.length,
+        salaryNotSet: salaries.salaryNotSet,
         invoiced,
         paymentsReceived,
         profit,

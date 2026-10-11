@@ -514,6 +514,14 @@ async function workflow() {
   const wages = (await get(`/attendance/wages?month=${utcMonth}`, 'OFFICE')).body?.data;
   const wageSum = (wages?.workers ?? []).reduce((s: number, w: any) => s + w.presentDays * w.dailyWage, 0);
   check('wages total = sum(present days x daily wage)', wages && near(wages.totalWages, wageSum), wages);
+  check('roster has no supervisor or office users', roster.every((r) => r.workerRole === 'Staff'), roster);
+  const salaries = (await get(`/attendance/salaries?month=${utcMonth}`, 'OWNER')).body?.data;
+  check('owner reads monthly salaries', salaries && Array.isArray(salaries.employees) && salaries.employees.every((e: any) => e.role === 'SUPERVISOR' || e.role === 'OFFICE'), salaries);
+  const ownSalary = (await get(`/attendance/salaries?month=${utcMonth}`, 'SUPERVISOR')).body?.data;
+  check('supervisor sees only their own salary', ownSalary && ownSalary.employees.length <= 1, ownSalary);
+  if (salaries?.employees?.[0]) {
+    expectStatus('OFFICE cannot set salaries (403)', await patch(`/attendance/staff/${salaries.employees[0].employeeId}/salary`, { monthlySalary: 1 }, 'OFFICE'), 403);
+  }
 
   // ------------------------------------------------------------ month-end
   heading('Month-end report');
@@ -527,7 +535,9 @@ async function workflow() {
     check(`invoiced grew by ${invoicedTotal}`, near(after.invoiced - before.invoiced, invoicedTotal), { before: before.invoiced, after: after.invoiced });
     check('payments received grew by 22500', near(after.paymentsReceived - before.paymentsReceived, 22500), { before: before.paymentsReceived, after: after.paymentsReceived });
     check('profit = invoiced - purchases - wages', near(after.profit, after.invoiced - after.purchases - after.wages), after);
-    check('month-end wages equal the wages screen total', wages && near(after.wages, wages.totalWages), { monthEnd: after.wages, wagesScreen: wages?.totalWages });
+    check('month-end staff wages equal the wages screen total', wages && near(after.staffWages, wages.totalWages), { monthEnd: after.staffWages, wagesScreen: wages?.totalWages });
+    check('month-end salaries equal the salaries screen total', salaries && near(after.salaries, salaries.totalSalaries), { monthEnd: after.salaries, salariesScreen: salaries?.totalSalaries });
+    check('month-end wages = staff wages + salaries', near(after.wages, after.staffWages + after.salaries), after);
     const cpo = after.costPerOrder?.find((c: any) => c.orderId === order.id);
     const expectedYarnCost = Math.round(REQUIRED_KG * avgRate * 100) / 100;
     check(`cost per order: yarn cost ${expectedYarnCost}`, near(cpo?.yarnCost, expectedYarnCost), cpo);

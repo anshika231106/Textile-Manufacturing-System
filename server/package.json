@@ -15,6 +15,7 @@
     "db:seed": "prisma db seed",
     "seed:demo-orders": "tsx scripts/seed-demo-orders.ts",
     "demo:reset": "tsx scripts/demo-reset.ts",
+    "backfill:salaries": "tsx scripts/backfill-salaries.ts",
     "smoke": "tsx scripts/smoke.ts",
     "test:concurrency": "tsx scripts/concurrency.ts",
     "test:validation": "tsx scripts/validation.ts",
