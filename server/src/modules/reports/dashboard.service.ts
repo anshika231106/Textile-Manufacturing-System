@@ -116,7 +116,11 @@ export async function buildDashboard(role: Role) {
       select: { result: true, defectType: true },
     }),
     prisma.user.count({ where: { role: 'STAFF', deletedAt: null } }),
-    prisma.attendance.findMany({ where: { date: dateOnly(todayKey) }, select: { present: true } }),
+    // Only current staff are on the roster, so promoted or removed users don't skew today's counts.
+    prisma.attendance.findMany({
+      where: { date: dateOnly(todayKey), staff: { role: 'STAFF', deletedAt: null } },
+      select: { present: true },
+    }),
   ]);
 
   // ── Orders ──────────────────────────────────────────────────────────────────

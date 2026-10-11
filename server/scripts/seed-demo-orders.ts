@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Prisma } from '../generated/prisma/client';
 import { prisma } from '../src/lib/prisma';
+import { salariesForMonth, staffWagesForMonth } from '../src/lib/payroll';
 
 const DEMO_ORDER_COUNT = 45;
 const DEMO_ORDER_PREFIX = 'ORD-DEMO-';
@@ -80,7 +81,7 @@ async function main(): Promise<void> {
     prisma.user.findUnique({ where: { email: 'supervisor@everest.com' }, select: { id: true } }),
     prisma.user.findMany({
       where: { role: 'STAFF' },
-      select: { id: true, dailyWage: true },
+      select: { id: true },
       orderBy: { createdAt: 'asc' },
     }),
   ]);
@@ -174,8 +175,8 @@ async function main(): Promise<void> {
   const now = new Date();
   const monthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
   const monthEnd = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1));
-  const staffIds = staffUsers.map(({ id }) => id);
-  const [monthReceipts, monthInvoices, presentAttendance, existingMovements] = await Promise.all([
+  const month = monthStart.toISOString().slice(0, 7);
+  const [monthReceipts, monthInvoices, staffWages, salaries, existingMovements] = await Promise.all([
     prisma.stockMovement.findMany({
       where: { type: 'RECEIPT', occurredAt: { gte: monthStart, lt: monthEnd } },
       select: { kg: true, ratePerKg: true },
@@ -184,27 +185,16 @@ async function main(): Promise<void> {
       where: { issuedAt: { gte: monthStart, lt: monthEnd } },
       _sum: { amount: true },
     }),
-    prisma.attendance.findMany({
-      where: { staffId: { in: staffIds }, date: { gte: monthStart, lt: monthEnd }, present: true },
-      select: { staffId: true },
-    }),
+    staffWagesForMonth(month),
+    salariesForMonth(month),
     prisma.stockMovement.findMany({
       where: { yarnTypeId: yarnType.id },
       select: { type: true, kg: true },
     }),
   ]);
 
-  const presentDaysByStaff = new Map<string, number>();
-  for (const attendance of presentAttendance) {
-    presentDaysByStaff.set(
-      attendance.staffId,
-      (presentDaysByStaff.get(attendance.staffId) ?? 0) + 1,
-    );
-  }
-  const monthlyWages = staffUsers.reduce((sum, staff) => {
-    const wage = staff.dailyWage?.toNumber() ?? 550;
-    return sum + (presentDaysByStaff.get(staff.id) ?? 0) * wage;
-  }, 0);
+  // Same payroll the month-end report uses: staff daily wages + monthly salaries.
+  const monthlyWages = staffWages.totalWages + salaries.totalSalaries;
   const monthlyPurchases = sumDecimal(monthReceipts);
   const monthlyInvoiced = monthInvoices._sum.amount?.toNumber() ?? 0;
   const currentYarnOnHand = existingMovements.reduce(

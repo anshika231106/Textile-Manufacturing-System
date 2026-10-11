@@ -15,9 +15,13 @@ import {
   saveAttendance,
   getWages,
   updateDailyWage,
+  getSalaries,
+  updateMonthlySalary,
   type WorkerAttendanceRecord,
   type WorkerWageSummary,
   type MonthlyWagesResponse,
+  type EmployeeSalarySummary,
+  type MonthlySalariesResponse,
 } from './attendance.api';
 import {
   CalendarDaysIcon,
@@ -56,6 +60,9 @@ export function AttendancePage() {
   const canMarkAttendance = user?.role === 'SUPERVISOR';
   const canSeeWages = user?.role === 'OFFICE' || user?.role === 'OWNER' || isStaff;
   const canEditWages = user?.role === 'OFFICE' || user?.role === 'OWNER';
+  // Supervisors and office users are salaried and not on the attendance roster.
+  const canSeeSalaries = user?.role === 'SUPERVISOR' || user?.role === 'OFFICE' || user?.role === 'OWNER';
+  const canEditSalaries = user?.role === 'OWNER';
 
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedMonth, setSelectedMonth] = useState(formatApiMonth(new Date()));
@@ -76,6 +83,14 @@ export function AttendancePage() {
   const [wageInput, setWageInput] = useState('');
   const [wageSaving, setWageSaving] = useState(false);
   const [wageEditError, setWageEditError] = useState('');
+  const [salaryPage, setSalaryPage] = useState(0);
+  const [salariesData, setSalariesData] = useState<MonthlySalariesResponse | null>(null);
+  const [salariesLoading, setSalariesLoading] = useState(canSeeSalaries);
+  const [salariesError, setSalariesError] = useState('');
+  const [salaryTarget, setSalaryTarget] = useState<EmployeeSalarySummary | null>(null);
+  const [salaryInput, setSalaryInput] = useState('');
+  const [salarySaving, setSalarySaving] = useState(false);
+  const [salaryEditError, setSalaryEditError] = useState('');
 
   const loadDaily = async (date: string) => {
     setDailyLoading(true);
@@ -105,6 +120,20 @@ export function AttendancePage() {
     }
   };
 
+  const loadSalaries = async (month: string) => {
+    if (!canSeeSalaries) return;
+    setSalariesLoading(true);
+    setSalariesError('');
+    try {
+      setSalariesData(await getSalaries(month));
+    } catch (error) {
+      setSalariesData(null);
+      setSalariesError(errorMessage(error, 'Unable to load salary summary.'));
+    } finally {
+      setSalariesLoading(false);
+    }
+  };
+
   useEffect(() => {
     setDailyPage(0);
     void loadDaily(selectedDate);
@@ -114,6 +143,11 @@ export function AttendancePage() {
     setWagePage(0);
     void loadWages(selectedMonth);
   }, [selectedMonth, canSeeWages]);
+
+  useEffect(() => {
+    setSalaryPage(0);
+    void loadSalaries(selectedMonth);
+  }, [selectedMonth, canSeeSalaries]);
 
   const setAllStatus = (present: boolean) => {
     if (dailySearchQuery.trim()) {
@@ -184,6 +218,28 @@ export function AttendancePage() {
     }
   };
 
+  const handleSaveSalary = async () => {
+    if (!salaryTarget) return;
+    const amount = Number(salaryInput);
+    if (!salaryInput.trim() || !Number.isFinite(amount) || amount < 0 || amount > 99999999.99) {
+      setSalaryEditError('Enter a valid monthly salary from 0 to 99,999,999.99.');
+      return;
+    }
+
+    setSalarySaving(true);
+    setSalaryEditError('');
+    try {
+      await updateMonthlySalary(salaryTarget.employeeId, Math.round(amount * 100) / 100);
+      await loadSalaries(selectedMonth);
+      showToast(`${salaryTarget.employeeName}'s monthly salary was updated.`, 'success');
+      setSalaryTarget(null);
+    } catch (error) {
+      setSalaryEditError(errorMessage(error, 'Failed to update monthly salary.'));
+    } finally {
+      setSalarySaving(false);
+    }
+  };
+
   const presentCount = records.filter((record) => record.present === true).length;
   const absentCount = records.filter((record) => record.present === false).length;
   const filteredDailyRecords = records.filter((record) => {
@@ -222,6 +278,14 @@ export function AttendancePage() {
   const visibleWageWorkers = filteredWageWorkers.slice(
     visibleWagePage * pageSize,
     (visibleWagePage + 1) * pageSize,
+  );
+
+  const salaryEmployees = salariesData?.employees ?? [];
+  const salaryPageCount = Math.ceil(salaryEmployees.length / pageSize);
+  const visibleSalaryPage = Math.min(salaryPage, Math.max(salaryPageCount - 1, 0));
+  const visibleSalaryEmployees = salaryEmployees.slice(
+    visibleSalaryPage * pageSize,
+    (visibleSalaryPage + 1) * pageSize,
   );
 
   const dailyColumns: Column<WorkerAttendanceRecord>[] = [
@@ -304,6 +368,53 @@ export function AttendancePage() {
       : []),
   ];
 
+  const salaryColumns: Column<EmployeeSalarySummary>[] = [
+    { key: 'code', header: 'Code', render: (e) => <span className="font-mono font-medium text-(--color-text)">{e.employeeCode}</span> },
+    { key: 'name', header: 'Employee Name', render: (e) => <span className="font-semibold text-(--color-text)">{e.employeeName}</span> },
+    { key: 'role', header: 'Role', render: (e) => <span className="text-(--color-text-muted)">{e.role === 'OFFICE' ? 'Office' : 'Supervisor'}</span> },
+    {
+      key: 'salary',
+      header: 'Monthly Salary',
+      align: 'right',
+      render: (e) =>
+        e.monthlySalary === null ? (
+          <Badge variant="warning" label="NOT SET" />
+        ) : (
+          <span className="font-mono text-(--color-text-muted)">{formatCurrency(e.monthlySalary)}</span>
+        ),
+    },
+    {
+      key: 'days',
+      header: 'Days Paid',
+      align: 'right',
+      render: (e) => <span className="font-mono text-(--color-text-muted)">{e.paidDays} / {e.daysInMonth}</span>,
+    },
+    { key: 'due', header: 'Salary Due', align: 'right', render: (e) => <span className="font-mono font-bold text-sm text-emerald-800">{formatCurrency(e.salaryDue)}</span> },
+    ...(canEditSalaries
+      ? [{
+          key: 'actions',
+          header: 'Actions',
+          align: 'right' as const,
+          render: (e: EmployeeSalarySummary) => (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setSalaryTarget(e);
+                setSalaryInput(e.monthlySalary === null ? '' : String(e.monthlySalary));
+                setSalaryEditError('');
+              }}
+              className="text-xs"
+            >
+              <PencilSquareIcon className="w-4 h-4" />
+              Edit salary
+            </Button>
+          ),
+        }]
+      : []),
+  ];
+
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-(--color-border)">
@@ -321,7 +432,7 @@ export function AttendancePage() {
               ? 'View your recorded attendance and wages earned from days present.'
               : canMarkAttendance
                 ? 'Record today’s attendance for every staff member.'
-                : 'Review staff attendance and wages calculated from recorded present days.'}
+                : 'Review staff attendance and wages from recorded present days, and supervisor / office monthly salaries.'}
           </p>
         </div>
         <Button
@@ -330,6 +441,7 @@ export function AttendancePage() {
           onClick={() => {
             void loadDaily(selectedDate);
             void loadWages(selectedMonth);
+            void loadSalaries(selectedMonth);
           }}
           className="text-xs self-start sm:self-auto"
         >
@@ -648,6 +760,136 @@ export function AttendancePage() {
             />
           )}
         </section>
+      )}
+
+      {/* SECTION 3: Monthly Salaries */}
+      {canSeeSalaries && (
+        <section className="bg-white rounded-2xl border border-(--color-border) p-6 shadow-xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-(--color-surface-sunken)">
+            <div className="flex items-center gap-2.5">
+              <BriefcaseIcon className="w-5 h-5 text-emerald-600" />
+              <div>
+                <h2 className="text-base font-semibold text-(--color-text)">
+                  {user?.role === 'SUPERVISOR' ? 'My Monthly Salary' : 'Monthly Salaries'}
+                </h2>
+                <p className="text-xs text-(--color-text-muted)">
+                  Supervisors and office staff are paid a fixed monthly salary, prorated for days joined, promoted, or removed mid-month.
+                </p>
+              </div>
+            </div>
+            {!canSeeWages && (
+              <div className="flex items-center gap-2">
+                <label htmlFor="salary-month" className="text-xs font-medium text-(--color-text-muted)">Month:</label>
+                <input
+                  id="salary-month"
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(event) => setSelectedMonth(event.target.value)}
+                  className="rounded-lg border border-(--color-border) bg-white py-1.5 px-3 text-xs font-medium text-(--color-text) focus:outline-none focus:ring-1 focus:ring-(--color-accent)"
+                />
+              </div>
+            )}
+          </div>
+
+          {salariesData && !salariesError && salariesData.salaryNotSet > 0 && (
+            <Callout tone="warning">
+              {salariesData.salaryNotSet} {salariesData.salaryNotSet === 1 ? 'employee has' : 'employees have'} no monthly salary
+              set and {salariesData.salaryNotSet === 1 ? 'is' : 'are'} counted as 0 in the month-end report.
+            </Callout>
+          )}
+
+          {salariesData && !salariesError && (
+            <StatGrid columns={2}>
+              <StatCard
+                icon={UsersIcon}
+                label={user?.role === 'SUPERVISOR' ? 'Employee' : 'Salaried Employees'}
+                value={salariesData.employees.length}
+                sub="Supervisor and office staff"
+                tone="neutral"
+              />
+              <StatCard
+                icon={BanknotesIcon}
+                label="Salaries Due"
+                value={formatCurrency(salariesData.totalSalaries)}
+                sub={`For ${salariesData.month}`}
+                tone="success"
+              />
+            </StatGrid>
+          )}
+
+          {salariesError ? (
+            <div className="rounded-lg bg-rose-50 border border-rose-200 p-4 text-sm text-rose-700" role="alert">
+              {salariesError}
+            </div>
+          ) : (
+            <Table
+              columns={salaryColumns}
+              rows={visibleSalaryEmployees}
+              loading={salariesLoading}
+              rowKey={(e) => e.employeeId}
+              emptyTitle="No records"
+              emptyDescription={`No salaried employees for ${selectedMonth}.`}
+            />
+          )}
+          {!salariesError && (
+            <Pagination
+              page={visibleSalaryPage}
+              pageSize={pageSize}
+              totalCount={salaryEmployees.length}
+              itemLabel="employees"
+              onPageChange={setSalaryPage}
+            />
+          )}
+        </section>
+      )}
+
+      {canEditSalaries && (
+        <Dialog
+          open={salaryTarget !== null}
+          onClose={() => !salarySaving && setSalaryTarget(null)}
+          title="Update Monthly Salary"
+          width="max-w-md"
+        >
+          {salaryTarget && (
+            <div className="space-y-4">
+              <p className="text-sm text-(--color-text-muted)">
+                Update the monthly salary for <strong className="text-(--color-text)">{salaryTarget.employeeName}</strong>.
+                Month-end payroll uses this salary, prorated for any part-month.
+              </p>
+              <Input
+                id="employee-monthly-salary"
+                type="number"
+                label="Monthly salary"
+                min="0"
+                max="99999999.99"
+                step="0.01"
+                value={salaryInput}
+                onChange={(event) => setSalaryInput(event.target.value)}
+                disabled={salarySaving}
+                required
+              />
+              {salaryEditError && <Callout tone="danger">{salaryEditError}</Callout>}
+              <div className="pt-3 border-t border-(--color-border) flex justify-end gap-2.5">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setSalaryTarget(null)}
+                  disabled={salarySaving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  loading={salarySaving}
+                  onClick={handleSaveSalary}
+                >
+                  Save Monthly Salary
+                </Button>
+              </div>
+            </div>
+          )}
+        </Dialog>
       )}
 
       {canEditWages && (

@@ -192,7 +192,7 @@ mastersRoutes.get(['/machines', '/masters/machines'], authorize(...MASTER_READ_R
   }
 });
 
-// API-12: GET /workers (includes wages, so supervisors are excluded like on /attendance)
+// API-12: GET /workers (daily-wage staff only; supervisors and office are salaried)
 mastersRoutes.get(['/workers', '/masters/workers'], authorize(...MASTER_ADMIN_ROLES), async (_req, res, next) => {
   try {
     const workers = await prisma.user.findMany({

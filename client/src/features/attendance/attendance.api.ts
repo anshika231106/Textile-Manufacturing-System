@@ -41,6 +41,26 @@ export interface MonthlyWagesResponse {
   activeWorkers: number;
 }
 
+export interface EmployeeSalarySummary {
+  employeeId: string;
+  employeeCode: string;
+  employeeName: string;
+  role: 'SUPERVISOR' | 'OFFICE';
+  /** null until the owner sets a salary */
+  monthlySalary: number | null;
+  /** Calendar days on a salaried role this month (less after joining, promotion, or removal mid-month). */
+  paidDays: number;
+  daysInMonth: number;
+  salaryDue: number;
+}
+
+export interface MonthlySalariesResponse {
+  month: string;
+  employees: EmployeeSalarySummary[];
+  totalSalaries: number;
+  salaryNotSet: number;
+}
+
 export function getAttendance(date: string): Promise<DailyAttendanceResponse> {
   return api<DailyAttendanceResponse>(`/attendance?date=${encodeURIComponent(date)}`);
 }
@@ -60,5 +80,16 @@ export function updateDailyWage(staffId: string, dailyWage: number): Promise<{ s
   return api<{ staffId: string; dailyWage: number }>(`/attendance/staff/${staffId}/wage`, {
     method: 'PATCH',
     body: JSON.stringify({ dailyWage }),
+  });
+}
+
+export function getSalaries(month: string): Promise<MonthlySalariesResponse> {
+  return api<MonthlySalariesResponse>(`/attendance/salaries?month=${encodeURIComponent(month)}`);
+}
+
+export function updateMonthlySalary(staffId: string, monthlySalary: number): Promise<{ staffId: string; monthlySalary: number }> {
+  return api<{ staffId: string; monthlySalary: number }>(`/attendance/staff/${staffId}/salary`, {
+    method: 'PATCH',
+    body: JSON.stringify({ monthlySalary }),
   });
 }

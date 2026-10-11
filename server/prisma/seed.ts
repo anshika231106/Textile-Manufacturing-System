@@ -34,6 +34,8 @@ async function ensureDemoRoleUsers(
     passwordHash: string;
     role: "STAFF" | "SUPERVISOR" | "OFFICE";
     dailyWage?: number;
+    monthlySalary?: number;
+    salaryStartDate?: Date;
   }> = [];
 
   for (let index = 1; newUsers.length < missingCount; index++) {
@@ -50,7 +52,9 @@ async function ensureDemoRoleUsers(
       name: `${firstName} ${lastName}`,
       passwordHash: defaultPasswordHash,
       role,
-      ...(role === "STAFF" ? { dailyWage: 450 + ((index * 25) % 251) } : {}),
+      ...(role === "STAFF"
+        ? { dailyWage: 450 + ((index * 25) % 251) }
+        : { monthlySalary: (role === "SUPERVISOR" ? 22_000 : 26_000) + ((index * 500) % 4_001), salaryStartDate: new Date() }),
     });
   }
 
@@ -70,12 +74,12 @@ async function main() {
   const office = await prisma.user.upsert({
     where: { email: "office@everest.com" },
     update: { passwordHash: defaultPasswordHash },
-    create: { email: "office@everest.com", name: "Anjali Rao", passwordHash: defaultPasswordHash, role: "OFFICE" },
+    create: { email: "office@everest.com", name: "Anjali Rao", passwordHash: defaultPasswordHash, role: "OFFICE", monthlySalary: 30000, salaryStartDate: new Date() },
   });
   const supervisor = await prisma.user.upsert({
     where: { email: "supervisor@everest.com" },
     update: { passwordHash: defaultPasswordHash },
-    create: { email: "supervisor@everest.com", name: "Suresh Patil", passwordHash: defaultPasswordHash, role: "SUPERVISOR" },
+    create: { email: "supervisor@everest.com", name: "Suresh Patil", passwordHash: defaultPasswordHash, role: "SUPERVISOR", monthlySalary: 28000, salaryStartDate: new Date() },
   });
   const staff = await prisma.user.upsert({
     where: { email: "staff1@everest.com" },

@@ -5,6 +5,13 @@ import { badRequest } from '../../lib/httpErrors';
 import { ok } from '../../lib/respond';
 import { authenticate, authorize } from '../../middleware/authenticate';
 import { validate } from '../../middleware/validate';
+import {
+  dailyWageOf,
+  isSalariedRole,
+  plantDateString,
+  salariesForMonth,
+  staffWagesForMonth,
+} from '../../lib/payroll';
 
 export const attendanceRoutes = Router();
 
@@ -25,33 +32,20 @@ const updateWageParams = z.object({ staffId: z.string().uuid() });
 const updateWageBody = z.object({
   dailyWage: z.number().finite().min(0).max(999999.99),
 });
+const updateSalaryBody = z.object({
+  monthlySalary: z.number().finite().min(0).max(99999999.99),
+});
 
 function isValidDate(value: string): boolean {
   const date = new Date(`${value}T00:00:00.000Z`);
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
-function plantDateString(date: Date): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Kolkata',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date);
-  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
-
 function dateValue(date: string): Date {
   return new Date(`${date}T00:00:00.000Z`);
 }
 
-const DEFAULT_DAILY_WAGE = 550;
-
-function dailyWage(value: { dailyWage: { toNumber(): number } | null }): number {
-  return value.dailyWage?.toNumber() ?? DEFAULT_DAILY_WAGE;
-}
-
+// Only STAFF are on the attendance roster; SUPERVISOR and OFFICE are salaried.
 async function loadDailyRecords(date: string, staffId?: string, includeWage = false) {
   const users = await prisma.user.findMany({
     where: { role: 'STAFF', deletedAt: null, ...(staffId ? { id: staffId } : {}) },
@@ -69,7 +63,7 @@ async function loadDailyRecords(date: string, staffId?: string, includeWage = fa
     workerCode: `WRK-${String(index + 1).padStart(3, '0')}`,
     workerName: user.name,
     workerRole: 'Staff',
-    ...(includeWage ? { dailyWage: dailyWage(user) } : {}),
+    ...(includeWage ? { dailyWage: dailyWageOf(user) } : {}),
     present: attendanceByStaff.get(user.id) ?? false,
   }));
 }
@@ -148,56 +142,14 @@ attendanceRoutes.get(
   async (req, res, next) => {
     try {
       const { month } = req.query as z.infer<typeof wagesQuery>;
-      const role = req.authUser!.role;
-      const staffId = role === 'STAFF' ? req.authUser!.id : undefined;
-      const [year, monthNumber] = month.split('-').map(Number);
-      const start = new Date(Date.UTC(year, monthNumber - 1, 1));
-      const end = new Date(Date.UTC(year, monthNumber, 1));
-      const workers = await prisma.user.findMany({
-        where: {
-          role: 'STAFF',
-          ...(staffId ? { id: staffId } : {}),
-          // Removed staff still appear for months they worked in.
-          OR: [{ deletedAt: null }, { attendanceRecords: { some: { date: { gte: start, lt: end } } } }],
-        },
-        select: { id: true, name: true, dailyWage: true },
-        orderBy: { name: 'asc' },
-      });
-      const attendance = await prisma.attendance.findMany({
-        where: {
-          staffId: { in: workers.map(({ id }) => id) },
-          date: { gte: start, lt: end },
-        },
-        select: { staffId: true, present: true },
-      });
-
-      const totalsByStaff = new Map<string, { presentDays: number; absentDays: number }>();
-      for (const { staffId: id, present } of attendance) {
-        const totals = totalsByStaff.get(id) ?? { presentDays: 0, absentDays: 0 };
-        totals[present ? 'presentDays' : 'absentDays'] += 1;
-        totalsByStaff.set(id, totals);
-      }
-
-      const wageWorkers = workers.map((worker, index) => {
-        const totals = totalsByStaff.get(worker.id) ?? { presentDays: 0, absentDays: 0 };
-        const rate = dailyWage(worker);
-        return {
-          workerId: worker.id,
-          workerCode: `WRK-${String(index + 1).padStart(3, '0')}`,
-          workerName: worker.name,
-          workerRole: 'Staff',
-          dailyWage: rate,
-          ...totals,
-          totalWage: totals.presentDays * rate,
-        };
-      });
-
+      const staffId = req.authUser!.role === 'STAFF' ? req.authUser!.id : undefined;
+      const { workers, totalWages, totalPresentDays } = await staffWagesForMonth(month, staffId);
       return ok(res, {
         month,
-        workers: wageWorkers,
-        totalWages: wageWorkers.reduce((sum, worker) => sum + worker.totalWage, 0),
-        totalPresentDays: wageWorkers.reduce((sum, worker) => sum + worker.presentDays, 0),
-        activeWorkers: wageWorkers.length,
+        workers,
+        totalWages,
+        totalPresentDays,
+        activeWorkers: workers.length,
       });
     } catch (err) {
       return next(err);
@@ -229,7 +181,57 @@ attendanceRoutes.patch(
       });
       return ok(res, {
         staffId: updated.id,
-        dailyWage: dailyWage(updated),
+        dailyWage: dailyWageOf(updated),
+      });
+    } catch (err) {
+      return next(err);
+    }
+  },
+);
+
+// Supervisors see only their own salary; office and owner see every salaried employee.
+attendanceRoutes.get(
+  '/attendance/salaries',
+  authenticate,
+  authorize('SUPERVISOR', 'OFFICE', 'OWNER'),
+  validate({ query: wagesQuery }),
+  async (req, res, next) => {
+    try {
+      const { month } = req.query as z.infer<typeof wagesQuery>;
+      const userId = req.authUser!.role === 'SUPERVISOR' ? req.authUser!.id : undefined;
+      return ok(res, { month, ...(await salariesForMonth(month, userId)) });
+    } catch (err) {
+      return next(err);
+    }
+  },
+);
+
+// Only the owner sets salaries, so office users cannot change their own pay.
+attendanceRoutes.patch(
+  '/attendance/staff/:staffId/salary',
+  authenticate,
+  authorize('OWNER'),
+  validate({ params: updateWageParams, body: updateSalaryBody }),
+  async (req, res, next) => {
+    try {
+      const { staffId } = req.params as z.infer<typeof updateWageParams>;
+      const { monthlySalary } = req.body as z.infer<typeof updateSalaryBody>;
+      const employee = await prisma.user.findUnique({
+        where: { id: staffId },
+        select: { id: true, role: true, deletedAt: true },
+      });
+      if (!employee || !isSalariedRole(employee.role) || employee.deletedAt) {
+        throw badRequest('INVALID_SALARIED_EMPLOYEE', 'Monthly salaries can only be set for supervisors and office users');
+      }
+
+      const updated = await prisma.user.update({
+        where: { id: staffId },
+        data: { monthlySalary },
+        select: { id: true, monthlySalary: true },
+      });
+      return ok(res, {
+        staffId: updated.id,
+        monthlySalary: updated.monthlySalary ? updated.monthlySalary.toNumber() : 0,
       });
     } catch (err) {
       return next(err);
