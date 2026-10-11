@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useToast } from '../../components/ui/Toast';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { Callout } from '../../components/ui/Callout';
 import { createRoll, listRollableOrders, type QcRollItem, type RollableOrder } from './qc.api';
 import { PlusCircleIcon } from '@heroicons/react/24/outline';
@@ -119,16 +120,17 @@ export function CreateRollForm({ onRollCreated, onCancel }: CreateRollFormProps)
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Order selector */}
-      <Select
+      <SearchableSelect
         label="Target Customer Order"
         required
         value={selectedOrderId}
-        onChange={(e) => selectOrder(orders.find((o) => o.id === e.target.value))}
+        onChange={(orderId) => selectOrder(orders.find((o) => o.id === orderId))}
         placeholder={loadingOrders ? 'Loading orders…' : '-- Choose Order --'}
         options={orders.map((ord) => ({
           value: ord.id,
           label: `${ord.orderNumber} — ${ord.buyerName} (${ord.fabricType}, ${ord.metres}m)`,
         }))}
+        searchPlaceholder="Search by order no, buyer or fabric…"
       />
 
       {/* Selected Order Summary Banner */}

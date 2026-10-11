@@ -6,7 +6,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Dialog } from '../../components/ui/Dialog';
 import { Spinner } from '../../components/ui/Spinner';
 import { Callout } from '../../components/ui/Callout';
-import { Select } from '../../components/ui/Select';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { Input } from '../../components/ui/Input';
 import { formatCurrency } from '../../lib/format';
 import { listOrders, type Order } from '../orders/orders.api';
@@ -252,14 +252,15 @@ export function DispatchPage() {
                 </span>
               </div>
 
-              <Select
+              <SearchableSelect
                 value={selectedOrderId}
-                onChange={(e) => setSelectedOrderId(e.target.value)}
+                onChange={setSelectedOrderId}
                 options={orders.map((ord) => ({
                   value: ord.id,
                   label: `${ord.orderNumber} — ${ord.buyerName} (${ord.fabricType}, ${ord.metres}m)`,
                 }))}
                 className="font-medium"
+                searchPlaceholder="Search by order no, buyer or fabric…"
               />
 
               {orders.length === 0 && (

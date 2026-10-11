@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
 import { Callout } from '../../components/ui/Callout';
-import { Select } from '../../components/ui/Select';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Table, type Column } from '../../components/ui/Table';
 import {
@@ -247,15 +247,16 @@ export function LogPage() {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Select Running Machine */}
-                <Select
+                <SearchableSelect
                   label="Select Running Machine & Job"
                   required
                   value={selectedMachineId}
-                  onChange={(e) => setSelectedMachineId(e.target.value)}
+                  onChange={setSelectedMachineId}
                   options={runningMachines.map((m) => ({
                     value: m.id,
                     label: `${m.code} - ${m.name} (${m.currentJob?.orderNumber} • ${m.stage})`,
                   }))}
+                  searchPlaceholder="Search by machine, order or stage…"
                 />
 
                 {/* Selected Machine Context Banner */}

@@ -9,7 +9,7 @@ import { listOrders } from '../orders/orders.api';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { Spinner } from '../../components/ui/Spinner';
 import { Callout } from '../../components/ui/Callout';
 import { RestrictedAccess } from '../../components/ui/RestrictedAccess';
@@ -236,14 +236,15 @@ export function ReceiptPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Supplier */}
             <div>
-              <Select
+              <SearchableSelect
                 label="Supplier (Yarn Mill / Vendor)"
                 required
                 placeholder="Select a supplier..."
                 options={supplierOptions}
                 value={supplierId}
-                onChange={(e) => setSupplierId(e.target.value)}
+                onChange={setSupplierId}
                 error={errors.supplierId}
+                searchPlaceholder="Search suppliers…"
               />
               <p className="text-xs text-(--color-text-muted) mt-1">
                 From approved vendor master list.
@@ -252,14 +253,15 @@ export function ReceiptPage() {
 
             {/* Yarn Type */}
             <div>
-              <Select
+              <SearchableSelect
                 label="Yarn Material & Count"
                 required
                 placeholder="Select yarn type..."
                 options={yarnOptions}
                 value={yarnTypeId}
-                onChange={(e) => setYarnTypeId(e.target.value)}
+                onChange={setYarnTypeId}
                 error={errors.yarnTypeId}
+                searchPlaceholder="Search by yarn code, name or colour…"
               />
               {selectedYarn && (
                 <p className="text-xs text-(--color-accent) mt-1 font-medium">
@@ -302,12 +304,13 @@ export function ReceiptPage() {
 
             {/* Optional Order Link */}
             <div>
-              <Select
+              <SearchableSelect
                 label="Allocated Order (Optional)"
                 placeholder="General Stock (No specific order)"
                 options={orderOptions}
                 value={orderId}
-                onChange={(e) => setOrderId(e.target.value)}
+                onChange={setOrderId}
+                searchPlaceholder="Search orders…"
               />
               <p className="text-xs text-(--color-text-muted) mt-1">
                 Link if purchased specifically to fulfill a pending customer order.

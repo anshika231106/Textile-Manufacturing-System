@@ -6,7 +6,7 @@ import { getStockSummary } from '../stock/stock.api';
 import { createOrder, checkFeasibility, type FeasibilityResult } from './orders.api';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
@@ -324,16 +324,17 @@ export function NewOrderPage() {
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
+            <SearchableSelect
               id="buyer-select"
               label="Buyer / Customer"
               required
               value={buyerId}
-              onChange={(e) => setBuyerId(e.target.value)}
+              onChange={setBuyerId}
               options={safeBuyersList.map((b) => ({
                 value: b.id,
                 label: `${b.name} (${b.contactName})`,
               }))}
+              searchPlaceholder="Search buyers…"
             />
 
             <Input
@@ -348,15 +349,15 @@ export function NewOrderPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Select
+              <SearchableSelect
                 id="fabric-type-select"
                 label="Fabric Specification"
                 required
                 placeholder="Select fabric specification..."
                 value={selectedFabricPreset}
-                onChange={(e) => {
-                  setSelectedFabricPreset(e.target.value);
-                  if (e.target.value !== 'OTHER') {
+                onChange={(value) => {
+                  setSelectedFabricPreset(value);
+                  if (value !== 'OTHER') {
                     setCustomFabricType('');
                   }
                 }}
@@ -367,6 +368,7 @@ export function NewOrderPage() {
                   })),
                   { value: 'OTHER', label: '✏️ Other / Custom Specification...' },
                 ]}
+                searchPlaceholder="Search fabric specifications…"
               />
               {selectedFabricPreset === 'OTHER' && (
                 <div className="mt-2.5">
@@ -384,15 +386,15 @@ export function NewOrderPage() {
             </div>
 
             <div>
-              <Select
+              <SearchableSelect
                 id="colour-select"
                 label="Colour / Shade"
                 required
                 placeholder="Select colour shade..."
                 value={selectedColourPreset}
-                onChange={(e) => {
-                  setSelectedColourPreset(e.target.value);
-                  if (e.target.value !== 'OTHER') {
+                onChange={(value) => {
+                  setSelectedColourPreset(value);
+                  if (value !== 'OTHER') {
                     setCustomColour('');
                   }
                 }}
@@ -403,6 +405,7 @@ export function NewOrderPage() {
                   })),
                   { value: 'OTHER', label: '✏️ Other / Custom Shade...' },
                 ]}
+                searchPlaceholder="Search colour shades…"
               />
               {selectedColourPreset === 'OTHER' && (
                 <div className="mt-2.5">
@@ -495,15 +498,16 @@ export function NewOrderPage() {
                   className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start p-4 rounded-xl bg-(--color-bg) border border-(--color-border)"
                 >
                   <div className="sm:col-span-7">
-                    <Select
+                    <SearchableSelect
                       id={`yarn-type-${row.id}`}
                       label={`Yarn Material #${idx + 1}`}
                       value={row.yarnTypeId}
-                      onChange={(e) => handleYarnChange(row.id, 'yarnTypeId', e.target.value)}
+                      onChange={(value) => handleYarnChange(row.id, 'yarnTypeId', value)}
                       options={safeYarnsList.map((y) => ({
                         value: y.id,
                         label: `${y.code} — ${y.name} [${y.colour}] · Avail: ${(y.availableKg ?? 0).toLocaleString('en-IN')} kg (${(y.onHandKg ?? 0).toLocaleString('en-IN')} kg in store)`,
                       }))}
+                      searchPlaceholder="Search by yarn code, name or colour…"
                     />
                     {selectedYarn && (
                       <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">

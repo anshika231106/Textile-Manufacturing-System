@@ -12,6 +12,7 @@ import { ProgressBar } from '../../components/ui/ProgressBar';
 import { StatCard, StatGrid } from '../../components/ui/StatCard';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Select } from '../../components/ui/Select';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { Input } from '../../components/ui/Input';
 import {
   getBoard,
@@ -691,16 +692,17 @@ export function BoardPage() {
 
                             {isSupervisorOrOwner && (
                               <div className="border-t border-(--color-border) pt-3">
-                                <Select
+                                <SearchableSelect
                                   label="Assigned Staff"
                                   value={machine.assignedStaff?.id ?? ''}
                                   disabled={savingMachineId === machine.id}
-                                  onChange={(event) => handleAssignMachine(machine.id, event.target.value)}
+                                  onChange={(staffId) => handleAssignMachine(machine.id, staffId)}
                                   options={[
                                     { value: '', label: 'Unassigned' },
                                     ...staffMembers.map((staff) => ({ value: staff.id, label: staff.name })),
                                   ]}
                                   className="text-xs py-2"
+                                  searchPlaceholder="Search staff…"
                                 />
                               </div>
                             )}
@@ -734,16 +736,17 @@ export function BoardPage() {
             <strong>Target Stage:</strong> {startJobMachine?.stage} (Rate: ₹{startJobMachine?.ratePerMetre}/m)
           </Callout>
 
-          <Select
+          <SearchableSelect
             label="Select Active Order"
             required
             value={selectedOrderId}
-            onChange={(e) => setSelectedOrderId(e.target.value)}
+            onChange={setSelectedOrderId}
             placeholder="-- Choose an order --"
             options={availableOrders.map((ord) => ({
               value: ord.id,
               label: `${ord.orderNumber} — ${ord.buyerName} (${ord.fabricType}, ${ord.metres}m)`,
             }))}
+            searchPlaceholder="Search by order no, buyer or fabric…"
           />
 
           <div className="space-y-1.5">
