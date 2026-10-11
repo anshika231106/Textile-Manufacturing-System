@@ -6,12 +6,14 @@
 
 ## 📌 Project Overview
 
-**MillTrace** is a single-page manufacturing execution and operations platform designed to trace and manage the full textile lifecycle:
+**MillTrace** is a full-stack manufacturing execution and operations platform that traces and manages the complete textile production lifecycle:
 
-$$\text{Yarn Receipt} \longrightarrow \text{Order} \longrightarrow \text{Production Stages} \longrightarrow \text{Roll Creation} \longrightarrow \text{Quality Control} \longrightarrow \text{Dispatch} \longrightarrow \text{Invoice/Payment} \longrightarrow \text{Month-End Report}$$
+```
+Yarn Receipt → Order → Spinning → Weaving → Dyeing → Roll Creation → QC Inspection → Dispatch → Invoice/Payment → Month-End Report
+```
 
 - **Internal Staff Portal**: Role-based operational access for `OWNER`, `OFFICE`, `SUPERVISOR`, and `STAFF`.
-- **Buyer Tracking Portal**: Public, tokenized real-time tracking for buyers without login credentials.
+- **Buyer Tracking Portal**: Public, tokenized real-time order tracking for buyers — no login required.
 
 ---
 
@@ -19,9 +21,10 @@ $$\text{Yarn Receipt} \longrightarrow \text{Order} \longrightarrow \text{Product
 
 | Layer | Technologies |
 |---|---|
-| **Frontend** | React 18, Vite, TypeScript, React Router v6, Tailwind CSS |
-| **Backend** | Node.js, Express, TypeScript, Prisma ORM |
-| **Database** | PostgreSQL (Neon) |
+| **Frontend** | React 18, Vite 6, TypeScript 5.7, React Router v6, Tailwind CSS v4, Framer Motion, Redux Toolkit, Recharts |
+| **Backend** | Node.js, Express 4, TypeScript 5.9, Prisma 7 ORM, Zod 4, Nodemailer, Helmet |
+| **Database** | PostgreSQL (Neon — serverless, pooled) |
+| **Auth** | JWT (access + refresh tokens), bcryptjs |
 | **Contracts** | Shared TypeScript DTOs and Enums (`shared/`) |
 
 ---
@@ -29,68 +32,76 @@ $$\text{Yarn Receipt} \longrightarrow \text{Order} \longrightarrow \text{Product
 ## 📁 Repository Structure
 
 ```text
-milltrace/
-├── docs/                     # Documentation & seed data specifications
-├── shared/                   # Shared API contracts, types, and enums
-│   ├── api.ts
-│   └── enums.ts
-├── client/                   # Vite + React + Tailwind frontend application
+Textile-Manufacturing-System/
+├── client/                    # Vite + React 18 + Tailwind CSS v4 frontend
 │   ├── src/
-│   │   ├── components/       # Reusable UI primitives & layout shells
-│   │   │   ├── layout/       # AppLayout, Nav, RequireRole
-│   │   │   └── ui/           # Button, Input, Select, Table, Modal, etc.
-│   │   ├── features/         # Domain-specific feature modules & APIs
-│   │   │   ├── attendance/   # Worker attendance & payroll view
-│   │   │   ├── auth/         # Login & authentication
-│   │   │   ├── dispatch/     # Roll dispatch & invoicing
-│   │   │   ├── floor/        # Machine floor board & shift logging
-│   │   │   ├── masters/      # Buyers, suppliers, yarns, machines, workers
-│   │   │   ├── orders/       # Order management & feasibility checks
-│   │   │   ├── qc/           # Quality control inspection & roll creation
-│   │   │   ├── reports/      # Month-end & executive dashboards
-│   │   │   ├── rolls/        # Roll traceability & QR label printing
-│   │   │   ├── stock/        # Yarn inventory & stock receipts
-│   │   │   └── track/        # Public buyer order tracker
-│   │   └── lib/              # API client, auth context, custom hooks
-│   ├── index.html
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── vite.config.ts
-├── server/                   # Express + Prisma backend application
-│   ├── prisma/               # Schema, migrations, and seed scripts
+│   │   ├── components/        # Reusable UI primitives & layout shells
+│   │   │   ├── layout/        # AppLayout, Sidebar/Nav, RequireRole guard
+│   │   │   └── ui/            # Button, Input, Select, Table, Modal, Pagination, etc.
+│   │   ├── features/          # Domain-specific feature modules & API clients
+│   │   │   ├── attendance/    # Worker daily attendance & payroll view
+│   │   │   ├── auth/          # Login, password-setup, auth context
+│   │   │   ├── dispatch/      # Roll dispatch & invoicing
+│   │   │   ├── floor/         # Machine floor board, shift logging, production simulator
+│   │   │   ├── landing/       # Public landing page & buyer-tracking widget
+│   │   │   ├── masters/       # Buyers, suppliers, yarns, machines, workers
+│   │   │   ├── orders/        # Order management & detail view
+│   │   │   ├── qc/            # Quality control inspection & roll creation
+│   │   │   ├── reports/       # Executive dashboard & month-end P&L report
+│   │   │   ├── rolls/         # Roll traceability & QR-label printing
+│   │   │   ├── staff/         # Staff management & role administration
+│   │   │   └── stock/         # Yarn inventory, receipts, & ledger panel
+│   │   └── lib/               # API client, auth context, hooks, formatters
+│   ├── README.md              # Frontend-specific documentation
+│   └── package.json
+├── server/                    # Express + Prisma backend API
+│   ├── prisma/                # Schema, migrations, and seed scripts
 │   │   ├── schema.prisma
+│   │   ├── seed.ts
 │   │   └── migrations/
+│   ├── scripts/               # Dev utilities: smoke tests, demo seed, enum parity check
 │   ├── src/
-│   │   ├── config/           # Environment and server configuration
-│   │   ├── db/               # Prisma database client
-│   │   ├── domain/           # Business logic & domain calculations
-│   │   ├── lib/              # Utility helpers & response formatters
-│   │   ├── middleware/       # Auth, validation, and error handlers
-│   │   └── modules/          # Feature controllers, routes, and services
-│   ├── package.json
-│   └── tsconfig.json
-├── Frontend_MVP.md           # Frontend Single Source of Truth
-├── MVP.md                    # Core Business & API Specification
-└── package.json              # Root workspace development scripts
+│   │   ├── config/            # Environment & server configuration
+│   │   ├── db/                # Prisma singleton client (Neon adapter)
+│   │   ├── domain/            # Business logic: order status derivation, stage rules
+│   │   ├── lib/               # Number helpers, payroll calculations, response formatters
+│   │   ├── middleware/        # Auth, Zod validation, global error handler
+│   │   └── modules/           # Feature controllers, routes, and services (13 modules)
+│   ├── README.md              # Backend-specific documentation
+│   └── package.json
+├── package.json               # Root workspace scripts (delegates to client/ and server/)
+└── README.md                  # This file
 ```
 
 ---
 
-## 🚦 Current Status & Progress
+## 🔐 Roles & Access
 
-- [x] **Project Directory Architecture**: Folder structure created matching `Frontend_MVP.md`.
-- [x] **Frontend Foundation**:
-  - Initialized Vite + React 18 + TypeScript environment in `client/`.
-  - Configured Tailwind CSS v4 styling system.
-  - Setup TypeScript and Vite path aliases (`@/*` and `@shared/*`).
-  - Verified client production build.
-- [x] **Backend Foundation**:
-  - Organized backend directory under `server/`.
-  - Prisma ORM structure initialized with PostgreSQL schema.
-- [ ] **Next Steps**:
-  - Define shared DTOs & enums in `shared/`.
-  - Implement shared layout, navigation, auth context, and UI primitives.
-  - Connect feature modules to backend API endpoints in vertical slices.
+| Role | Capabilities |
+|---|---|
+| **OWNER** | Full access: orders, floor, QC, dispatch, stock, attendance, staff management, masters, month-end P&L |
+| **SUPERVISOR** | Floor operations, QC inspection, dispatch, rolls, stock |
+| **OFFICE** | Orders, staff management, attendance & wages, masters, invoices |
+| **STAFF** | Own machines on floor board, own attendance & wage summary |
+| *(public)* | Landing page + buyer order tracking (token-based, no login) |
+
+---
+
+## 📦 Order Pipeline
+
+```
+PENDING
+  └── IN_PRODUCTION
+        ├── SPINNING  (machines: spindle frames)
+        ├── WEAVING   (machines: looms)
+        └── DYEING    (machines: dyeing vessels)
+              └── QC
+                    ├── READY       (all rolls passed, none dispatched)
+                    ├── DISPATCHED  (partially dispatched)
+                    └── COMPLETED   (all rolls dispatched + invoice issued)
+```
+
+Order status is **never stored** — it is derived at read time by `deriveOrderStatus()` from stage jobs, rolls, and dispatch records.
 
 ---
 
@@ -99,36 +110,77 @@ milltrace/
 ### Prerequisites
 - **Node.js**: `v20.x` or higher
 - **npm**: `v10.x` or higher
+- A Neon PostgreSQL database (see `server/README.md` for credentials setup)
 
-### Installation
+### 1. Install all dependencies
 
-1. **Install Frontend Dependencies:**
-   ```bash
-   cd client
-   npm install
-   ```
+```bash
+# From the project root:
+cd client && npm install && cd ../server && npm install && cd ..
+```
 
-2. **Install Backend Dependencies:**
-   ```bash
-   cd ../server
-   npm install
-   ```
+### 2. Configure environment variables
 
-### Running Locally
+```bash
+# Backend
+cp server/.env.example server/.env
+# Fill in DATABASE_URL, DIRECT_URL, JWT_SECRET, etc.
 
-- **Run Frontend Dev Server:**
-  ```bash
-  npm run client:dev
-  ```
-  *Frontend will be running at: `http://localhost:5173`*
+# Frontend
+cp client/.env.example client/.env
+# Set VITE_API_BASE_URL=http://localhost:4000/api/v1
+```
 
-- **Run Backend Dev Server:**
-  ```bash
-  npm run server:dev
-  ```
-  *Backend API will be running at: `http://localhost:3000`*
+### 3. Set up the database
 
-- **Build for Production:**
-  ```bash
-  npm run client:build
-  ```
+```bash
+cd server
+npx prisma generate           # Generate Prisma Client
+npx prisma migrate deploy     # Apply schema migrations
+npx prisma db seed            # Seed demo data (optional but recommended)
+```
+
+### 4. Run the development servers
+
+From the **project root**, run each in a separate terminal:
+
+```bash
+# Backend API (http://localhost:4000)
+npm run server:dev
+
+# Frontend SPA (http://localhost:5173)
+npm run client:dev
+```
+
+> The Vite dev server proxies all `/api/*` requests to `http://localhost:4000`, so no CORS configuration is needed during development.
+
+### 5. Production build
+
+```bash
+npm run client:build    # Build frontend to client/dist/
+```
+
+---
+
+## 📡 API Base URL
+
+| Environment | URL |
+|---|---|
+| Development | `http://localhost:4000/api/v1` |
+| Production | Your deployed server URL + `/api/v1` |
+
+Public (no auth) endpoints:
+- `GET /api/v1/public/track/:token` — buyer order tracking
+- `GET /api/v1/public/samples` — live order demo chips (landing page)
+- `GET /api/v1/public/stats` — mill-wide operational statistics
+
+---
+
+## 📝 Further Documentation
+
+| File | Contents |
+|---|---|
+| [`client/README.md`](./client/README.md) | Frontend tech stack, features, pages, pagination strategy, path aliases |
+| [`server/README.md`](./server/README.md) | Backend setup, all API routes, data models, domain logic, scripts |
+| [`MVP.md`](./MVP.md) | Core business rules & API specification |
+| [`Frontend_MVP.md`](./Frontend_MVP.md) | Frontend feature specification (single source of truth) |
