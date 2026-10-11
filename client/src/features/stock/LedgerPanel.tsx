@@ -5,6 +5,7 @@ import { type YarnType } from '../masters/masters.api';
 import { Table, type Column } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Select } from '../../components/ui/Select';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -205,13 +206,15 @@ export function LedgerPanel({
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="w-56">
-            <Select
+            <SearchableSelect
               options={yarnOptions}
               value={selectedYarnId}
-              onChange={(e) => {
-                onSelectYarnId?.(e.target.value);
+              onChange={(value) => {
+                onSelectYarnId?.(value);
                 setPage(0);
               }}
+              aria-label="Filter ledger by yarn type"
+              searchPlaceholder="Search yarn types…"
             />
           </div>
 
