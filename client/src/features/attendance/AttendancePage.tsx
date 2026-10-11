@@ -27,6 +27,8 @@ import {
   UsersIcon,
   ClockIcon,
   PencilSquareIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -59,6 +61,8 @@ export function AttendancePage() {
   const [selectedMonth, setSelectedMonth] = useState(formatApiMonth(new Date()));
   const [dailyPage, setDailyPage] = useState(0);
   const [wagePage, setWagePage] = useState(0);
+  const [dailySearchQuery, setDailySearchQuery] = useState('');
+  const [wageSearchQuery, setWageSearchQuery] = useState('');
   const [attendanceFilter, setAttendanceFilter] = useState<AttendanceFilter>('ALL');
   const pageSize = DEFAULT_PAGE_SIZE;
   const [records, setRecords] = useState<WorkerAttendanceRecord[]>([]);
@@ -112,7 +116,16 @@ export function AttendancePage() {
   }, [selectedMonth, canSeeWages]);
 
   const setAllStatus = (present: boolean) => {
-    setRecords((current) => current.map((record) => ({ ...record, present })));
+    if (dailySearchQuery.trim()) {
+      const matchingIds = new Set(filteredDailyRecords.map((r) => r.workerId));
+      setRecords((current) =>
+        current.map((record) =>
+          matchingIds.has(record.workerId) ? { ...record, present } : record,
+        ),
+      );
+    } else {
+      setRecords((current) => current.map((record) => ({ ...record, present })));
+    }
   };
 
   const toggleStatus = (workerId: string) => {
@@ -174,8 +187,16 @@ export function AttendancePage() {
   const presentCount = records.filter((record) => record.present === true).length;
   const absentCount = records.filter((record) => record.present === false).length;
   const filteredDailyRecords = records.filter((record) => {
-    if (attendanceFilter === 'PRESENT') return record.present === true;
-    if (attendanceFilter === 'ABSENT') return record.present === false;
+    if (attendanceFilter === 'PRESENT' && record.present !== true) return false;
+    if (attendanceFilter === 'ABSENT' && record.present !== false) return false;
+    if (dailySearchQuery.trim()) {
+      const q = dailySearchQuery.trim().toLowerCase();
+      const match =
+        record.workerName.toLowerCase().includes(q) ||
+        record.workerCode.toLowerCase().includes(q) ||
+        record.workerRole.toLowerCase().includes(q);
+      if (!match) return false;
+    }
     return true;
   });
   const dailyPageCount = Math.ceil(filteredDailyRecords.length / pageSize);
@@ -185,9 +206,20 @@ export function AttendancePage() {
     (visibleDailyPage + 1) * pageSize,
   );
   const wageWorkers = wagesData?.workers ?? [];
-  const wagePageCount = Math.ceil(wageWorkers.length / pageSize);
+  const filteredWageWorkers = wageWorkers.filter((worker) => {
+    if (wageSearchQuery.trim()) {
+      const q = wageSearchQuery.trim().toLowerCase();
+      const match =
+        worker.workerName.toLowerCase().includes(q) ||
+        worker.workerCode.toLowerCase().includes(q) ||
+        worker.workerRole.toLowerCase().includes(q);
+      if (!match) return false;
+    }
+    return true;
+  });
+  const wagePageCount = Math.ceil(filteredWageWorkers.length / pageSize);
   const visibleWagePage = Math.min(wagePage, Math.max(wagePageCount - 1, 0));
-  const visibleWageWorkers = wageWorkers.slice(
+  const visibleWageWorkers = filteredWageWorkers.slice(
     visibleWagePage * pageSize,
     (visibleWagePage + 1) * pageSize,
   );
@@ -345,75 +377,112 @@ export function AttendancePage() {
         </div>
 
         {!dailyLoading && !dailyError && (
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-(--color-surface-alt) rounded-xl border border-(--color-border)">
-            <div className="flex flex-wrap items-center gap-4 text-xs">
-              <div className="inline-flex items-center gap-1 rounded-lg border border-(--color-border) bg-white p-1" role="group" aria-label="Filter attendance by status">
-                <button
-                  type="button"
-                  aria-pressed={attendanceFilter === 'ALL'}
-                  onClick={() => {
-                    setAttendanceFilter('ALL');
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative max-w-sm w-full">
+                <MagnifyingGlassIcon className="w-4 h-4 text-(--color-text-muted) absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={dailySearchQuery}
+                  onChange={(event) => {
+                    setDailySearchQuery(event.target.value);
                     setDailyPage(0);
                   }}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    attendanceFilter === 'ALL'
-                      ? 'bg-(--color-accent-light) text-(--color-accent)'
-                      : 'text-(--color-text-muted) hover:bg-(--color-bg)'
-                  }`}
-                >
-                  Total Staff: <span className="font-mono font-semibold">{records.length}</span>
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={attendanceFilter === 'PRESENT'}
-                  onClick={() => {
-                    setAttendanceFilter('PRESENT');
-                    setDailyPage(0);
-                  }}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    attendanceFilter === 'PRESENT'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'text-emerald-700 hover:bg-emerald-50'
-                  }`}
-                >
-                  Present: <span className="font-mono font-semibold">{presentCount}</span>
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={attendanceFilter === 'ABSENT'}
-                  onClick={() => {
-                    setAttendanceFilter('ABSENT');
-                    setDailyPage(0);
-                  }}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    attendanceFilter === 'ABSENT'
-                      ? 'bg-rose-100 text-rose-800'
-                      : 'text-rose-700 hover:bg-rose-50'
-                  }`}
-                >
-                  Absent: <span className="font-mono font-semibold">{absentCount}</span>
-                </button>
+                  placeholder="Search staff by name, code, or role..."
+                  className="w-full pl-9 pr-8 py-2 text-xs rounded-lg border border-(--color-border) bg-white placeholder:text-(--color-text-subtle) focus:outline-none focus:ring-2 focus:ring-(--color-accent)/20 focus:border-(--color-accent)"
+                />
+                {dailySearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDailySearchQuery('');
+                      setDailyPage(0);
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--color-text-muted) hover:text-(--color-text)"
+                    aria-label="Clear daily search"
+                  >
+                    <XMarkIcon className="w-4 h-4" />
+                  </button>
+                )}
               </div>
+
+              {canMarkAttendance && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAllStatus(true)}
+                    className="text-xs px-2.5 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors font-medium"
+                  >
+                    {dailySearchQuery.trim() ? 'Mark Filtered Present' : 'Mark All Present'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAllStatus(false)}
+                    className="text-xs px-2.5 py-1.5 rounded-lg border border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100 transition-colors font-medium"
+                  >
+                    {dailySearchQuery.trim() ? 'Mark Filtered Absent' : 'Mark All Absent'}
+                  </button>
+                </div>
+              )}
             </div>
 
-            {canMarkAttendance && (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAllStatus(true)}
-                  className="text-xs px-2.5 py-1 rounded border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors"
-                >
-                  Mark All Present
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAllStatus(false)}
-                  className="text-xs px-2.5 py-1 rounded border border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100 transition-colors"
-                >
-                  Mark All Absent
-                </button>
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-(--color-surface-alt) rounded-xl border border-(--color-border)">
+              <div className="flex flex-wrap items-center gap-4 text-xs">
+                <div className="inline-flex items-center gap-1 rounded-lg border border-(--color-border) bg-white p-1" role="group" aria-label="Filter attendance by status">
+                  <button
+                    type="button"
+                    aria-pressed={attendanceFilter === 'ALL'}
+                    onClick={() => {
+                      setAttendanceFilter('ALL');
+                      setDailyPage(0);
+                    }}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                      attendanceFilter === 'ALL'
+                        ? 'bg-(--color-accent-light) text-(--color-accent)'
+                        : 'text-(--color-text-muted) hover:bg-(--color-bg)'
+                    }`}
+                  >
+                    Total Staff: <span className="font-mono font-semibold">{records.length}</span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={attendanceFilter === 'PRESENT'}
+                    onClick={() => {
+                      setAttendanceFilter('PRESENT');
+                      setDailyPage(0);
+                    }}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                      attendanceFilter === 'PRESENT'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'text-emerald-700 hover:bg-emerald-50'
+                    }`}
+                  >
+                    Present: <span className="font-mono font-semibold">{presentCount}</span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={attendanceFilter === 'ABSENT'}
+                    onClick={() => {
+                      setAttendanceFilter('ABSENT');
+                      setDailyPage(0);
+                    }}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                      attendanceFilter === 'ABSENT'
+                        ? 'bg-rose-100 text-rose-800'
+                        : 'text-rose-700 hover:bg-rose-50'
+                    }`}
+                  >
+                    Absent: <span className="font-mono font-semibold">{absentCount}</span>
+                  </button>
+                </div>
               </div>
-            )}
+
+              {dailySearchQuery.trim() && (
+                <div className="text-xs text-(--color-text-muted)">
+                  Showing <span className="font-semibold text-(--color-text)">{filteredDailyRecords.length}</span> matching result{filteredDailyRecords.length === 1 ? '' : 's'}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -427,8 +496,12 @@ export function AttendancePage() {
             rows={visibleDailyRecords}
             loading={dailyLoading}
             rowKey={(w) => w.workerId}
-            emptyTitle="No staff found"
-            emptyDescription="No staff attendance records are available."
+            emptyTitle={dailySearchQuery.trim() ? 'No staff matching search' : 'No staff found'}
+            emptyDescription={
+              dailySearchQuery.trim()
+                ? `No staff records match "${dailySearchQuery}". Try clearing the search or changing the filter.`
+                : 'No staff attendance records are available.'
+            }
           />
         )}
         {!dailyError && (
@@ -515,20 +588,61 @@ export function AttendancePage() {
               {wagesError}
             </div>
           ) : (
-            <Table
-              columns={wageColumns}
-              rows={visibleWageWorkers}
-              loading={wagesLoading}
-              rowKey={(w) => w.workerId}
-              emptyTitle="No records"
-              emptyDescription={`No wage records are available for ${selectedMonth}.`}
-            />
+            <>
+              {!wagesLoading && wageWorkers.length > 0 && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="relative max-w-sm w-full">
+                    <MagnifyingGlassIcon className="w-4 h-4 text-(--color-text-muted) absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={wageSearchQuery}
+                      onChange={(event) => {
+                        setWageSearchQuery(event.target.value);
+                        setWagePage(0);
+                      }}
+                      placeholder="Search wage records by name, code, or role..."
+                      className="w-full pl-9 pr-8 py-2 text-xs rounded-lg border border-(--color-border) bg-white placeholder:text-(--color-text-subtle) focus:outline-none focus:ring-2 focus:ring-(--color-accent)/20 focus:border-(--color-accent)"
+                    />
+                    {wageSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWageSearchQuery('');
+                          setWagePage(0);
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--color-text-muted) hover:text-(--color-text)"
+                        aria-label="Clear wage search"
+                      >
+                        <XMarkIcon className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  {wageSearchQuery.trim() && (
+                    <div className="text-xs text-(--color-text-muted)">
+                      Showing <span className="font-semibold text-(--color-text)">{filteredWageWorkers.length}</span> matching wage record{filteredWageWorkers.length === 1 ? '' : 's'}
+                    </div>
+                  )}
+                </div>
+              )}
+              <Table
+                columns={wageColumns}
+                rows={visibleWageWorkers}
+                loading={wagesLoading}
+                rowKey={(w) => w.workerId}
+                emptyTitle={wageSearchQuery.trim() ? 'No wage records matching search' : 'No records'}
+                emptyDescription={
+                  wageSearchQuery.trim()
+                    ? `No wage records match "${wageSearchQuery}". Try clearing the search.`
+                    : `No wage records are available for ${selectedMonth}.`
+                }
+              />
+            </>
           )}
           {!wagesError && (
             <Pagination
               page={visibleWagePage}
               pageSize={pageSize}
-              totalCount={wageWorkers.length}
+              totalCount={filteredWageWorkers.length}
               itemLabel="staff members"
               onPageChange={setWagePage}
             />
