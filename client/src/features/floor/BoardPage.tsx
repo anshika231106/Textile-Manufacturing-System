@@ -30,6 +30,7 @@ import {
   type Shift,
 } from './floor.api';
 import { listOrders, type Order } from '../orders/orders.api';
+import { ProductionSimulator } from './ProductionSimulator';
 import {
   PlayIcon,
   CheckCircleIcon,
@@ -40,6 +41,7 @@ import {
   CpuChipIcon,
   BoltIcon,
   ShieldExclamationIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 const STAGES: Stage[] = ['SPINNING', 'WEAVING', 'DYEING'];
@@ -118,6 +120,8 @@ export function BoardPage() {
   const [isSubmittingComplete, setIsSubmittingComplete] = useState(false);
 
   const [restoreMachineId, setRestoreMachineId] = useState<string | null>(null);
+
+  const [simulatorMachine, setSimulatorMachine] = useState<FloorMachine | null>(null);
   const [isSubmittingRestore, setIsSubmittingRestore] = useState(false);
 
   // Poll floor board every 5000 ms
@@ -622,6 +626,18 @@ export function BoardPage() {
                                 )}
 
                                 {isRunning && (
+                                  <div className="flex flex-col gap-1.5 w-full">
+                                  {machine.currentJob && isSupervisorOrOwner && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => setSimulatorMachine(machine)}
+                                      className="w-full text-xs bg-linear-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 border-transparent shadow-2xs"
+                                      title="Run an animated production simulation for this job"
+                                    >
+                                      <SparklesIcon className="w-4 h-4" />
+                                      Simulate Production
+                                    </Button>
+                                  )}
                                   <div className="flex items-center gap-1.5 w-full">
                                     {machine.currentJob && isSupervisorOrOwner && (
                                       <Link to={`/floor/log?machineId=${machine.id}`} className="flex-1">
@@ -654,6 +670,7 @@ export function BoardPage() {
                                     >
                                       <ExclamationTriangleIcon className="w-4 h-4" />
                                     </Button>
+                                  </div>
                                   </div>
                                 )}
 
@@ -757,6 +774,17 @@ export function BoardPage() {
           </div>
         </div>
       </Dialog>
+
+      <ProductionSimulator
+        machine={simulatorMachine}
+        onClose={() => setSimulatorMachine(null)}
+        onLogged={refreshBoard}
+        onFinishJob={(machine) => {
+          setSimulatorMachine(null);
+          // Use the board's latest numbers in the confirmation, not the snapshot taken when the simulator opened.
+          setCompleteJobMachine(machines.find((m) => m.id === machine.id) ?? machine);
+        }}
+      />
 
       {/* Complete Job Dialog */}
       <Dialog

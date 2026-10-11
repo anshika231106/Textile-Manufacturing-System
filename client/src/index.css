@@ -424,3 +424,69 @@
   background-size: 800px 100%;
   animation: shimmer 1.6s ease-in-out infinite;
 }
+
+/* ─── Production simulator ─── */
+/* Loop durations divide by --sim-speed so the 1x/2x/4x control speeds up every machine part at once. */
+.sim-scene {
+  --sim-speed: 1;
+}
+.sim-paused .sim-anim {
+  animation-play-state: paused;
+}
+.sim-spin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: simSpin calc(0.9s / var(--sim-speed)) linear infinite;
+}
+.sim-flow {
+  animation: simFlow calc(0.6s / var(--sim-speed)) linear infinite;
+}
+.sim-wind {
+  animation: simWind calc(0.3s / var(--sim-speed)) linear infinite;
+}
+.sim-traverse {
+  animation: simTraverse calc(2.4s / var(--sim-speed)) ease-in-out infinite alternate;
+}
+.sim-balloon {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: simBalloon calc(0.25s / var(--sim-speed)) ease-in-out infinite alternate;
+}
+.sim-scroll {
+  animation: simScroll calc(1.2s / var(--sim-speed)) linear infinite;
+}
+.sim-bubble {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: simBubble calc(2.2s / var(--sim-speed)) ease-in infinite;
+}
+.sim-steam {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: simSteam calc(3s / var(--sim-speed)) ease-out infinite;
+}
+.sim-blink {
+  animation: simBlink 1.2s ease-in-out infinite;
+}
+
+@keyframes simSpin { to { transform: rotate(360deg); } }
+@keyframes simFlow { to { stroke-dashoffset: -16; } }
+@keyframes simWind { from { transform: translateY(0); } to { transform: translateY(6px); } }
+@keyframes simTraverse { from { transform: translateY(0); } to { transform: translateY(46px); } }
+@keyframes simBalloon { from { transform: scaleX(0.55); } to { transform: scaleX(1.15); } }
+@keyframes simScroll { from { transform: translateY(0); } to { transform: translateY(8px); } }
+@keyframes simBubble {
+  0%   { transform: translateY(0) scale(0.6); opacity: 0; }
+  15%  { opacity: 0.85; }
+  100% { transform: translateY(-58px) scale(1.15); opacity: 0; }
+}
+@keyframes simSteam {
+  0%   { transform: translateY(0) scale(0.8); opacity: 0; }
+  30%  { opacity: 0.35; }
+  100% { transform: translateY(-38px) scale(1.7); opacity: 0; }
+}
+@keyframes simBlink { 50% { opacity: 0.25; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-anim { animation: none !important; }
+}

@@ -45,6 +45,81 @@ function mapRoll(roll: any) {
   };
 }
 
+const STAGES = ['SPINNING', 'WEAVING', 'DYEING'] as const;
+
+const rollableOrderInclude = {
+  buyer: true,
+  stageJobs: {
+    orderBy: { startedAt: 'desc' as const },
+    include: { machine: { select: { id: true, code: true, name: true } } },
+  },
+  productionLogs: { where: { stage: 'DYEING' as const }, select: { metres: true } },
+  rolls: { select: { metres: true } },
+};
+
+/**
+ * Rolls can only be cut once all three stages are finished: the latest job of
+ * SPINNING, WEAVING and DYEING must each be COMPLETED. Machines are limited to
+ * the ones that actually ran a job of that stage for the order.
+ */
+function rollEligibility(order: any) {
+  const stagesComplete = STAGES.every(
+    (stage) => order.stageJobs.find((j: any) => j.stage === stage)?.status === 'COMPLETED'
+  );
+  const machinesFor = (stage: string) => {
+    const seen = new Map<string, { id: string; code: string; name: string }>();
+    for (const job of order.stageJobs) {
+      if (job.stage === stage && !seen.has(job.machine.id)) seen.set(job.machine.id, job.machine);
+    }
+    return [...seen.values()];
+  };
+  const dyeingOutput = order.productionLogs.reduce((sum: number, l: any) => sum + toDecimal(l.metres), 0);
+  const alreadyRolled = order.rolls.reduce((sum: number, r: any) => sum + toDecimal(r.metres), 0);
+  return {
+    stagesComplete,
+    dyeingOutput: round2(dyeingOutput),
+    alreadyRolled: round2(alreadyRolled),
+    remainingMetres: round2(Math.max(dyeingOutput - alreadyRolled, 0)),
+    weavingMachines: machinesFor('WEAVING'),
+    dyeingMachines: machinesFor('DYEING'),
+  };
+}
+
+// GET /qc/roll-orders - orders that have finished all three stages and still have un-rolled dyeing output
+qcRoutes.get(
+  '/qc/roll-orders',
+  authenticate,
+  authorize('OWNER', 'SUPERVISOR'),
+  async (_req, res, next) => {
+    try {
+      const orders = await prisma.order.findMany({
+        where: { stageJobs: { some: { stage: 'DYEING', status: 'COMPLETED' } } },
+        orderBy: { createdAt: 'desc' },
+        include: rollableOrderInclude,
+      });
+      const items = orders
+        .map((order) => ({ order, eligibility: rollEligibility(order) }))
+        .filter(({ eligibility }) => eligibility.stagesComplete && eligibility.remainingMetres > 0)
+        .map(({ order, eligibility }) => ({
+          id: order.id,
+          orderNumber: order.orderNo,
+          buyerName: order.buyer.name,
+          fabricType: order.fabricType,
+          colour: order.colour,
+          metres: toDecimal(order.metres),
+          dyeingOutput: eligibility.dyeingOutput,
+          alreadyRolled: eligibility.alreadyRolled,
+          remainingMetres: eligibility.remainingMetres,
+          weavingMachines: eligibility.weavingMachines,
+          dyeingMachines: eligibility.dyeingMachines,
+        }));
+      return ok(res, items);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // GET /qc/queue - all rolls, newest first (pending/rework surfaced by the client's own filters)
 qcRoutes.get(
   '/qc/queue',
@@ -80,8 +155,14 @@ qcRoutes.post(
     try {
       const input = createRollBody.parse(req.body);
 
-      const order = await prisma.order.findUnique({ where: { id: input.orderId } });
+      const order = await prisma.order.findUnique({ where: { id: input.orderId }, include: rollableOrderInclude });
       if (!order) throw notFound('Order not found');
+      if (!rollEligibility(order).stagesComplete) {
+        throw conflict(
+          'STAGES_INCOMPLETE',
+          'Rolls can only be created after spinning, weaving and dyeing are all completed for this order'
+        );
+      }
 
       const [weavingMachine, dyeingMachine] = await Promise.all([
         prisma.machine.findUnique({ where: { id: input.weavingMachineId } }),

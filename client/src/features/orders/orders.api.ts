@@ -82,6 +82,19 @@ export interface Order {
   yarnRequirements: YarnRequirement[];
   stageProgress: StageProgress[];
   rollSummary: OrderRollSummary;
+  /** Roll counts by exact status (server-provided; `rollSummary.passedRolls` also includes dispatched rolls). */
+  rolls?: OrderRollCounts;
+}
+
+export interface OrderRollCounts {
+  total: number;
+  pendingQc: number;
+  rework: number;
+  passed: number;
+  rejected: number;
+  dispatched: number;
+  passedMetres: number;
+  dispatchedMetres: number;
 }
 
 export interface PaginatedOrders {

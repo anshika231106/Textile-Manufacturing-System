@@ -56,10 +56,9 @@ export function DispatchPage() {
       try {
         setLoadingOrders(true);
         const allOrders = await listOrders();
-        // filter orders that have finished rolls or are in progress/ready
-        const candidateOrders = allOrders.filter(
-          (o) => o.status !== 'CANCELLED' && o.status !== 'DISPATCHED' && o.status !== 'COMPLETED'
-        );
+        // Only orders with at least one QC-passed roll still waiting to ship. This covers
+        // READY orders and partially dispatched ones (client status DISPATCHED) alike.
+        const candidateOrders = allOrders.filter((o) => (o.rolls?.passed ?? 0) > 0);
         setOrders(candidateOrders);
         if (candidateOrders.length > 0) {
           setSelectedOrderId(candidateOrders[0].id);
@@ -262,6 +261,13 @@ export function DispatchPage() {
                 }))}
                 className="font-medium"
               />
+
+              {orders.length === 0 && (
+                <Callout tone="neutral">
+                  No orders are ready for dispatch. An order appears here once at least one of its rolls
+                  has passed QC and has not been dispatched yet.
+                </Callout>
+              )}
 
               {selectedOrder && (
                 <Callout tone="warning">
