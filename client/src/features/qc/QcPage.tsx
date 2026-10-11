@@ -10,7 +10,7 @@ import { StatCard, StatGrid } from '../../components/ui/StatCard';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Table, type Column } from '../../components/ui/Table';
 import { Card } from '../../components/ui/Card';
-import { Pagination } from '../../components/ui/Pagination';
+import { DEFAULT_PAGE_SIZE, Pagination } from '../../components/ui/Pagination';
 import { formatDate, formatRelative, initialsOf, shadeSwatch } from '../../lib/format';
 import {
   getQcQueue,
@@ -178,7 +178,7 @@ export function QcPage() {
   const [selectedStatusTab, setSelectedStatusTab] = useState<'ALL' | RollStatus>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(0);
-  const pageSize = 10;
+  const pageSize = DEFAULT_PAGE_SIZE;
 
   // Inspection modal state
   const [inspectingRoll, setInspectingRoll] = useState<QcRollItem | null>(null);

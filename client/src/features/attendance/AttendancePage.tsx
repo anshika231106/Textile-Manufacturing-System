@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { StatCard, StatGrid } from '../../components/ui/StatCard';
 import { Table, type Column } from '../../components/ui/Table';
-import { Pagination } from '../../components/ui/Pagination';
+import { DEFAULT_PAGE_SIZE, Pagination } from '../../components/ui/Pagination';
 import { Dialog } from '../../components/ui/Dialog';
 import { Input } from '../../components/ui/Input';
 import { Callout } from '../../components/ui/Callout';
@@ -60,7 +60,7 @@ export function AttendancePage() {
   const [dailyPage, setDailyPage] = useState(0);
   const [wagePage, setWagePage] = useState(0);
   const [attendanceFilter, setAttendanceFilter] = useState<AttendanceFilter>('ALL');
-  const pageSize = 15;
+  const pageSize = DEFAULT_PAGE_SIZE;
   const [records, setRecords] = useState<WorkerAttendanceRecord[]>([]);
   const [dailyLoading, setDailyLoading] = useState(true);
   const [dailyError, setDailyError] = useState('');
