@@ -9,7 +9,7 @@ import { Select } from '../../components/ui/Select';
 import { Dialog } from '../../components/ui/Dialog';
 import { Badge } from '../../components/ui/Badge';
 import { Table, type Column } from '../../components/ui/Table';
-import { Pagination } from '../../components/ui/Pagination';
+import { DEFAULT_PAGE_SIZE, Pagination } from '../../components/ui/Pagination';
 import { Callout } from '../../components/ui/Callout';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
@@ -61,7 +61,7 @@ const ROLE_BADGE_VARIANT: Record<string, 'neutral' | 'info' | 'success' | 'warni
 export function StaffPage() {
   const { user: currentUser } = useAuth();
   const isOwner = currentUser?.role === 'OWNER';
-  const pageSize = 10;
+  const pageSize = DEFAULT_PAGE_SIZE;
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('ALL');

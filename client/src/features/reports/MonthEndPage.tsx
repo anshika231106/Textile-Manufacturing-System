@@ -3,7 +3,7 @@ import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard, StatGrid } from '../../components/ui/StatCard';
 import { Table, type Column } from '../../components/ui/Table';
-import { Pagination } from '../../components/ui/Pagination';
+import { DEFAULT_PAGE_SIZE, Pagination } from '../../components/ui/Pagination';
 import { formatCurrency, formatApiMonth } from '../../lib/format';
 import { getMonthEnd, type MonthEndReport } from './reports.api';
 import {
@@ -22,7 +22,7 @@ export function MonthEndPage() {
   const [orderPage, setOrderPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<MonthEndReport | null>(null);
-  const orderPageSize = 10;
+  const orderPageSize = DEFAULT_PAGE_SIZE;
 
   const loadReport = async (monthStr: string) => {
     try {
