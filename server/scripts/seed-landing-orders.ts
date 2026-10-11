@@ -95,6 +95,7 @@ export async function seedLandingOrders() {
           startedAt: new Date('2026-10-04T08:00:00Z'),
         },
       });
+      await prisma.machine.update({ where: { id: weaveMachine.id }, data: { status: 'RUNNING' } });
       await prisma.productionLog.create({
         data: {
           stageJobId: job2.id,

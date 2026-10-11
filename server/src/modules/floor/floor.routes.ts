@@ -104,19 +104,22 @@ floorRoutes.get(
       const result = machines.map((machine) => {
         const job = machine.stageJobs[0];
         const latestLog = job?.logs[0];
+        // A machine with an active job is running even if its stored status drifted to IDLE,
+        // otherwise the board hides the job and offers to start another one.
+        const status = job && machine.status === 'IDLE' ? 'RUNNING' : machine.status;
         return {
           id: machine.id,
           code: machine.code,
           name: machine.name,
           stage: machine.stage,
-          status: machine.status,
+          status,
           ratePerMetre: Number(machine.ratePerMetre),
           assignedStaff: machine.assignedStaff,
           statusUpdatedBy: machine.statusUpdatedBy,
           statusUpdatedAt: machine.statusUpdatedAt,
           statusNote: machine.statusNote,
           metresToday: machine.productionLogs.reduce((total, log) => total + Number(log.metres), 0),
-          breakdownReportedAt: machine.status === 'BREAKDOWN' ? machine.statusUpdatedAt?.toISOString() : undefined,
+          breakdownReportedAt: status === 'BREAKDOWN' ? machine.statusUpdatedAt?.toISOString() : undefined,
           currentJob: job
             ? {
                 id: job.id,
@@ -304,6 +307,11 @@ floorRoutes.post(
           where: { id: jobId },
           data: { status: 'COMPLETED', endedAt: new Date() },
         });
+        const otherActiveJob = await tx.stageJob.findFirst({
+          where: { machineId: job.machineId, status: 'RUNNING' },
+          select: { id: true },
+        });
+        if (otherActiveJob) return { id: job.machineId };
         await tx.machine.update({
           where: { id: job.machineId },
           data: {

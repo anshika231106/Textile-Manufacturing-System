@@ -456,6 +456,11 @@ async function main(): Promise<void> {
     prisma.invoice.createMany({ data: invoiceRows }),
     prisma.payment.createMany({ data: paymentRows }),
     prisma.stockMovement.createMany({ data: movementRows }),
+    // Machines holding a running job must not be left IDLE, or the board offers them for a new job.
+    prisma.machine.updateMany({
+      where: { id: { in: jobRows.filter((job) => job.status === 'RUNNING').map((job) => job.machineId) } },
+      data: { status: 'RUNNING' },
+    }),
   ], { maxWait: 15_000, timeout: 60_000 });
 
   const orderNumbers = await prisma.order.findMany({
